@@ -1166,21 +1166,23 @@ function App() {
               {/* Search Bar */}
               <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                 <h3 className="font-bold text-slate-900 text-lg mb-4">Patient Finder</h3>
-                <div className="relative">
-                  <Search className="w-5 h-5 text-slate-400 absolute left-4 top-3.5" />
-                  <input
-                    type="text"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-28 py-3.5 text-sm placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all font-medium"
-                    placeholder="Search by Patient ID, Name, Mobile, Receipt ID, or Bill ID..."
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      fetchPatients(e.target.value);
-                    }}
-                  />
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-5 h-5 text-slate-400 absolute left-4 top-3.5" />
+                    <input
+                      type="text"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-3.5 text-sm placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all font-medium"
+                      placeholder="Search ID, Name, Mobile, Invoice..."
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        fetchPatients(e.target.value);
+                      }}
+                    />
+                  </div>
                   <button
                     onClick={() => fetchPatients(searchQuery)}
-                    className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-sm px-5 py-2.5 rounded-xl absolute right-2 top-2 shadow-sm transition-all"
+                    className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-sm px-5 py-2.5 rounded-xl shadow-sm transition-all"
                   >
                     Search
                   </button>
@@ -1192,21 +1194,21 @@ function App() {
                     <div
                       key={pat.id}
                       onClick={() => handleSelectPatient(pat.id)}
-                      className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                      className={`p-4 rounded-xl border cursor-pointer transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                         selectedPatient?.id === pat.id
                           ? 'border-teal-500 bg-teal-50/20 shadow-sm'
                           : 'border-slate-100 hover:border-slate-250 hover:bg-slate-50/50'
                       }`}
                     >
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="font-bold text-slate-900 text-sm">{pat.name}</span>
                           <span className="text-[10px] font-extrabold bg-slate-100 text-slate-600 px-2 py-0.5 rounded uppercase">{pat.gender}</span>
                           <span className="text-slate-400 text-xs">{pat.age} Yrs</span>
                         </div>
                         <p className="text-slate-400 text-xs font-semibold">Mobile: {pat.mobile_number} | ID: {pat.patient_id}</p>
                       </div>
-                      <div className="text-teal-600 font-bold text-xs flex items-center gap-1 bg-white border border-slate-100 px-2.5 py-1.5 rounded-lg shadow-sm">
+                      <div className="text-teal-600 font-bold text-xs flex items-center justify-center gap-1 bg-white border border-slate-100 px-2.5 py-1.5 rounded-lg shadow-sm self-start sm:self-auto">
                         View Profile &rarr;
                       </div>
                     </div>
@@ -2242,112 +2244,114 @@ function App() {
             </div>
 
             {/* THE PRINTABLE AREA (Strict replica of the target layout) */}
-            <div id="printable-receipt-modal" className="bg-white p-4 font-sans text-xs text-slate-700 leading-relaxed border border-slate-100 shadow-inner rounded-2xl print:border-none print:shadow-none print:p-0">
-              
-              {/* Receipt Header Grid */}
-              <div className="grid grid-cols-3 gap-4 pb-3 border-b border-teal-500/20 items-start">
+            <div className="overflow-x-auto -mx-6 px-6">
+              <div id="printable-receipt-modal" className="min-w-[650px] bg-white p-4 font-sans text-xs text-slate-700 leading-relaxed border border-slate-100 shadow-inner rounded-2xl print:border-none print:shadow-none print:p-0 print:min-w-0">
                 
-                {/* Doctor Metadata Block */}
-                <div>
-                  <h4 className="text-sm font-extrabold text-slate-900 leading-none">{systemSettings.doctor_name || 'Dr. Shweta Grover'}</h4>
-                  <div className="text-[8px] text-slate-500 mt-1 leading-normal whitespace-pre-line">
-                    {systemSettings.doctor_degree || 'MBBS, MD (Pathology), PhD'}
+                {/* Receipt Header Grid */}
+                <div className="grid grid-cols-3 gap-4 pb-3 border-b border-teal-500/20 items-start">
+                  
+                  {/* Doctor Metadata Block */}
+                  <div>
+                    <h4 className="text-sm font-extrabold text-slate-900 leading-none">{systemSettings.doctor_name || 'Dr. Shweta Grover'}</h4>
+                    <div className="text-[8px] text-slate-500 mt-1 leading-normal whitespace-pre-line">
+                      {systemSettings.doctor_degree || 'MBBS, MD (Pathology), PhD'}
+                    </div>
+                  </div>
+
+                  {/* Logo & Document Title Label */}
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <div className="flex items-center gap-1 text-teal-650 font-extrabold text-base leading-none">
+                      <span>🏥</span>
+                      <span>{systemSettings.hospital_name || 'Vedam Diagnostics'}</span>
+                    </div>
+                    <span className="text-[7px] text-slate-400 mt-0.5 tracking-wide">{systemSettings.logo_text || 'Sincere Care...'}</span>
+                    <div className="border border-slate-900 text-slate-900 px-3 py-1 font-bold text-xs rounded uppercase mt-2 font-mono">
+                      Receipt
+                    </div>
+                  </div>
+
+                  {/* Hospital Address/Contacts Column */}
+                  <div className="text-right text-[8px] text-slate-500 leading-normal whitespace-pre-line">
+                    {systemSettings.collection_centre || '4 Harilok Saket Meerut'}
+                    {systemSettings.gst_number && `\nGSTIN: ${systemSettings.gst_number}`}
+                    {systemSettings.contact_number && `\nTel: ${systemSettings.contact_number}`}
                   </div>
                 </div>
 
-                {/* Logo & Document Title Label */}
-                <div className="flex flex-col items-center justify-center text-center">
-                  <div className="flex items-center gap-1 text-teal-650 font-extrabold text-base leading-none">
-                    <span>🏥</span>
-                    <span>{systemSettings.hospital_name || 'Vedam Diagnostics'}</span>
+                {/* Date, Title, and ID row */}
+                <div className="flex justify-between items-center py-2.5 border-b border-teal-600/30 font-bold text-[10px] text-slate-900">
+                  <div>Dated: <span className="font-medium text-slate-700">{new Date(viewingPayment.payment_date).toLocaleString()}</span></div>
+                  <div className="text-teal-600 uppercase tracking-widest text-xs">
+                    {viewingPayment.payment_type === 'Advance' ? 'Advance Payment Receipt' :
+                     viewingPayment.payment_type === 'Refund' ? 'Refund Receipt' :
+                     'Payment Settlement slip'}
                   </div>
-                  <span className="text-[7px] text-slate-400 mt-0.5 tracking-wide">{systemSettings.logo_text || 'Sincere Care...'}</span>
-                  <div className="border border-slate-900 text-slate-900 px-3 py-1 font-bold text-xs rounded uppercase mt-2 font-mono">
-                    Receipt
-                  </div>
+                  <div>No: <span className="font-mono text-slate-950 font-bold">{viewingPayment.receipt?.receipt_id || viewingPayment.payment_id}</span></div>
                 </div>
 
-                {/* Hospital Address/Contacts Column */}
-                <div className="text-right text-[8px] text-slate-500 leading-normal whitespace-pre-line">
-                  {systemSettings.collection_centre || '4 Harilok Saket Meerut'}
-                  {systemSettings.gst_number && `\nGSTIN: ${systemSettings.gst_number}`}
-                  {systemSettings.contact_number && `\nTel: ${systemSettings.contact_number}`}
-                </div>
-              </div>
-
-              {/* Date, Title, and ID row */}
-              <div className="flex justify-between items-center py-2.5 border-b border-teal-600/30 font-bold text-[10px] text-slate-900">
-                <div>Dated: <span className="font-medium text-slate-700">{new Date(viewingPayment.payment_date).toLocaleString()}</span></div>
-                <div className="text-teal-600 uppercase tracking-widest text-xs">
-                  {viewingPayment.payment_type === 'Advance' ? 'Advance Payment Receipt' :
-                   viewingPayment.payment_type === 'Refund' ? 'Refund Receipt' :
-                   'Payment Settlement slip'}
-                </div>
-                <div>No: <span className="font-mono text-slate-950 font-bold">{viewingPayment.receipt?.receipt_id || viewingPayment.payment_id}</span></div>
-              </div>
-
-              {/* Main Receipt Body fields */}
-              <div className="space-y-4 py-4 text-xs font-semibold">
-                
-                {/* Received thanks field */}
-                <div className="flex border-b border-dashed border-slate-250 pb-2">
-                  <span className="w-44 text-slate-500 uppercase tracking-wider text-[10px] font-bold">Received with thanks from :</span>
-                  <span className="flex-1 text-slate-900 font-extrabold text-sm pl-2">
-                    {viewingPayment.bill?.visit?.patient?.name || viewingPayment.visit?.patient?.name || 'N/A'}&nbsp;
-                    <span className="text-xs font-medium text-slate-500">
-                      ({viewingPayment.bill?.visit?.patient?.gender || viewingPayment.visit?.patient?.gender},&nbsp;
-                      {viewingPayment.bill?.visit?.patient?.age || viewingPayment.visit?.patient?.age} Yrs)
+                {/* Main Receipt Body fields */}
+                <div className="space-y-4 py-4 text-xs font-semibold">
+                  
+                  {/* Received thanks field */}
+                  <div className="flex border-b border-dashed border-slate-250 pb-2">
+                    <span className="w-44 text-slate-500 uppercase tracking-wider text-[10px] font-bold">Received with thanks from :</span>
+                    <span className="flex-1 text-slate-900 font-extrabold text-sm pl-2">
+                      {viewingPayment.bill?.visit?.patient?.name || viewingPayment.visit?.patient?.name || 'N/A'}&nbsp;
+                      <span className="text-xs font-medium text-slate-500">
+                        ({viewingPayment.bill?.visit?.patient?.gender || viewingPayment.visit?.patient?.gender},&nbsp;
+                        {viewingPayment.bill?.visit?.patient?.age || viewingPayment.visit?.patient?.age} Yrs)
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono ml-3 font-semibold">
+                        [ID: {viewingPayment.bill?.visit?.patient?.patient_id || viewingPayment.visit?.patient?.patient_id || 'N/A'}]
+                      </span>
                     </span>
-                    <span className="text-[10px] text-slate-400 font-mono ml-3 font-semibold">
-                      [ID: {viewingPayment.bill?.visit?.patient?.patient_id || viewingPayment.visit?.patient?.patient_id || 'N/A'}]
-                    </span>
-                  </span>
-                </div>
-
-                {/* Sum words field */}
-                <div className="flex border-b border-dashed border-slate-250 pb-2">
-                  <span className="w-44 text-slate-500 uppercase tracking-wider text-[10px] font-bold">A sum of Rs. :</span>
-                  <span className="flex-1 pl-2 text-slate-900 italic font-bold">
-                    {wordsFromNumber(Math.abs(viewingPayment.amount_paid))}
-                  </span>
-                </div>
-
-                {/* Payment representation field */}
-                <div className="flex border-b border-dashed border-slate-250 pb-2">
-                  <span className="w-44 text-slate-500 uppercase tracking-wider text-[10px] font-bold">As :</span>
-                  <span className="flex-1 pl-2 text-slate-800 font-medium">
-                    <span className="font-extrabold text-slate-950">{viewingPayment.payment_method}</span>
-                    {viewingPayment.transaction_reference && ` (Ref Ref: ${viewingPayment.transaction_reference})`}
-                    {viewingPayment.bill && ` for clear invoice ${viewingPayment.bill.bill_id}`}
-                    {viewingPayment.bill?.items && ` containing: ${viewingPayment.bill.items.map(i => `${i.service_name} (₹${i.amount})`).join(', ')}`}
-                    {viewingPayment.visit && ` as Advance Deposit for consult: ${viewingPayment.visit.visit_id}`}
-                  </span>
-                </div>
-              </div>
-
-              {/* Bottom Row amount details & Signature */}
-              <div className="flex justify-between items-end mt-4 pt-3">
-                {/* Bottom Left Cash Box */}
-                <div className="border-2 border-teal-500 bg-teal-50/20 px-6 py-2.5 rounded-xl font-mono text-center">
-                  <span className="text-[9px] text-teal-600 font-bold uppercase block tracking-wider mb-0.5">Total Amount</span>
-                  <span className="text-lg font-black text-teal-700">₹{Math.abs(viewingPayment.amount_paid).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                </div>
-
-                {/* Dues Audit Trail display */}
-                {viewingPayment.bill && (
-                  <div className="text-[10px] text-rose-600 font-extrabold bg-rose-50 px-3 py-2 rounded-lg border border-rose-100 max-w-sm">
-                    Dues details: Invoice Total: ₹{viewingPayment.bill.grand_total.toLocaleString()} | Total Paid: ₹{(viewingPayment.bill.grand_total - viewingPayment.bill.balance_amount).toLocaleString()} | Dues Remaining: ₹{viewingPayment.bill.balance_amount.toLocaleString()}
                   </div>
-                )}
 
-                {/* Signature Block */}
-                <div className="text-right pr-4 pb-1">
-                  <div className="w-36 border-t border-slate-400 mt-8 mb-1"></div>
-                  <span className="text-[9px] text-slate-500 uppercase tracking-wider font-extrabold block">Authorized Signature</span>
-                  <span className="text-[8px] text-slate-400">{systemSettings.hospital_name || 'Vedam Diagnostics'}</span>
+                  {/* Sum words field */}
+                  <div className="flex border-b border-dashed border-slate-250 pb-2">
+                    <span className="w-44 text-slate-500 uppercase tracking-wider text-[10px] font-bold">A sum of Rs. :</span>
+                    <span className="flex-1 pl-2 text-slate-900 italic font-bold">
+                      {wordsFromNumber(Math.abs(viewingPayment.amount_paid))}
+                    </span>
+                  </div>
+
+                  {/* Payment representation field */}
+                  <div className="flex border-b border-dashed border-slate-250 pb-2">
+                    <span className="w-44 text-slate-500 uppercase tracking-wider text-[10px] font-bold">As :</span>
+                    <span className="flex-1 pl-2 text-slate-800 font-medium">
+                      <span className="font-extrabold text-slate-950">{viewingPayment.payment_method}</span>
+                      {viewingPayment.transaction_reference && ` (Ref Ref: ${viewingPayment.transaction_reference})`}
+                      {viewingPayment.bill && ` for clear invoice ${viewingPayment.bill.bill_id}`}
+                      {viewingPayment.bill?.items && ` containing: ${viewingPayment.bill.items.map(i => `${i.service_name} (₹${i.amount})`).join(', ')}`}
+                      {viewingPayment.visit && ` as Advance Deposit for consult: ${viewingPayment.visit.visit_id}`}
+                    </span>
+                  </div>
                 </div>
-              </div>
 
+                {/* Bottom Row amount details & Signature */}
+                <div className="flex justify-between items-end mt-4 pt-3">
+                  {/* Bottom Left Cash Box */}
+                  <div className="border-2 border-teal-500 bg-teal-50/20 px-6 py-2.5 rounded-xl font-mono text-center">
+                    <span className="text-[9px] text-teal-600 font-bold uppercase block tracking-wider mb-0.5">Total Amount</span>
+                    <span className="text-lg font-black text-teal-700">₹{Math.abs(viewingPayment.amount_paid).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+
+                  {/* Dues Audit Trail display */}
+                  {viewingPayment.bill && (
+                    <div className="text-[10px] text-rose-600 font-extrabold bg-rose-50 px-3 py-2 rounded-lg border border-rose-100 max-w-sm">
+                      Dues details: Invoice Total: ₹{viewingPayment.bill.grand_total.toLocaleString()} | Total Paid: ₹{(viewingPayment.bill.grand_total - viewingPayment.bill.balance_amount).toLocaleString()} | Dues Remaining: ₹{viewingPayment.bill.balance_amount.toLocaleString()}
+                    </div>
+                  )}
+
+                  {/* Signature Block */}
+                  <div className="text-right pr-4 pb-1">
+                    <div className="w-36 border-t border-slate-400 mt-8 mb-1"></div>
+                    <span className="text-[9px] text-slate-500 uppercase tracking-wider font-extrabold block">Authorized Signature</span>
+                    <span className="text-[8px] text-slate-400">{systemSettings.hospital_name || 'Vedam Diagnostics'}</span>
+                  </div>
+                </div>
+
+              </div>
             </div>
           </div>
         </div>
