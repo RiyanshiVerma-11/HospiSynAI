@@ -1,8 +1,12 @@
 # HospiSyn - Hospital Payment, Billing, and Receipt Management System
 
+**🔗 Live Demo**: [https://hospi-syn.vercel.app/](https://hospi-syn.vercel.app/)  
+**🔗 API Documentation (Swagger)**: [https://hospisyn-backend.onrender.com/docs](https://hospisyn-backend.onrender.com/docs)
+
 HospiSyn is a production-grade, real-time hospital billing, receptionist desk, and payment audit ecosystem. Designed with SDE-3 guidelines, it features a clean React + Tailwind CSS client, a high-performance Python FastAPI backend, and a robust PostgreSQL relational database layer.
 
 The entire stack is containerized and orchestrates seamlessly with a single command via Docker Compose.
+
 
 ---
 
