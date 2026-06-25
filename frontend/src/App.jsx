@@ -54,6 +54,7 @@ function App() {
 
   // Navigation State
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Dashboard Stats State
   const [metrics, setMetrics] = useState(null);
@@ -748,8 +749,40 @@ function App() {
         </div>
       )}
 
+      {/* Mobile Top Bar */}
+      <div className="md:hidden bg-slate-900 border-b border-slate-800 p-4 flex items-center justify-between sticky top-0 z-30">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-teal-500 rounded-lg flex items-center justify-center">
+            <Activity className="w-4.5 h-4.5 text-white" />
+          </div>
+          <span className="text-white font-bold text-base font-sans tracking-tight">HospiSyn</span>
+        </div>
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 text-slate-400 hover:text-white focus:outline-none"
+        >
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {mobileMenuOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+            )}
+          </svg>
+        </button>
+      </div>
+
+      {/* Mobile Backdrop Overlay */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-30 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        ></div>
+      )}
+
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between flex-shrink-0 relative z-20">
+      <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between flex-shrink-0 transition-transform duration-300 transform md:translate-x-0 md:static md:h-auto md:w-64 ${
+        mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
         <div>
           {/* Logo & Header */}
           <div className="p-6 flex items-center gap-3 border-b border-slate-800">
@@ -767,7 +800,7 @@ function App() {
             {/* Dashboard available to Admin and Accountant */}
             {userRole !== 'Receptionist' && (
               <button
-                onClick={() => setActiveTab('dashboard')}
+                onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
                   activeTab === 'dashboard'
                     ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/10'
@@ -782,7 +815,7 @@ function App() {
             {/* Receptionist Tabs */}
             {['Admin', 'Receptionist', 'Accountant'].includes(userRole) && (
               <button
-                onClick={() => setActiveTab('search_register')}
+                onClick={() => { setActiveTab('search_register'); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
                   activeTab === 'search_register'
                     ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/10'
@@ -797,7 +830,7 @@ function App() {
             {/* Accountant Tabs */}
             {['Admin', 'Accountant'].includes(userRole) && (
               <button
-                onClick={() => setActiveTab('billing_history')}
+                onClick={() => { setActiveTab('billing_history'); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
                   activeTab === 'billing_history'
                     ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/10'
@@ -813,7 +846,7 @@ function App() {
             {userRole === 'Admin' && (
               <>
                 <button
-                  onClick={() => setActiveTab('catalog')}
+                  onClick={() => { setActiveTab('catalog'); setMobileMenuOpen(false); }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
                     activeTab === 'catalog'
                       ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/10'
@@ -825,7 +858,7 @@ function App() {
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('users')}
+                  onClick={() => { setActiveTab('users'); setMobileMenuOpen(false); }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
                     activeTab === 'users'
                       ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/10'
@@ -837,7 +870,7 @@ function App() {
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('audit_logs')}
+                  onClick={() => { setActiveTab('audit_logs'); setMobileMenuOpen(false); }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
                     activeTab === 'audit_logs'
                       ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/10'
@@ -849,7 +882,7 @@ function App() {
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('settings')}
+                  onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
                     activeTab === 'settings'
                       ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/10'
@@ -888,7 +921,7 @@ function App() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 p-6 md:p-10 overflow-y-auto max-h-screen">
+      <main className="flex-1 p-6 md:p-10 overflow-y-auto h-full md:max-h-screen">
         {/* HEADER BAR */}
         <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
