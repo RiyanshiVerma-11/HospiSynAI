@@ -40,8 +40,15 @@ import {
   Bar
 } from 'recharts';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-const STATIC_BASE = import.meta.env.VITE_STATIC_BASE_URL || "http://localhost:5000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? "http://localhost:5000/api" 
+    : "https://hospisyn-backend.onrender.com/api");
+
+const STATIC_BASE = import.meta.env.VITE_STATIC_BASE_URL || 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? "http://localhost:5000" 
+    : "https://hospisyn-backend.onrender.com");
 
 function App() {
   // Auth state
