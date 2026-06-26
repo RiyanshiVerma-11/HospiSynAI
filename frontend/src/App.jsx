@@ -230,6 +230,10 @@ function App() {
     if (userRole === 'Receptionist') return; // Receptionist doesn't have access to financials
     try {
       const res = await fetch(`${API_BASE}/dashboard/metrics`, { headers: getHeaders() });
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setMetrics(data);
@@ -243,6 +247,10 @@ function App() {
     try {
       const url = query ? `${API_BASE}/patients?query=${encodeURIComponent(query)}` : `${API_BASE}/patients`;
       const res = await fetch(url, { headers: getHeaders() });
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setPatients(data);
@@ -255,6 +263,10 @@ function App() {
   const fetchServices = async () => {
     try {
       const res = await fetch(`${API_BASE}/services`, { headers: getHeaders() });
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setServices(data);
@@ -268,6 +280,10 @@ function App() {
   const fetchSettings = async () => {
     try {
       const res = await fetch(`${API_BASE}/settings`, { headers: getHeaders() });
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         const settingsMap = {};
