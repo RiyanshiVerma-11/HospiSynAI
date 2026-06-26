@@ -72,6 +72,11 @@ function App() {
     address: ''
   });
   const [newVisit, setNewVisit] = useState({ reason: '' });
+  const [newVisitDoctorId, setNewVisitDoctorId] = useState('');
+  const [showVisitModal, setShowVisitModal] = useState(false);
+  const [doctors, setDoctors] = useState([]);
+  const [newDoctor, setNewDoctor] = useState({ name: '', degree: '' });
+  const [editingDoctor, setEditingDoctor] = useState(null);
   const [newAdvancePayment, setNewAdvancePayment] = useState({
     amount_paid: '',
     payment_method: 'UPI',
@@ -141,6 +146,7 @@ function App() {
       fetchDashboardMetrics();
       fetchPatients();
       fetchServices();
+      fetchDoctors();
       if (userRole === 'Admin') {
         fetchAuditLogs();
         fetchStaffUsers();
@@ -154,6 +160,7 @@ function App() {
     if (activeTab === 'catalog') fetchServices();
     if (activeTab === 'audit_logs') fetchAuditLogs();
     if (activeTab === 'users') fetchStaffUsers();
+    if (activeTab === 'settings') fetchDoctors();
   }, [activeTab]);
 
   // ----------------------------------------------------
@@ -290,6 +297,18 @@ function App() {
     }
   };
 
+  const fetchDoctors = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/doctors`, { headers: getHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setDoctors(data);
+      }
+    } catch (err) {
+      console.error("Error fetching doctors:", err);
+    }
+  };
+
   const fetchPatientBillingHistory = async (patientId) => {
     try {
       // Get all bills
@@ -339,12 +358,18 @@ function App() {
       const res = await fetch(`${API_BASE}/visits`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ patient_id: patientId, reason: newVisit.reason })
+        body: JSON.stringify({
+          patient_id: patientId,
+          reason: newVisit.reason,
+          doctor_id: newVisitDoctorId ? parseInt(newVisitDoctorId) : null
+        })
       });
       if (!res.ok) throw new Error("Failed to create visit");
       const visit = await res.json();
       showToast(`Visit generated successfully: ${visit.visit_id}`);
       setNewVisit({ reason: '' });
+      setNewVisitDoctorId('');
+      setShowVisitModal(false);
       handleSelectPatient(selectedPatient.id);
     } catch (err) {
       showToast(err.message, 'error');
@@ -521,6 +546,58 @@ function App() {
       if (!res.ok) throw new Error("Failed to save settings");
       showToast("Hospital customization settings updated successfully!");
       fetchSettings();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleAddDoctor = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_BASE}/doctors`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(newDoctor)
+      });
+      if (!res.ok) throw new Error("Failed to add doctor");
+      showToast(`Doctor "${newDoctor.name}" added successfully.`);
+      setNewDoctor({ name: '', degree: '' });
+      fetchDoctors();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleUpdateDoctor = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_BASE}/doctors/${editingDoctor.id}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          name: editingDoctor.name,
+          degree: editingDoctor.degree
+        })
+      });
+      if (!res.ok) throw new Error("Failed to update doctor");
+      showToast(`Doctor "${editingDoctor.name}" updated successfully.`);
+      setEditingDoctor(null);
+      fetchDoctors();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleDeleteDoctor = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this doctor?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/doctors/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to delete doctor");
+      showToast("Doctor deleted.");
+      fetchDoctors();
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -1247,25 +1324,22 @@ function App() {
 
                   {/* Create Visit Panel */}
                   {['Admin', 'Receptionist'].includes(userRole) && (
-                    <div className="bg-slate-50 border border-slate-150 p-4 rounded-xl">
-                      <h4 className="font-bold text-slate-800 text-sm mb-3">Record Patient Visit / Consultation Entry</h4>
-                      <form onSubmit={(e) => handleCreateVisit(e, selectedPatient.id)} className="flex flex-col sm:flex-row gap-3">
-                        <input
-                          type="text"
-                          className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:border-teal-500 transition-all font-medium"
-                          placeholder="Reason for Visit (e.g. Dr. Grover Pathology Test / Regular checkup)"
-                          value={newVisit.reason}
-                          onChange={(e) => setNewVisit({ ...newVisit, reason: e.target.value })}
-                          required
-                        />
-                        <button
-                          type="submit"
-                          className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-sm transition-all flex items-center gap-1.5 justify-center"
-                        >
-                          <PlusCircle className="w-4 h-4" />
-                          Log Visit
-                        </button>
-                      </form>
+                    <div className="bg-slate-50 border border-slate-150 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div>
+                        <h4 className="font-bold text-slate-800 text-sm">Consultation Entry</h4>
+                        <p className="text-xs text-slate-500 mt-0.5">Record a new visit or pathology reference under an active doctor.</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setNewVisit({ reason: '' });
+                          setNewVisitDoctorId('');
+                          setShowVisitModal(true);
+                        }}
+                        className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 justify-center whitespace-nowrap active:scale-[0.98]"
+                      >
+                        <PlusCircle className="w-4 h-4" />
+                        Log Consultation / Visit
+                      </button>
                     </div>
                   )}
 
@@ -1289,6 +1363,9 @@ function App() {
                               <div>
                                 <span className="text-slate-400 text-xs font-semibold">Visit ID: <b className="text-slate-800">{vis.visit_id}</b></span>
                                 <p className="font-bold text-slate-900 text-sm mt-0.5">Reason: {vis.reason || 'Not Specified'}</p>
+                                {vis.doctor && (
+                                  <p className="text-xs text-teal-700 font-bold mt-0.5">Consulting Doctor: <span className="text-slate-800">{vis.doctor.name}</span></p>
+                                )}
                                 <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Date: {new Date(vis.visit_date).toLocaleString()}</p>
                               </div>
                               
@@ -2113,93 +2190,225 @@ function App() {
             TAB 7: BRANDING & CUSTOM TEMPLATE SETTINGS (ADMIN ONLY)
             ---------------------------------------------------- */}
         {activeTab === 'settings' && (
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm max-w-3xl animate-in fade-in duration-300">
-            <h3 className="font-bold text-slate-900 text-lg mb-4">Receipt Template Customization Panel</h3>
-            <p className="text-slate-500 text-xs mb-6">Modify receipt layout attributes dynamically. Modifying these settings will immediately alter the logo text, header columns, doctor details, and payment lines printed on patient PDF receipts without modifying code.</p>
-            
-            <form onSubmit={handleSaveSettings} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Hospital / Clinic Name</label>
-                  <input
-                    type="text"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:bg-white focus:border-teal-500 font-bold"
-                    value={adminSettingsForm.hospital_name || ''}
-                    onChange={(e) => setAdminSettingsForm({ ...adminSettingsForm, hospital_name: e.target.value })}
-                    required
-                  />
-                </div>
+          <div className="space-y-8 max-w-4xl animate-in fade-in duration-300">
+            {/* Receipt Branding configurations */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+              <h3 className="font-bold text-slate-900 text-lg mb-4">Receipt Template Customization Panel</h3>
+              <p className="text-slate-500 text-xs mb-6">Modify receipt layout attributes dynamically. Modifying these settings will immediately alter the logo text, header columns, doctor details, and payment lines printed on patient PDF receipts without modifying code.</p>
+              
+              <form onSubmit={handleSaveSettings} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Hospital / Clinic Name</label>
+                    <input
+                      type="text"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:bg-white focus:border-teal-500 font-bold"
+                      value={adminSettingsForm.hospital_name || ''}
+                      onChange={(e) => setAdminSettingsForm({ ...adminSettingsForm, hospital_name: e.target.value })}
+                      required
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Logo Text / Sub-tagline</label>
-                  <input
-                    type="text"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:bg-white focus:border-teal-500 font-medium"
-                    value={adminSettingsForm.logo_text || ''}
-                    onChange={(e) => setAdminSettingsForm({ ...adminSettingsForm, logo_text: e.target.value })}
-                  />
-                </div>
+                  <div>
+                    <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Logo Text / Sub-tagline</label>
+                    <input
+                      type="text"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:bg-white focus:border-teal-500 font-medium"
+                      value={adminSettingsForm.logo_text || ''}
+                      onChange={(e) => setAdminSettingsForm({ ...adminSettingsForm, logo_text: e.target.value })}
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Doctor Name (Left Header Block)</label>
-                  <input
-                    type="text"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:bg-white focus:border-teal-500 font-bold"
-                    value={adminSettingsForm.doctor_name || ''}
-                    onChange={(e) => setAdminSettingsForm({ ...adminSettingsForm, doctor_name: e.target.value })}
-                  />
-                </div>
+                  <div>
+                    <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Doctor Name (Left Header Block)</label>
+                    <input
+                      type="text"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:bg-white focus:border-teal-500 font-bold"
+                      value={adminSettingsForm.doctor_name || ''}
+                      onChange={(e) => setAdminSettingsForm({ ...adminSettingsForm, doctor_name: e.target.value })}
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Doctor Qualifications (Multiline Text)</label>
-                  <textarea
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:bg-white focus:border-teal-500 font-medium h-24 resize-none"
-                    value={adminSettingsForm.doctor_degree || ''}
-                    onChange={(e) => setAdminSettingsForm({ ...adminSettingsForm, doctor_degree: e.target.value })}
-                  />
-                </div>
+                  <div>
+                    <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Doctor Qualifications (Multiline Text)</label>
+                    <textarea
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:bg-white focus:border-teal-500 font-medium h-24 resize-none"
+                      value={adminSettingsForm.doctor_degree || ''}
+                      onChange={(e) => setAdminSettingsForm({ ...adminSettingsForm, doctor_degree: e.target.value })}
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Address details (Right Header Block)</label>
-                  <textarea
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:bg-white focus:border-teal-500 font-medium h-24 resize-none"
-                    value={adminSettingsForm.collection_centre || ''}
-                    onChange={(e) => setAdminSettingsForm({ ...adminSettingsForm, collection_centre: e.target.value })}
-                  />
-                </div>
+                  <div>
+                    <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Address details (Right Header Block)</label>
+                    <textarea
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:bg-white focus:border-teal-500 font-medium h-24 resize-none"
+                      value={adminSettingsForm.collection_centre || ''}
+                      onChange={(e) => setAdminSettingsForm({ ...adminSettingsForm, collection_centre: e.target.value })}
+                    />
+                  </div>
 
-                <div>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">Hospital Tel / Contact Number</label>
-                      <input
-                        type="text"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:bg-white focus:border-teal-500 font-semibold"
-                        value={adminSettingsForm.contact_number || ''}
-                        onChange={(e) => setAdminSettingsForm({ ...adminSettingsForm, contact_number: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">GST Registration Number</label>
-                      <input
-                        type="text"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:bg-white focus:border-teal-500 font-mono"
-                        value={adminSettingsForm.gst_number || ''}
-                        onChange={(e) => setAdminSettingsForm({ ...adminSettingsForm, gst_number: e.target.value })}
-                      />
+                  <div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">Hospital Tel / Contact Number</label>
+                        <input
+                          type="text"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:bg-white focus:border-teal-500 font-semibold"
+                          value={adminSettingsForm.contact_number || ''}
+                          onChange={(e) => setAdminSettingsForm({ ...adminSettingsForm, contact_number: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">GST Registration Number</label>
+                        <input
+                          type="text"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:bg-white focus:border-teal-500 font-mono"
+                          value={adminSettingsForm.gst_number || ''}
+                          onChange={(e) => setAdminSettingsForm({ ...adminSettingsForm, gst_number: e.target.value })}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <button
-                type="submit"
-                className="bg-teal-500 hover:bg-teal-600 text-white font-bold px-6 py-3 rounded-xl shadow-md transition-all flex items-center gap-2"
-              >
-                <CheckCircle className="w-4 h-4" />
-                Apply Branding Configurations
-              </button>
-            </form>
+                <button
+                  type="submit"
+                  className="bg-teal-500 hover:bg-teal-600 text-white font-bold px-6 py-3 rounded-xl shadow-md transition-all flex items-center gap-2"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Apply Branding Configurations
+                </button>
+              </form>
+            </div>
+
+            {/* Manage Doctors Panel */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+              <h3 className="font-bold text-slate-900 text-lg mb-2">Hospital Doctors Directory</h3>
+              <p className="text-slate-500 text-xs mb-6">Add, view, edit or remove consulting doctors active in the hospital. These doctors will be available in the visit pop-up selection when registering patient entries.</p>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Left column: Doctors List */}
+                <div className="lg:col-span-2 space-y-4">
+                  <div className="overflow-x-auto border border-slate-105 rounded-xl">
+                    <table className="min-w-full divide-y divide-slate-100 text-left text-xs">
+                      <thead className="bg-slate-50 text-slate-500 uppercase font-bold tracking-wider">
+                        <tr>
+                          <th className="px-4 py-3">Doctor Name</th>
+                          <th className="px-4 py-3">Qualifications / Degree</th>
+                          <th className="px-4 py-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white font-medium text-slate-700">
+                        {doctors.length === 0 ? (
+                          <tr>
+                            <td colSpan="3" className="px-4 py-8 text-center text-slate-400 italic">No doctors configured. Please add one using the form on the right.</td>
+                          </tr>
+                        ) : (
+                          doctors.map(doc => (
+                            <tr key={doc.id} className="hover:bg-slate-50/50">
+                              <td className="px-4 py-3 font-bold text-slate-950">{doc.name}</td>
+                              <td className="px-4 py-3 whitespace-pre-line text-slate-605">{doc.degree}</td>
+                              <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+                                <button
+                                  onClick={() => setEditingDoctor(doc)}
+                                  className="text-teal-650 hover:text-teal-850 font-bold bg-teal-50 px-2.5 py-1 rounded transition-colors"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteDoctor(doc.id)}
+                                  className="text-rose-600 hover:text-rose-800 font-bold bg-rose-50 px-2.5 py-1 rounded transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Right column: Form */}
+                <div>
+                  {editingDoctor ? (
+                    <div className="border border-slate-200 rounded-xl p-4 space-y-4">
+                      <h4 className="font-bold text-slate-900 text-sm">Edit Doctor Details</h4>
+                      <form onSubmit={handleUpdateDoctor} className="space-y-4">
+                        <div>
+                          <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Doctor Name</label>
+                          <input
+                            type="text"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:bg-white focus:border-teal-500 font-bold"
+                            value={editingDoctor.name}
+                            onChange={(e) => setEditingDoctor({ ...editingDoctor, name: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Qualifications / Degree (Multiline)</label>
+                          <textarea
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:bg-white focus:border-teal-500 font-medium h-24 resize-none"
+                            value={editingDoctor.degree}
+                            onChange={(e) => setEditingDoctor({ ...editingDoctor, degree: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="submit"
+                            className="flex-1 bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs py-2 rounded shadow transition-all"
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingDoctor(null)}
+                            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-650 font-bold text-xs py-2 rounded transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  ) : (
+                    <div className="border border-slate-200 rounded-xl p-4 space-y-4">
+                      <h4 className="font-bold text-slate-900 text-sm">Add New Doctor</h4>
+                      <form onSubmit={handleAddDoctor} className="space-y-4">
+                        <div>
+                          <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Doctor Name</label>
+                          <input
+                            type="text"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:bg-white focus:border-teal-500 font-bold"
+                            placeholder="e.g. Dr. Rajesh Kumar"
+                            value={newDoctor.name}
+                            onChange={(e) => setNewDoctor({ ...newDoctor, name: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Qualifications / Degree</label>
+                          <textarea
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:bg-white focus:border-teal-500 font-medium h-24 resize-none"
+                            placeholder="e.g. MBBS, MD (General Medicine)&#10;Consultant Cardiologist"
+                            value={newDoctor.degree}
+                            onChange={(e) => setNewDoctor({ ...newDoctor, degree: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs py-2 rounded shadow transition-all"
+                        >
+                          Add Doctor
+                        </button>
+                      </form>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </main>
@@ -2252,9 +2461,11 @@ function App() {
                   
                   {/* Doctor Metadata Block */}
                   <div>
-                    <h4 className="text-sm font-extrabold text-slate-900 leading-none">{systemSettings.doctor_name || 'Dr. Shweta Grover'}</h4>
+                    <h4 className="text-sm font-extrabold text-slate-900 leading-none">
+                      {viewingPayment.visit?.doctor?.name || viewingPayment.bill?.visit?.doctor?.name || systemSettings.doctor_name || 'Dr. Shweta Grover'}
+                    </h4>
                     <div className="text-[8px] text-slate-500 mt-1 leading-normal whitespace-pre-line">
-                      {systemSettings.doctor_degree || 'MBBS, MD (Pathology), PhD'}
+                      {viewingPayment.visit?.doctor?.degree || viewingPayment.bill?.visit?.doctor?.degree || systemSettings.doctor_degree || 'MBBS, MD (Pathology), PhD'}
                     </div>
                   </div>
 
@@ -2353,6 +2564,85 @@ function App() {
 
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ----------------------------------------------------
+          VISIT LOG POP-UP MODAL (DOCTOR SELECTION)
+          ---------------------------------------------------- */}
+      {showVisitModal && selectedPatient && (
+        <div className="fixed inset-0 bg-slate-950/65 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-250">
+          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg shadow-2xl p-6 relative animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex justify-between items-start pb-4 border-b border-slate-100 mb-6">
+              <div>
+                <span className="text-teal-600 font-bold text-xs uppercase tracking-wider font-sans">New Consultation Entry</span>
+                <h3 className="text-xl font-extrabold text-slate-900 mt-1">Log Visit for {selectedPatient.name}</h3>
+                <p className="text-slate-400 text-xs mt-1">Patient ID: <span className="font-semibold text-slate-700">{selectedPatient.patient_id}</span></p>
+              </div>
+              <button
+                onClick={() => setShowVisitModal(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors p-1 bg-slate-50 hover:bg-slate-100 rounded-full"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={(e) => handleCreateVisit(e, selectedPatient.id)} className="space-y-6">
+              <div>
+                <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Reason for Visit / Reference</label>
+                <input
+                  type="text"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all"
+                  placeholder="e.g. Regular Pathology Test / Cardiology consultation"
+                  value={newVisit.reason}
+                  onChange={(e) => setNewVisit({ ...newVisit, reason: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Consulting Doctor</label>
+                <select
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:bg-white focus:border-teal-500 font-bold text-slate-800 transition-all cursor-pointer"
+                  value={newVisitDoctorId}
+                  onChange={(e) => setNewVisitDoctorId(e.target.value)}
+                  required
+                >
+                  <option value="">-- Select Consulting Doctor --</option>
+                  {doctors.map((doc) => (
+                    <option key={doc.id} value={doc.id}>
+                      {doc.name} ({doc.degree.split('\n')[0]})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
+                  The selected doctor's name and credentials will be printed on the generated receipt. If no doctor is selected, the receipt will use the default hospital details.
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="submit"
+                  className="flex-1 bg-teal-500 hover:bg-teal-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-teal-500/10 hover:shadow-teal-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  Confirm & Log Visit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowVisitModal(false)}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-650 font-bold py-3.5 rounded-xl transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -38,12 +38,23 @@ class Patient(Base):
     visits = relationship("Visit", back_populates="patient")
 
 
+class Doctor(Base):
+    __tablename__ = "doctors"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True, nullable=False)
+    degree = Column(Text, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
 class Visit(Base):
     __tablename__ = "visits"
 
     id = Column(Integer, primary_key=True, index=True)
     visit_id = Column(String, unique=True, index=True, nullable=False) # VIS-YYYYMMDD-XXXXX
     patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False)
+    doctor_id = Column(Integer, ForeignKey("doctors.id"), nullable=True)
     visit_date = Column(DateTime, default=datetime.datetime.utcnow)
     reason = Column(String, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
@@ -53,6 +64,8 @@ class Visit(Base):
     patient = relationship("Patient", back_populates="visits")
     bills = relationship("Bill", back_populates="visit")
     payments = relationship("Payment", back_populates="visit")
+    doctor = relationship("Doctor", backref="visits")
+
 
 
 class Service(Base):

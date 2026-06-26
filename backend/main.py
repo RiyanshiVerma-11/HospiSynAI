@@ -44,6 +44,24 @@ def on_startup():
     Base.metadata.create_all(bind=engine)
     db = next(get_db())
     try:
+        # Run migration query to ensure visits table has doctor_id column
+        try:
+            from sqlalchemy import text
+            db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS doctor_id INTEGER REFERENCES doctors(id)"))
+            db.commit()
+        except Exception as migrate_err:
+            print("Migration warning (visits.doctor_id):", migrate_err)
+            db.rollback()
+
+        # Seed default doctor if table is empty
+        if db.query(models.Doctor).count() == 0:
+            default_doctor = models.Doctor(
+                name="Dr. Shweta Grover",
+                degree="MBBS, MD (Pathology), PhD\nPDF (Dermatopathology, Hamburg, Germany)\nConsultant Pathologist"
+            )
+            db.add(default_doctor)
+            db.commit()
+
         # 1. Seed Users
         users_to_seed = [
             ("admin", "admin123", "Admin", "System Administrator"),
@@ -317,7 +335,8 @@ def create_visit(
     db_visit = models.Visit(
         visit_id=visit_id,
         patient_id=visit_in.patient_id,
-        reason=visit_in.reason
+        reason=visit_in.reason,
+        doctor_id=visit_in.doctor_id
     )
     db.add(db_visit)
     db.commit()
@@ -811,6 +830,67 @@ def refund_payment(
     )
     
     return db_refund
+
+
+# ----------------------------------------------------
+# DOCTOR ROUTERS
+# ----------------------------------------------------
+@app.get("/api/doctors", response_model=List[schemas.DoctorResponse])
+def get_doctors(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant"]))
+):
+    return db.query(models.Doctor).filter(models.Doctor.is_active == True).order_by(models.Doctor.name).all()
+
+@app.post("/api/doctors", response_model=schemas.DoctorResponse)
+def create_doctor(
+    doctor_in: schemas.DoctorCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.RoleChecker(["Admin"]))
+):
+    db_doctor = models.Doctor(
+        name=doctor_in.name,
+        degree=doctor_in.degree
+    )
+    db.add(db_doctor)
+    db.commit()
+    db.refresh(db_doctor)
+    
+    log_action(db, current_user.id, "CREATE_DOCTOR", "doctors", str(db_doctor.id), f"Added doctor {db_doctor.name}")
+    return db_doctor
+
+@app.put("/api/doctors/{id}", response_model=schemas.DoctorResponse)
+def update_doctor(
+    id: int,
+    doctor_in: schemas.DoctorCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.RoleChecker(["Admin"]))
+):
+    db_doctor = db.query(models.Doctor).filter(models.Doctor.id == id, models.Doctor.is_active == True).first()
+    if not db_doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+    db_doctor.name = doctor_in.name
+    db_doctor.degree = doctor_in.degree
+    db.commit()
+    db.refresh(db_doctor)
+    
+    log_action(db, current_user.id, "UPDATE_DOCTOR", "doctors", str(id), f"Updated doctor {db_doctor.name}")
+    return db_doctor
+
+@app.delete("/api/doctors/{id}")
+def delete_doctor(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.RoleChecker(["Admin"]))
+):
+    db_doctor = db.query(models.Doctor).filter(models.Doctor.id == id).first()
+    if not db_doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+    db_doctor.is_active = False
+    db.commit()
+    
+    log_action(db, current_user.id, "DELETE_DOCTOR", "doctors", str(id), f"Soft-deleted doctor {db_doctor.name}")
+    return {"message": "Doctor soft deleted successfully"}
 
 
 # ----------------------------------------------------

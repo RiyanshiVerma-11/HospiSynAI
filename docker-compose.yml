@@ -26,6 +26,7 @@ services:
     ports:
       - "${BACKEND_PORT:-5000}:5000"
     volumes:
+      - ./backend:/app
       - receipts_data:/app/receipts
     depends_on:
       - db

@@ -53,22 +53,42 @@ class PatientResponse(PatientBase):
         orm_mode = True
 
 
+# Doctor Schemas
+class DoctorBase(BaseModel):
+    name: str
+    degree: str
+
+class DoctorCreate(DoctorBase):
+    pass
+
+class DoctorResponse(DoctorBase):
+    id: int
+    is_active: bool
+
+    class Config:
+        orm_mode = True
+
+
 # Visit Schemas
 class VisitBase(BaseModel):
     reason: Optional[str] = None
 
 class VisitCreate(VisitBase):
     patient_id: int
+    doctor_id: Optional[int] = None
 
 class VisitResponse(VisitBase):
     id: int
     visit_id: str
     patient_id: int
+    doctor_id: Optional[int] = None
     visit_date: datetime
     is_active: bool
+    doctor: Optional[DoctorResponse] = None
 
     class Config:
         orm_mode = True
+
 
 
 # Service Schemas

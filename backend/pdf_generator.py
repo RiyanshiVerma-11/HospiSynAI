@@ -78,14 +78,27 @@ def draw_logo_drawing():
     return logo_drawing
 
 def generate_receipt_pdf(payment: models.Payment, db: Session, output_path: str):
-    # Fetch Settings
-    doc_name = get_setting(db, "doctor_name", "Dr. Shweta Grover")
-    doc_degree = get_setting(db, "doctor_degree", "MBBS, MD (Pathology), PhD\nPDF (Dermatopathology, Hamburg, Germany)\nConsultant Pathologist")
+    # Fetch patient details & determine visit doctor
+    visit = None
+    if payment.bill:
+        visit = payment.bill.visit
+    elif payment.visit:
+        visit = payment.visit
+
+    if visit and visit.doctor:
+        doc_name = visit.doctor.name
+        doc_degree = visit.doctor.degree
+    else:
+        # Fetch Settings Fallback
+        doc_name = get_setting(db, "doctor_name", "Dr. Shweta Grover")
+        doc_degree = get_setting(db, "doctor_degree", "MBBS, MD (Pathology), PhD\nPDF (Dermatopathology, Hamburg, Germany)\nConsultant Pathologist")
+
     hosp_name = get_setting(db, "hospital_name", "Vedam Diagnostics")
     logo_text = get_setting(db, "logo_text", "Sincere Care...")
     address_info = get_setting(db, "collection_centre", "Collection Centre:\n4 Harilok, Dhanvantari Saket Road,\nNear Rohtash Sweets,\nMeerut 250003")
     contact_no = get_setting(db, "contact_number", "+91 98765 43210")
     gstin = get_setting(db, "gst_number", "27AAAAA1111A1Z1")
+
 
     # Fetch patient details
     patient = None
