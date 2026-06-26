@@ -1,7 +1,7 @@
 # HospiSynAI - Hospital Payment, Billing, and Patient Consultation Assistant
 
-**🔗 Live Demo**: [https://hospi-syn.vercel.app/](https://hospi-syn.vercel.app/)  
-**🔗 API Documentation (Swagger)**: [https://hospisyn-backend.onrender.com/docs](https://hospisyn-backend.onrender.com/docs)
+**🔗 Live Demo**: [https://hospi-syn-ai.vercel.app/](https://hospi-syn-ai.vercel.app/)  
+**🔗 API Documentation (Swagger)**: [https://hospisynai.onrender.com/docs](https://hospisynai.onrender.com/docs)
 
 HospiSynAI is a production-grade, real-time hospital billing, receptionist desk, payment audit, and patient consultation ecosystem. Designed with SDE-3 guidelines, it features a clean React + Tailwind CSS client, a high-performance Python FastAPI backend, and a robust PostgreSQL relational database layer.
 
