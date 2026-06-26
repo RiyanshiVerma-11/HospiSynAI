@@ -2,7 +2,8 @@ import React from 'react';
 import {
   CreditCard,
   CheckCircle,
-  RotateCcw
+  RotateCcw,
+  Copy
 } from 'lucide-react';
 
 export default function BillingTab({
@@ -40,6 +41,37 @@ export default function BillingTab({
                 Cancel Workspace
               </button>
             </div>
+
+            {/* Previous Payments list with copy buttons */}
+            {activeBillForPayment.payments && activeBillForPayment.payments.length > 0 && (
+              <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-4 space-y-2">
+                <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Previous Transactions / Payments</span>
+                <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
+                  {activeBillForPayment.payments.map((pay) => (
+                    <div key={pay.id} className="flex justify-between items-center bg-white border border-slate-150 rounded-lg p-2 shadow-sm text-xs font-mono">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 select-all">{pay.payment_id}</span>
+                        <span className="text-[10px] text-slate-400 font-sans">({pay.payment_method})</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-teal-600 font-sans">₹{pay.amount_paid.toLocaleString()}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(pay.payment_id);
+                          }}
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-sans font-bold px-2 py-1 rounded transition-colors text-[10px] flex items-center gap-1"
+                          title="Copy Payment ID"
+                        >
+                          <Copy className="w-3 h-3 text-slate-500" />
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Payment Details Form */}
             <form onSubmit={handleRecordBillPayment} className="space-y-4">

@@ -993,12 +993,15 @@ def get_payment_receipts(
 
 @app.post("/api/payments/{id}/refund", response_model=schemas.RefundResponse)
 def refund_payment(
-    id: int,
+    id: str,
     refund_in: schemas.RefundBase,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.RoleChecker(["Admin", "Accountant"]))
 ):
-    payment = db.query(models.Payment).filter(models.Payment.id == id, models.Payment.is_active == True).first()
+    payment = db.query(models.Payment).filter(models.Payment.payment_id == id, models.Payment.is_active == True).first()
+    if not payment and id.isdigit():
+        payment = db.query(models.Payment).filter(models.Payment.id == int(id), models.Payment.is_active == True).first()
+        
     if not payment:
         raise HTTPException(status_code=404, detail="Payment record not found")
         
@@ -1006,7 +1009,7 @@ def refund_payment(
         raise HTTPException(status_code=400, detail="Cannot refund a refund record")
         
     # Verify that refund amount doesn't exceed the amount paid
-    already_refunded = db.query(func.sum(models.Refund.amount_refunded)).filter(models.Refund.payment_id == id).scalar() or 0.0
+    already_refunded = db.query(func.sum(models.Refund.amount_refunded)).filter(models.Refund.payment_id == payment.id).scalar() or 0.0
     max_refundable = payment.amount_paid - already_refunded
     
     if refund_in.amount_refunded > max_refundable:
@@ -1016,7 +1019,7 @@ def refund_payment(
     refund_id = generate_unique_id(db, "REF", models.Refund, models.Refund.refund_id)
     db_refund = models.Refund(
         refund_id=refund_id,
-        payment_id=id,
+        payment_id=payment.id,
         amount_refunded=refund_in.amount_refunded,
         reason=refund_in.reason,
         handled_by=current_user.id

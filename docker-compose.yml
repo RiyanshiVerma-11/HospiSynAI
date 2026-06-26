@@ -42,6 +42,9 @@ services:
       - VITE_STATIC_BASE_URL=${VITE_STATIC_BASE_URL:-http://localhost:5000}
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     depends_on:
       - backend
 

@@ -11,8 +11,58 @@ import {
   Sparkles,
   Brain,
   Save,
-  Loader2
+  Loader2,
+  Copy
 } from 'lucide-react';
+
+const MEDICINE_DATASTORE = [
+  // Paracetamol variants
+  { name: 'Paracetamol 650mg (Dolo 650)', dosage: '1 tablet TID after meals for 3 days' },
+  { name: 'Paracetamol 500mg (Crocin)', dosage: '1 tablet TID after meals for 3 days' },
+  { name: 'Paracetamol Syrup 120mg/5ml', dosage: '5ml TID for 3 days' },
+  
+  // Antibiotics & Antivirals
+  { name: 'Azithromycin 500mg (Azee)', dosage: '1 tablet OD before food for 3 days' },
+  { name: 'Amoxicillin + Clavulanic Acid 625mg (Augmentin)', dosage: '1 tablet BD after meals for 5 days' },
+  { name: 'Cefixime 200mg (Taxim-O)', dosage: '1 tablet BD after meals for 5 days' },
+  { name: 'Ofloxacin + Ornidazole (O2)', dosage: '1 tablet BD after meals for 5 days' },
+  { name: 'Acyclovir 400mg', dosage: '1 tablet 5 times daily for 5 days' },
+  
+  // Cough, Cold & Antihistamines
+  { name: 'Levocetirizine 5mg (Levocet)', dosage: '1 tablet HS (night) for 5 days' },
+  { name: 'Cetirizine 10mg (Okacet)', dosage: '1 tablet HS (night) for 5 days' },
+  { name: 'Montelukast + Levocetirizine (Montair LC)', dosage: '1 tablet HS (night) for 7 days' },
+  { name: 'Cough Syrup (Ascoril LS)', dosage: '5ml TID for 5 days' },
+  { name: 'Cough Syrup (Grilinctus)', dosage: '5ml TID for 5 days' },
+  { name: 'Phenylephrine + Chlorpheniramine (Solvin Cold)', dosage: '1 tablet TID for 3 days' },
+  
+  // Antacids & Gastrointestinal
+  { name: 'Pantoprazole 40mg (Pan 40)', dosage: '1 tablet OD before breakfast for 10 days' },
+  { name: 'Omeprazole 20mg (Omez)', dosage: '1 tablet OD before breakfast for 7 days' },
+  { name: 'Ranitidine 150mg (Rantac)', dosage: '1 tablet BD before food for 5 days' },
+  { name: 'Antacid Gel Syrup (Digene)', dosage: '10ml after meals for 5 days' },
+  { name: 'ORS (Oral Rehydration Salts)', dosage: 'Dissolve in 1L water, sip throughout day' },
+  { name: 'Loperamide 2mg (Lopamide)', dosage: '1 tablet after loose motion (max 4/day)' },
+  
+  // Painkillers & Anti-inflammatories
+  { name: 'Ibuprofen 400mg (Brufen)', dosage: '1 tablet BD after meals as needed' },
+  { name: 'Aceclofenac + Paracetamol (Zerodol-P)', dosage: '1 tablet BD after meals for 3 days' },
+  { name: 'Diclofenac Gel 1% (Volini)', dosage: 'Apply locally 3-4 times daily' },
+  { name: 'Tramadol + Paracetamol (Ultracet)', dosage: '1 tablet BD after meals for pain' },
+
+  // Chronic (Diabetes, BP, Thyroid, etc.)
+  { name: 'Metformin 500mg (Glycomet)', dosage: '1 tablet BD after meals' },
+  { name: 'Amlodipine 5mg (Amlong)', dosage: '1 tablet OD in morning' },
+  { name: 'Telmisartan 40mg (Telma 40)', dosage: '1 tablet OD in morning' },
+  { name: 'Thyroxine Sodium 50mcg (Thyronorm)', dosage: '1 tablet OD early morning empty stomach' },
+  { name: 'Atorvastatin 10mg (Atorva)', dosage: '1 tablet HS (night)' },
+  
+  // Vitamins & Supplements
+  { name: 'Vitamin C 500mg (Limcee)', dosage: '1 tablet daily (chewable) for 15 days' },
+  { name: 'Vitamin D3 60K UI (Calcirol)', dosage: '1 sachet/capsule weekly with milk for 4 weeks' },
+  { name: 'B-Complex + Zinc (Becosules)', dosage: '1 capsule OD after lunch for 10 days' },
+  { name: 'Iron + Folic Acid (Autrin)', dosage: '1 capsule OD after meals for 30 days' },
+];
 
 export default function PatientSearchTab({
   API_BASE,
@@ -79,6 +129,37 @@ export default function PatientSearchTab({
   const [summaryGenerating, setSummaryGenerating] = React.useState(false);
   const [summarySaving, setSummarySaving] = React.useState(false);
   const [summaryError, setSummaryError] = React.useState('');
+  
+  const [medicineSearch, setMedicineSearch] = React.useState('');
+  const [medicineSuggestions, setMedicineSuggestions] = React.useState([]);
+
+  // Auto-filter medicine suggestions
+  React.useEffect(() => {
+    if (!medicineSearch.trim()) {
+      setMedicineSuggestions([]);
+      return;
+    }
+    const query = medicineSearch.toLowerCase().trim();
+    const filtered = MEDICINE_DATASTORE.filter(med => 
+      med.name.toLowerCase().includes(query)
+    ).slice(0, 5);
+    setMedicineSuggestions(filtered);
+  }, [medicineSearch]);
+
+  const handleAddMedicineFromSuggest = (med) => {
+    const currentText = summaryForm.medicines_list || '';
+    const lines = currentText.split('\n').map(line => line.trim()).filter(Boolean);
+    const nextNum = lines.length + 1;
+    const newline = `${nextNum}. ${med.name} - ${med.dosage}`;
+    const updated = currentText ? `${currentText.trim()}\n${newline}` : newline;
+    
+    setSummaryForm(prev => ({
+      ...prev,
+      medicines_list: updated
+    }));
+    setMedicineSearch('');
+    setMedicineSuggestions([]);
+  };
 
   const handleOpenSummary = (visit) => {
     setSelectedVisit(visit);
@@ -92,6 +173,8 @@ export default function PatientSearchTab({
       patient_summary: visit.patient_summary || ''
     });
     setSummaryError('');
+    setMedicineSearch('');
+    setMedicineSuggestions([]);
     setShowSummaryModal(true);
   };
 
@@ -374,15 +457,25 @@ export default function PatientSearchTab({
 
                               {/* Print/Download Receipts button if any payment exists */}
                               {bill.payments?.map(pay => (
-                                <button
-                                  key={pay.id}
-                                  onClick={() => fetchReceiptDetails(pay.id)}
-                                  className="bg-white border border-slate-200 text-slate-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-sm hover:bg-slate-50 transition-colors"
-                                  title={`View receipt for transaction ${pay.payment_id}`}
-                                >
-                                  <Printer className="w-3.5 h-3.5 text-slate-500" />
-                                  {pay.payment_id.slice(-5)}
-                                </button>
+                                <div key={pay.id} className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => fetchReceiptDetails(pay.id)}
+                                    className="bg-white border border-slate-200 text-slate-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-sm hover:bg-slate-50 transition-colors"
+                                    title={`View receipt for transaction ${pay.payment_id}`}
+                                  >
+                                    <Printer className="w-3.5 h-3.5 text-slate-500" />
+                                    <span className="font-mono text-[10px]">{pay.payment_id}</span>
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(pay.payment_id);
+                                    }}
+                                    className="bg-white border border-slate-200 text-slate-400 hover:text-slate-600 p-1.5 rounded-lg flex items-center justify-center transition-colors shadow-sm"
+                                    title="Copy Payment ID"
+                                  >
+                                    <Copy className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               ))}
 
                               {/* Soft delete invoice */}
@@ -735,8 +828,48 @@ export default function PatientSearchTab({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1.5">Prescribed Medicines</label>
+                  <div className="relative">
+                    <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1.5 flex justify-between items-center">
+                      <span>Prescribed Medicines</span>
+                      <span className="text-[10px] text-teal-600 font-bold lowercase bg-teal-50 px-1.5 py-0.5 rounded border border-teal-100">(search helper active)</span>
+                    </label>
+                    
+                    {/* Autocomplete Input Helper */}
+                    <div className="relative mb-2">
+                      <input
+                        type="text"
+                        placeholder="🔍 Type medicine name (e.g. Dolo, Pan, Azee...)"
+                        className="w-full bg-teal-50/40 border border-teal-100 rounded-lg px-2.5 py-1 text-xs placeholder-teal-600/40 focus:outline-none focus:bg-white focus:border-teal-500 font-semibold transition-all text-slate-800"
+                        value={medicineSearch}
+                        onChange={(e) => setMedicineSearch(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (medicineSuggestions.length > 0) {
+                              handleAddMedicineFromSuggest(medicineSuggestions[0]);
+                            }
+                          }
+                        }}
+                      />
+                      
+                      {/* Floating suggestions dropdown */}
+                      {medicineSuggestions.length > 0 && (
+                        <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto divide-y divide-slate-100 animate-in fade-in slide-in-from-top-1 duration-150">
+                          {medicineSuggestions.map((med, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => handleAddMedicineFromSuggest(med)}
+                              className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-teal-50 hover:text-teal-900 transition-colors font-semibold flex justify-between items-center"
+                            >
+                              <span>{med.name}</span>
+                              <span className="text-[10px] text-teal-600 bg-teal-50/60 px-1.5 py-0.5 rounded font-normal shrink-0">{med.dosage}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
                     <textarea
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-28 resize-none"
                       placeholder="e.g. 1. Paracetamol 650mg (TID for 3 days)&#10;2. Levocetirizine 5mg (HS for 5 days)"

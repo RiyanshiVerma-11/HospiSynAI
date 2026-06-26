@@ -22,7 +22,13 @@ import {
   FileSpreadsheet,
   CheckCircle,
   Lock,
-  UserPlus
+  UserPlus,
+  Wifi,
+  RefreshCw,
+  Database,
+  Server,
+  Check,
+  Copy
 } from 'lucide-react';
 import DashboardTab from './components/DashboardTab';
 import PatientSearchTab from './components/PatientSearchTab';
@@ -128,6 +134,35 @@ function App() {
 
   // Toast / Status state
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  const [syncQueue, setSyncQueue] = useState([]);
+
+  const triggerSyncSimulation = (type, details) => {
+    const syncId = Date.now();
+    const newSync = {
+      id: syncId,
+      type,
+      details,
+      step: 1,
+      title: type === 'deposit' ? 'Receptionist Advance Deposit' : 'Accountant Invoice Payment',
+    };
+    
+    setSyncQueue(prev => [...prev, newSync]);
+    
+    // Transition to Step 2: DB block writing
+    setTimeout(() => {
+      setSyncQueue(prev => prev.map(item => item.id === syncId ? { ...item, step: 2 } : item));
+    }, 1200);
+    
+    // Transition to Step 3: Successfully Synced
+    setTimeout(() => {
+      setSyncQueue(prev => prev.map(item => item.id === syncId ? { ...item, step: 3 } : item));
+    }, 2800);
+    
+    // Auto dismiss sync block
+    setTimeout(() => {
+      setSyncQueue(prev => prev.filter(item => item.id !== syncId));
+    }, 6500);
+  };
 
   // Fetch base headers
   const getHeaders = () => {
@@ -140,6 +175,18 @@ function App() {
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
+  };
+
+  const getErrorMessage = (errorData, defaultMsg) => {
+    if (!errorData) return defaultMsg;
+    if (typeof errorData.detail === 'string') return errorData.detail;
+    if (Array.isArray(errorData.detail)) {
+      return errorData.detail.map(err => err.msg || JSON.stringify(err)).join(', ');
+    }
+    if (errorData.detail && typeof errorData.detail === 'object') {
+      return errorData.detail.message || JSON.stringify(errorData.detail);
+    }
+    return errorData.message || defaultMsg;
   };
 
   // ----------------------------------------------------
@@ -412,10 +459,16 @@ function App() {
       });
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.detail || "Failed to record advance");
+        throw new Error(getErrorMessage(errorData, "Failed to record advance"));
       }
       const payment = await res.json();
       showToast(`Advance payment recorded: ${payment.payment_id}`);
+      triggerSyncSimulation('deposit', {
+        amount: parseFloat(payment.amount_paid),
+        method: payment.payment_method,
+        reference: payment.payment_id,
+        user: userRole || 'Receptionist',
+      });
       setNewAdvancePayment({ amount_paid: '', payment_method: 'UPI', transaction_reference: '' });
       handleSelectPatient(selectedPatient.id);
       
@@ -494,7 +547,7 @@ function App() {
       });
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.detail || "Failed to fetch AI suggestions");
+        throw new Error(getErrorMessage(errorData, "Failed to fetch AI suggestions"));
       }
       const data = await res.json();
       setAiRecommendations(data.recommendations || []);
@@ -530,7 +583,7 @@ function App() {
       });
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.detail || "Failed to create bill");
+        throw new Error(getErrorMessage(errorData, "Failed to create bill"));
       }
       const bill = await res.json();
       showToast(`Bill generated: ${bill.bill_id}`);
@@ -561,10 +614,16 @@ function App() {
       });
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.detail || "Failed to record payment");
+        throw new Error(getErrorMessage(errorData, "Failed to record payment"));
       }
       const payment = await res.json();
       showToast(`Payment processed: ${payment.payment_id}`);
+      triggerSyncSimulation('payment', {
+        amount: parseFloat(payment.amount_paid),
+        method: payment.payment_method,
+        reference: payment.payment_id,
+        user: userRole || 'Accountant',
+      });
       setPaymentForm({ amount_paid: '', payment_method: 'UPI', transaction_reference: '' });
       setActiveBillForPayment(null);
       if (selectedPatient) handleSelectPatient(selectedPatient.id);
@@ -590,7 +649,7 @@ function App() {
       });
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.detail || "Failed to process refund");
+        throw new Error(getErrorMessage(errorData, "Failed to process refund"));
       }
       const refund = await res.json();
       showToast(`Refund processed: ${refund.refund_id}`);
@@ -733,7 +792,7 @@ function App() {
       });
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.detail || "Failed to create user");
+        throw new Error(getErrorMessage(errorData, "Failed to create user"));
       }
       showToast(`Staff user "${newUserForm.username}" registered successfully.`);
       setNewUserForm({ username: '', password: '', role: 'Receptionist', name: '' });
@@ -892,6 +951,73 @@ function App() {
           <span className="text-sm font-semibold">{toast.message}</span>
         </div>
       )}
+
+      {/* Real-time Ledger Sync Notifications Grid */}
+      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+        {syncQueue.map((sync) => (
+          <div
+            key={sync.id}
+            className="pointer-events-auto bg-white/85 backdrop-blur-md border border-slate-200/80 rounded-2xl shadow-xl p-4 flex flex-col gap-2.5 translate-y-0 opacity-100 transition-all duration-300 animate-in slide-in-from-bottom-5 fade-in duration-300"
+          >
+            {/* Header: Title and Status Icon */}
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Wifi className={`w-3.5 h-3.5 ${sync.step === 3 ? 'text-emerald-500' : 'text-teal-500 animate-pulse'}`} />
+                {sync.title}
+              </span>
+              <span className="text-[10px] text-slate-500 font-extrabold bg-slate-100 px-2 py-0.5 rounded uppercase tracking-wide">
+                Role: {sync.details.user}
+              </span>
+            </div>
+
+            {/* Sync Progress Indicator bar */}
+            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all duration-500 rounded-full ${
+                  sync.step === 1 ? 'w-1/3 bg-amber-500 animate-pulse' :
+                  sync.step === 2 ? 'w-2/3 bg-teal-500 animate-pulse' :
+                  'w-full bg-emerald-500'
+                }`}
+              ></div>
+            </div>
+
+            {/* Details & Live Updates */}
+            <div className="flex items-start gap-3 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100/50">
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-xs font-extrabold text-slate-800">₹{sync.details.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  <span className="text-[10px] text-slate-400 font-mono">Ref: {sync.details.reference.slice(-6)}</span>
+                </div>
+                <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Method: {sync.details.method}</p>
+              </div>
+            </div>
+
+            {/* Dynamic Step Message */}
+            <div className="flex items-center gap-2 text-xs font-bold">
+              {sync.step === 1 && (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 text-amber-500 animate-spin" />
+                  <span className="text-amber-700">Broadcasting transaction ledger packet...</span>
+                </>
+              )}
+              {sync.step === 2 && (
+                <>
+                  <Database className="w-3.5 h-3.5 text-teal-500 animate-pulse" />
+                  <span className="text-teal-700">Securing block & writing changes to database...</span>
+                </>
+              )}
+              {sync.step === 3 && (
+                <>
+                  <div className="w-4 h-4 bg-emerald-100 rounded-full flex items-center justify-center">
+                    <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+                  </div>
+                  <span className="text-emerald-700">Synced! Central Ledger database updated.</span>
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* Mobile Top Bar */}
       <div className="md:hidden bg-slate-900 border-b border-slate-800 p-4 flex items-center justify-between sticky top-0 z-30">
@@ -1319,7 +1445,25 @@ function App() {
                      viewingPayment.payment_type === 'Refund' ? 'Refund Receipt' :
                      'Payment Settlement slip'}
                   </div>
-                  <div>No: <span className="font-mono text-slate-950 font-bold">{viewingPayment.receipt?.receipt_id || viewingPayment.payment_id}</span></div>
+                  <div className="text-right">
+                    <div>Receipt No: <span className="font-mono text-slate-950 font-bold">{viewingPayment.receipt?.receipt_id || 'N/A'}</span></div>
+                    {viewingPayment.payment_id && (
+                      <div className="text-[9px] text-slate-500 font-normal mt-0.5 flex items-center justify-end gap-1">
+                        <span>Payment ID:</span>
+                        <span className="font-mono text-slate-800 font-bold select-all">{viewingPayment.payment_id}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(viewingPayment.payment_id);
+                          }}
+                          className="text-slate-400 hover:text-slate-600 p-0.5 rounded hover:bg-slate-150 transition-colors"
+                          title="Copy Payment ID"
+                        >
+                          <Copy className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Main Receipt Body fields */}
