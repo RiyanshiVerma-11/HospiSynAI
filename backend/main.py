@@ -1,7 +1,10 @@
 import os
 import io
 import datetime
+import json
+import httpx
 from typing import List, Optional, Dict
+
 from fastapi import FastAPI, Depends, HTTPException, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -51,13 +54,20 @@ def on_startup():
     Base.metadata.create_all(bind=engine)
     db = next(get_db())
     try:
-        # Run migration query to ensure visits table has doctor_id column
+        # Run migration query to ensure visits table has doctor_id and clinical columns
         try:
             from sqlalchemy import text
             db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS doctor_id INTEGER REFERENCES doctors(id)"))
+            db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS diagnosis VARCHAR"))
+            db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS chief_complaints VARCHAR"))
+            db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS medicines_list VARCHAR"))
+            db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS tests_list VARCHAR"))
+            db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS advice VARCHAR"))
+            db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS follow_up_date VARCHAR"))
+            db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS patient_summary TEXT"))
             db.commit()
         except Exception as migrate_err:
-            print("Migration warning (visits.doctor_id):", migrate_err)
+            print("Migration warning (visits.doctor_id / clinical columns):", migrate_err)
             db.rollback()
 
         # Seed default doctor if table is empty
@@ -361,6 +371,95 @@ def get_patient_visits(
     return db.query(models.Visit).filter(models.Visit.patient_id == id, models.Visit.is_active == True).order_by(models.Visit.visit_date.desc()).all()
 
 
+@app.put("/api/visits/{id}/summary", response_model=schemas.VisitResponse)
+def update_visit_summary(
+    id: int,
+    visit_update: schemas.VisitSummaryUpdate,
+    generate_ai_summary: bool = Query(False),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant"]))
+):
+    db_visit = db.query(models.Visit).filter(models.Visit.id == id, models.Visit.is_active == True).first()
+    if not db_visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+
+    # Update clinical notes
+    db_visit.diagnosis = visit_update.diagnosis
+    db_visit.chief_complaints = visit_update.chief_complaints
+    db_visit.medicines_list = visit_update.medicines_list
+    db_visit.tests_list = visit_update.tests_list
+    db_visit.advice = visit_update.advice
+    db_visit.follow_up_date = visit_update.follow_up_date
+    
+    if visit_update.patient_summary is not None:
+        db_visit.patient_summary = visit_update.patient_summary
+
+    # Call AI if requested
+    if generate_ai_summary:
+        api_key = os.getenv("GROQ_API_KEY")
+        model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+        if not api_key:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Groq API key is not configured in the server environment variables. Please check your .env configuration."
+            )
+        
+        prompt = f"""You are a helpful, professional medical assistant. 
+Create a clear, patient-friendly summary of the consultation in simple, easy-to-understand English, and also provide a translation/summary in simple Hindi (Devanagari script).
+
+Doctor's Notes:
+Diagnosis: {visit_update.diagnosis or "Not specified"}
+Chief Complaints: {visit_update.chief_complaints or "Not specified"}
+Medicines Prescribed: {visit_update.medicines_list or "Not specified"}
+Recommended Tests: {visit_update.tests_list or "Not specified"}
+Advice: {visit_update.advice or "Not specified"}
+Follow-up: {visit_update.follow_up_date or "Not specified"}
+
+Instructions:
+1. Generate a short, professional summary (3-5 sentences) that the patient can easily understand.
+2. Translate/rephrase the summary in simple Hindi (Devanagari script) below the English version.
+3. Do not give medical advice; just summarize what the doctor decided and advised.
+4. Keep the tone compassionate, reassuring, and highly professional.
+
+Output Format:
+[English Summary]
+...
+
+[Hindi Summary (हिंदी सारांश)]
+..."""
+
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.3
+        }
+
+        try:
+            with httpx.Client(timeout=25.0) as client:
+                response = client.post(url, headers=headers, json=payload)
+                response.raise_for_status()
+                result = response.json()
+            db_visit.patient_summary = result["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to communicate with Groq AI API: {str(e)}"
+            )
+
+    db.commit()
+    db.refresh(db_visit)
+
+    log_action(db, current_user.id, "UPDATE_VISIT_SUMMARY", "visits", str(db_visit.id), f"Updated consultation summary and notes for visit {db_visit.visit_id}")
+    return db_visit
+
+
 # ----------------------------------------------------
 # SERVICE CATALOG ROUTERS
 # ----------------------------------------------------
@@ -375,7 +474,149 @@ def get_services(
         q = q.filter(models.Service.category == category)
     return q.order_by(models.Service.category, models.Service.name).all()
 
+@app.post("/api/services/recommend", response_model=schemas.RecommendationResponse)
+def get_service_recommendations(
+    req: schemas.RecommendationRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist"]))
+):
+    # 1. Resolve patient age and gender if patient_id is provided
+    age = req.age
+    gender = req.gender
+    if req.patient_id:
+        patient = db.query(models.Patient).filter(models.Patient.id == req.patient_id, models.Patient.is_active == True).first()
+        if patient:
+            age = patient.age
+            gender = patient.gender
+            
+    # Fallback default settings if still missing
+    if age is None:
+        age = 30
+    if gender is None:
+        gender = "Unknown"
+
+    # 2. Fetch active services catalog
+    db_services = db.query(models.Service).filter(models.Service.is_active == True).all()
+    if not db_services:
+        return schemas.RecommendationResponse(recommendations=[], explanation="No active services found in the catalog.")
+        
+    # Format catalog for Groq prompt
+    catalog_list = [f"- {s.name} (Category: {s.category}, Price: INR {s.price:.2f})" for s in db_services]
+    catalog_str = "\n".join(catalog_list)
+
+    # 3. Groq API Configuration
+    api_key = os.getenv("GROQ_API_KEY")
+    model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Groq API key is not configured in the server environment variables."
+        )
+
+    # 4. Construct prompt
+    prompt = f"""You are an experienced clinical desk assistant for an Indian diagnostic center and OPD clinic.
+Your job is to recommend the most relevant services or tests from our catalog based on the patient's demographics and symptoms.
+
+Patient Details:
+- Age: {age}
+- Gender: {gender}
+- Chief Complaints / Symptoms: {req.symptoms}
+
+Available Hospital Services Catalog:
+{catalog_str}
+
+CRITICAL RULES:
+1. ONLY recommend services that exist EXACTLY in the provided catalog. Do NOT suggest tests, consultation types, or procedures that are not in the list above.
+2. Suggest up to 5 services. If fewer than 5 are relevant, only suggest those.
+3. Every recommendation must map EXACTLY to the service name in the catalog (case-sensitive).
+4. If no specific diagnostic test in the catalog is relevant, recommend the most appropriate general or specialist consultation from the catalog.
+
+Return response in clean JSON format only matching this schema:
+{{
+  "recommended_services": [
+    {{
+      "service_name": "Exact Name from Catalog",
+      "reason": "Clear clinical justification tailored to the symptoms, age, and gender."
+    }}
+  ],
+  "explanation": "Short 1-2 line clinical summary of the recommendations."
+}}"""
+
+    # 5. Call Groq Cloud API
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "user", "content": prompt}
+        ],
+        "response_format": {"type": "json_object"},
+        "temperature": 0.2
+    }
+
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            response = client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            result = response.json()
+            
+        content_str = result["choices"][0]["message"]["content"]
+        ai_data = json.loads(content_str)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to communicate with Groq AI API: {str(e)}"
+        )
+
+    # 6. Map and validate recommendations against our DB catalog
+    # Create lookup map for exact match
+    service_map = {s.name.lower().strip(): s for s in db_services}
+    
+    validated_recommendations = []
+    recommended_list = ai_data.get("recommended_services", [])
+    
+    for rec in recommended_list:
+        rec_name = rec.get("service_name", "").strip()
+        if not rec_name:
+            continue
+            
+        rec_name_lower = rec_name.lower().strip()
+        matched_service = None
+        
+        # Check 1: Exact Match
+        if rec_name_lower in service_map:
+            matched_service = service_map[rec_name_lower]
+        else:
+            # Check 2: Substring matches (case-insensitive)
+            for s in db_services:
+                s_name_lower = s.name.lower().strip()
+                if s_name_lower in rec_name_lower or rec_name_lower in s_name_lower:
+                    matched_service = s
+                    break
+        
+        if matched_service:
+            # Avoid duplicate recommendations
+            if matched_service.id not in [item.service_id for item in validated_recommendations]:
+                validated_recommendations.append(
+                    schemas.RecommendationItem(
+                        service_id=matched_service.id,
+                        service_name=matched_service.name,
+                        category=matched_service.category,
+                        price=matched_service.price,
+                        reason=rec.get("reason", "Recommended based on patient symptoms.")
+                    )
+                )
+
+    return schemas.RecommendationResponse(
+        recommendations=validated_recommendations,
+        explanation=ai_data.get("explanation", "Recommendations compiled successfully.")
+    )
+
 @app.post("/api/services", response_model=schemas.ServiceResponse)
+
 def create_service(
     service_in: schemas.ServiceCreate,
     db: Session = Depends(get_db),

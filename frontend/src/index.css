@@ -25,10 +25,11 @@
   body * {
     visibility: hidden;
   }
-  #printable-receipt-modal, #printable-receipt-modal * {
+  #printable-receipt-modal, #printable-receipt-modal *,
+  #printable-summary-modal, #printable-summary-modal * {
     visibility: visible;
   }
-  #printable-receipt-modal {
+  #printable-receipt-modal, #printable-summary-modal {
     position: absolute;
     left: 0;
     top: 0;

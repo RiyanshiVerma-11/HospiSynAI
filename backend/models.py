@@ -57,6 +57,13 @@ class Visit(Base):
     doctor_id = Column(Integer, ForeignKey("doctors.id"), nullable=True)
     visit_date = Column(DateTime, default=datetime.datetime.utcnow)
     reason = Column(String, nullable=True)
+    diagnosis = Column(String, nullable=True)
+    chief_complaints = Column(String, nullable=True)
+    medicines_list = Column(String, nullable=True)
+    tests_list = Column(String, nullable=True)
+    advice = Column(String, nullable=True)
+    follow_up_date = Column(String, nullable=True)
+    patient_summary = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     deleted_at = Column(DateTime, nullable=True)
 

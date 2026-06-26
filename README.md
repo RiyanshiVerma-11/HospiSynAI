@@ -1,9 +1,9 @@
-# HospiSyn - Hospital Payment, Billing, and Receipt Management System
+# HospiSynAI - Hospital Payment, Billing, and Patient Consultation Assistant
 
 **🔗 Live Demo**: [https://hospi-syn.vercel.app/](https://hospi-syn.vercel.app/)  
 **🔗 API Documentation (Swagger)**: [https://hospisyn-backend.onrender.com/docs](https://hospisyn-backend.onrender.com/docs)
 
-HospiSyn is a production-grade, real-time hospital billing, receptionist desk, and payment audit ecosystem. Designed with SDE-3 guidelines, it features a clean React + Tailwind CSS client, a high-performance Python FastAPI backend, and a robust PostgreSQL relational database layer.
+HospiSynAI is a production-grade, real-time hospital billing, receptionist desk, payment audit, and patient consultation ecosystem. Designed with SDE-3 guidelines, it features a clean React + Tailwind CSS client, a high-performance Python FastAPI backend, and a robust PostgreSQL relational database layer.
 
 The entire stack is containerized and orchestrates seamlessly with a single command via Docker Compose.
 
@@ -15,6 +15,7 @@ The entire stack is containerized and orchestrates seamlessly with a single comm
 ### 🏢 Core Hospital Workflows
 - **Patient Desk**: Patient profiles registration and search (lookup by Patient ID, Name, Mobile, Receipt ID, or Bill ID).
 - **Consultation & Visit Logger**: Logs sequential patient visits under a visit index (`Patient ➔ Visit ➔ Invoice`).
+- **AI Consultation Summary & Patient Handout**: Allows doctors, receptionists, or accountants to input clinical notes (diagnosis, chief complaints, medicines list, recommended tests, advice) and use a Llama-3.3-70b-powered API (via Groq) to generate a patient-friendly summary in both English and Hindi.
 - **Standardized Services Catalog**: Dynamic catalog grouping doctor consultations, OPD, IPD, ICU, labs, radiology, and pharmacy charges with standard base pricing. Editable via the Admin panel.
 - **Invoice Builder (Billing Queue)**: Interactive multi-item billing builder allowing receptionist staff to override standard catalog pricing, group multiple services, auto-fetch and adjust visit-level advance payments, and calculate balances.
 
@@ -48,7 +49,7 @@ graph TD
 
 ### File Structure
 ```
-29 HospiSyn/
+HospiSynAI/
 ├── docker-compose.yml          # Multicontainer orchestration
 ├── backend/
 │   ├── Dockerfile              # Backend package compilation
@@ -68,7 +69,15 @@ graph TD
     └── src/
         ├── index.css           # Global directives & printable media configurations
         ├── main.jsx            # DOM bootstrapping
-        └── App.jsx             # Combined dashboard client UI
+        ├── App.jsx             # Main dashboard container & router
+        └── components/         # Dashboard modular feature tabs
+            ├── DashboardTab.jsx      # KPI charts & revenue statistics
+            ├── PatientSearchTab.jsx  # Patient lookup, visits, & AI summary
+            ├── BillingTab.jsx        # Invoicing, collections, & refunds
+            ├── CatalogTab.jsx        # Medical services & standard pricing
+            ├── SettingsTab.jsx       # Branding & dynamically printed PDF settings
+            ├── UsersTab.jsx          # User accounts management (RBAC)
+            └── AuditLogsTab.jsx      # Chronological system activity logger
 ```
 
 ---
@@ -135,12 +144,16 @@ Follow this standard workflow to verify system capabilities:
 2. Navigate to **Patient Search & Desk**.
 3. Fill out the **New Registration** form to register a new patient profile. Check that a unique sequential Patient ID is generated (e.g. `PAT-20260626-00001`).
 4. Select the registered patient. Fill out the **Record Patient Visit** input to start a consultation (e.g. "Pathology Diagnostics"). Check that a Visit ID is generated.
-5. In the visit module, record an **Advance Deposit** of `500` via `UPI` (Reference: `TXN987654`).
-6. Build an invoice using the **Multi-Item Bill Creator**:
+5. Click the **Clinical Notes & AI Summary** button on the active visit to open the handout modal:
+   - Input the patient's complaints, diagnosis, medicines, and advice.
+   - Click **Generate AI Summary** to trigger the Groq LLM API. Verify that a simplified, bilingual (English + Hindi) explanation is populated.
+   - Click **Save Summary** to store it, and **Print Summary** to generate a clean, print-ready patient handout.
+6. In the visit module, record an **Advance Deposit** of `500` via `UPI` (Reference: `TXN987654`).
+7. Build an invoice using the **Multi-Item Bill Creator**:
    - Select `Laboratory Tests ➔ Complete Blood Count (CBC)` (Standard ₹350) and click **Add**.
    - Select `Radiology/X-Ray/MRI ➔ Chest X-Ray PA View` (Standard ₹450) and click **Add**.
    - Click **Generate Invoice**.
-7. Check that the system automatically applies the `500` advance payment to the `800` grand total, setting the bill status to `Partial Paid` with a remaining balance of `300`.
+8. Check that the system automatically applies the `500` advance payment to the `800` grand total, setting the bill status to `Partial Paid` with a remaining balance of `300`.
 
 ### Step 2: Financial Desk (Accountant)
 1. Log in as `accountant` / `acct123`.
@@ -181,6 +194,8 @@ For deployment and local setup, the project supports a `.env` configuration file
 | `FRONTEND_PORT` | Port mapped to React frontend | `3000` |
 | `VITE_API_BASE_URL` | API Base URL used by the React client | `http://localhost:5000/api` |
 | `VITE_STATIC_BASE_URL` | Static download Base URL (for PDF receipts) | `http://localhost:5000` |
+| `GROQ_API_KEY` | API Key for Groq Cloud services (required for AI features) | *(None)* |
+| `GROQ_MODEL` | Groq LLM model to use for generating summaries | `llama-3.3-70b-versatile` |
 
 ### 🚀 Production Deployment Checklist
 

@@ -72,6 +72,22 @@ class DoctorResponse(DoctorBase):
 # Visit Schemas
 class VisitBase(BaseModel):
     reason: Optional[str] = None
+    diagnosis: Optional[str] = None
+    chief_complaints: Optional[str] = None
+    medicines_list: Optional[str] = None
+    tests_list: Optional[str] = None
+    advice: Optional[str] = None
+    follow_up_date: Optional[str] = None
+    patient_summary: Optional[str] = None
+
+class VisitSummaryUpdate(BaseModel):
+    diagnosis: Optional[str] = None
+    chief_complaints: Optional[str] = None
+    medicines_list: Optional[str] = None
+    tests_list: Optional[str] = None
+    advice: Optional[str] = None
+    follow_up_date: Optional[str] = None
+    patient_summary: Optional[str] = None
 
 class VisitCreate(VisitBase):
     patient_id: int
@@ -246,3 +262,23 @@ class DashboardMetrics(BaseModel):
     payment_method_breakdown: Dict[str, float]
     payment_method_counts: Dict[str, int]
     recent_transactions: List[dict]
+
+
+# AI Recommendation Schemas
+class RecommendationRequest(BaseModel):
+    patient_id: Optional[int] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    symptoms: str
+
+class RecommendationItem(BaseModel):
+    service_id: int
+    service_name: str
+    category: str
+    price: float
+    reason: str
+
+class RecommendationResponse(BaseModel):
+    recommendations: List[RecommendationItem]
+    explanation: str
+
