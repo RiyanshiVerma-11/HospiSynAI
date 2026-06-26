@@ -19,6 +19,13 @@ import pdf_generator
 
 app = FastAPI(title="HospiSyn API", version="1.0.0")
 
+@app.get("/")
+def read_root():
+    return {
+        "status": "healthy",
+        "message": "HospiSyn Backend API is running. Access the API documentation at /docs"
+    }
+
 # Setup CORS
 app.add_middleware(
     CORSMiddleware,
