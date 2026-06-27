@@ -372,7 +372,7 @@ def get_patient_visits(
 
 
 @app.put("/api/visits/{id}/summary", response_model=schemas.VisitResponse)
-def update_visit_summary(
+async def update_visit_summary(
     id: int,
     visit_update: schemas.VisitSummaryUpdate,
     generate_ai_summary: bool = Query(False),
@@ -401,49 +401,47 @@ def update_visit_summary(
         if not api_key:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Groq API key is not configured in the server environment variables. Please check your .env configuration."
+                detail="Groq API key is not configured. Please set GROQ_API_KEY in your .env file."
             )
         
-        prompt = f"""You are a helpful, professional medical assistant. 
-Create a clear, patient-friendly summary of the consultation in simple, easy-to-understand English, and also provide a translation/summary in simple Hindi (Devanagari script).
+        # Structured prompt with red-flag detection
+        prompt = f"""You are a compassionate, senior medical assistant helping Indian hospital patients understand their doctor's consultation.
 
-Doctor's Notes:
-Diagnosis: {visit_update.diagnosis or "Not specified"}
-Chief Complaints: {visit_update.chief_complaints or "Not specified"}
-Medicines Prescribed: {visit_update.medicines_list or "Not specified"}
-Recommended Tests: {visit_update.tests_list or "Not specified"}
-Advice: {visit_update.advice or "Not specified"}
-Follow-up: {visit_update.follow_up_date or "Not specified"}
+Doctor's Clinical Notes:
+- Diagnosis: {visit_update.diagnosis or 'Not specified'}
+- Chief Complaints: {visit_update.chief_complaints or 'Not specified'}
+- Medicines Prescribed: {visit_update.medicines_list or 'Not specified'}
+- Recommended Tests: {visit_update.tests_list or 'Not specified'}
+- Advice Given: {visit_update.advice or 'Not specified'}
+- Follow-up: {visit_update.follow_up_date or 'Not specified'}
 
-Instructions:
-1. Generate a short, professional summary (3-5 sentences) that the patient can easily understand.
-2. Translate/rephrase the summary in simple Hindi (Devanagari script) below the English version.
-3. Do not give medical advice; just summarize what the doctor decided and advised.
-4. Keep the tone compassionate, reassuring, and highly professional.
+Your task:
+1. Write a PATIENT-FRIENDLY ENGLISH SUMMARY (4-6 sentences) — simple words, no jargon. Include what was diagnosed, what medicines to take and when, what tests are needed, and what to watch out for.
+2. If any symptoms or medicines indicate URGENT attention (chest pain, breathlessness, high fever, blood pressure extremes), add a ⚠️ RED FLAG WARNING line in English.
+3. Write a HINDI TRANSLATION (हिंदी सारांश) that is simple, warm, and easy to understand for rural/semi-urban patients.
 
-Output Format:
+Strict Output Format (no extra headings, no markdown, follow exactly):
 [English Summary]
-...
+<your English summary here>
 
 [Hindi Summary (हिंदी सारांश)]
-..."""
+<your Hindi summary here>"""
 
         url = "https://api.groq.com/openai/v1/chat/completions"
-        headers = {
+        groq_headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
         payload = {
             "model": model,
-            "messages": [
-                {"role": "user", "content": prompt}
-            ],
-            "temperature": 0.3
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.25,
+            "max_tokens": 800
         }
 
         try:
-            with httpx.Client(timeout=25.0) as client:
-                response = client.post(url, headers=headers, json=payload)
+            async with httpx.AsyncClient(timeout=28.0) as client:
+                response = await client.post(url, headers=groq_headers, json=payload)
                 response.raise_for_status()
                 result = response.json()
             db_visit.patient_summary = result["choices"][0]["message"]["content"].strip()
@@ -458,6 +456,117 @@ Output Format:
 
     log_action(db, current_user.id, "UPDATE_VISIT_SUMMARY", "visits", str(db_visit.id), f"Updated consultation summary and notes for visit {db_visit.visit_id}")
     return db_visit
+
+
+@app.get("/api/visits/{id}/prescription-pdf")
+def get_visit_prescription_pdf(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    db_visit = db.query(models.Visit).filter(models.Visit.id == id, models.Visit.is_active == True).first()
+    if not db_visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+
+    filename = f"prescription_{db_visit.visit_id}.pdf"
+    pdf_path = os.path.join(RECEIPTS_DIR, filename)
+
+    try:
+        pdf_generator.generate_prescription_pdf(db_visit, db, pdf_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate prescription PDF: {str(e)}")
+
+    return {"pdf_path": f"/receipts/{filename}"}
+
+
+@app.post("/api/visits/ai-suggest-treatment", response_model=schemas.AISuggestResponse)
+async def ai_suggest_treatment(
+    req: schemas.AISuggestRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant"]))
+):
+    api_key = os.getenv("GROQ_API_KEY")
+    model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Groq API key is not configured. Please set GROQ_API_KEY in your .env file."
+        )
+
+    # CHAIN-OF-THOUGHT prescription prompt with differential diagnosis
+    prompt = f"""You are an expert Indian clinical prescribing assistant with 20 years of OPD experience.
+Think step-by-step before prescribing.
+
+Step 1 — DIFFERENTIAL DIAGNOSIS: Based on chief complaints, list 2-3 possible diagnoses (internally). Pick the most likely one.
+Step 2 — DRUG SELECTION: Choose common, affordable Indian generic medicines. Prefer well-known brands (Dolo, Pan, Augmentin, etc.). Check for obvious contraindications based on age.
+Step 3 — TESTS: Only order tests that directly impact treatment decision.
+Step 4 — ADVICE: Give 2-3 practical, actionable lifestyle/home-care tips.
+Step 5 — FOLLOW-UP: Specify exactly when to return or escalate.
+
+Patient Demographics:
+- Age: {req.age or 'Not specified'}
+- Gender: {req.gender or 'Not specified'}
+
+Clinical Input:
+- Chief Complaints: {req.chief_complaints}
+- Working Diagnosis: {req.diagnosis or 'Derive from complaints'}
+
+OUTPUT RULES:
+- Output ONLY a valid JSON object, no markdown, no preamble.
+- medicines_list: number each medicine, include exact dosage + timing + duration (e.g. "1. Dolo 650mg — 1 tab TID after meals for 3 days")
+- tests_list: only clinically necessary tests, numbered
+- advice: 2-3 practical tips, numbered
+- follow_up_date: specific instructions (e.g. "Review in 3 days, or immediately if fever > 103°F")
+- If patient age < 12 or > 65, adjust dosages appropriately and note it.
+
+JSON schema:
+{{
+  "diagnosis": "primary diagnosis",
+  "medicines_list": "1. Med — dose, timing, duration\\n2. ...",
+  "tests_list": "1. Test Name\\n2. ...",
+  "advice": "1. Tip\\n2. ...",
+  "follow_up_date": "specific follow-up instruction"
+}}"""
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    groq_headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.1,
+        "response_format": {"type": "json_object"},
+        "max_tokens": 800
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=28.0) as client:
+            response = await client.post(url, headers=groq_headers, json=payload)
+            response.raise_for_status()
+            result = response.json()
+        
+        content = result["choices"][0]["message"]["content"].strip()
+        parsed_data = json.loads(content)
+        
+        return schemas.AISuggestResponse(
+            diagnosis=parsed_data.get("diagnosis", ""),
+            medicines_list=parsed_data.get("medicines_list", ""),
+            tests_list=parsed_data.get("tests_list", ""),
+            advice=parsed_data.get("advice", ""),
+            follow_up_date=parsed_data.get("follow_up_date", "")
+        )
+    except json.JSONDecodeError as je:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to parse AI prescription suggestions: {str(je)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to communicate with Groq AI API: {str(e)}"
+        )
 
 
 # ----------------------------------------------------
@@ -475,7 +584,7 @@ def get_services(
     return q.order_by(models.Service.category, models.Service.name).all()
 
 @app.post("/api/services/recommend", response_model=schemas.RecommendationResponse)
-def get_service_recommendations(
+async def get_service_recommendations(
     req: schemas.RecommendationRequest,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist"]))
@@ -558,8 +667,8 @@ Return response in clean JSON format only matching this schema:
     }
 
     try:
-        with httpx.Client(timeout=15.0) as client:
-            response = client.post(url, headers=headers, json=payload)
+        async with httpx.AsyncClient(timeout=18.0) as client:
+            response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
             result = response.json()
             
@@ -614,6 +723,190 @@ Return response in clean JSON format only matching this schema:
         recommendations=validated_recommendations,
         explanation=ai_data.get("explanation", "Recommendations compiled successfully.")
     )
+
+
+# ----------------------------------------------------
+# AI BILLING ANOMALY CHECKER
+# ----------------------------------------------------
+@app.post("/api/bills/ai-anomaly-check", response_model=schemas.AnomalyCheckResponse)
+async def check_bill_anomaly(
+    req: schemas.AnomalyCheckRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist"]))
+):
+    api_key = os.getenv("GROQ_API_KEY")
+    model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    if not api_key:
+        # Return clear status without failing — anomaly check is optional
+        return schemas.AnomalyCheckResponse(
+            status="clear",
+            issues=[],
+            summary="AI anomaly check not available (GROQ_API_KEY not set).",
+            safe_to_proceed=True
+        )
+
+    items_str = "\n".join([f"- {item.service_name}: ₹{item.amount:.2f}" for item in req.items])
+    total = sum(item.amount for item in req.items)
+
+    prompt = f"""You are a hospital billing auditor AI. Review the following bill for anomalies.
+
+Bill Items:
+{items_str}
+
+Bill Total: ₹{total:.2f}
+Patient Age: {req.patient_age or 'Unknown'}
+Patient Gender: {req.patient_gender or 'Unknown'}
+Diagnosis: {req.diagnosis or 'Not provided'}
+
+Check for:
+1. DUPLICATE tests or services (same or very similar items billed twice)
+2. CLINICALLY UNLIKELY combinations (e.g., ICU charges + outpatient consultation on same bill)
+3. EXCESSIVE AMOUNTS (single items that seem abnormally high for an OPD context)
+4. MISSING essential service (e.g., Lab tests billed without a consultation)
+5. AGE-INAPPROPRIATE services (e.g., pediatric items for adult age)
+
+Respond ONLY with a JSON object, no preamble:
+{{
+  "status": "clear" | "warning" | "critical",
+  "issues": ["issue 1", "issue 2"],
+  "summary": "One sentence summary",
+  "safe_to_proceed": true | false
+}}
+If no issues, return status "clear", empty issues list, and safe_to_proceed: true."""
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    groq_headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.05,
+        "response_format": {"type": "json_object"},
+        "max_tokens": 400
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(url, headers=groq_headers, json=payload)
+            response.raise_for_status()
+            result = response.json()
+        data = json.loads(result["choices"][0]["message"]["content"])
+        return schemas.AnomalyCheckResponse(
+            status=data.get("status", "clear"),
+            issues=data.get("issues", []),
+            summary=data.get("summary", "Bill reviewed."),
+            safe_to_proceed=data.get("safe_to_proceed", True)
+        )
+    except Exception:
+        return schemas.AnomalyCheckResponse(
+            status="clear", issues=[], summary="Anomaly check skipped.", safe_to_proceed=True
+        )
+
+
+# ----------------------------------------------------
+# AI DASHBOARD REVENUE INSIGHT
+# ----------------------------------------------------
+@app.get("/api/dashboard/ai-insight", response_model=schemas.AIInsightResponse)
+async def get_ai_dashboard_insight(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Accountant"]))
+):
+    api_key = os.getenv("GROQ_API_KEY")
+    model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    if not api_key:
+        return schemas.AIInsightResponse(
+            insight="AI revenue insights require a GROQ_API_KEY to be configured.",
+            action="Set GROQ_API_KEY in your .env file to enable this feature.",
+            metric_highlight="—",
+            sentiment="neutral"
+        )
+
+    # Gather today's financial metrics
+    today_start = datetime.datetime.combine(datetime.date.today(), datetime.time.min)
+    today_end = datetime.datetime.combine(datetime.date.today(), datetime.time.max)
+
+    total_revenue = db.query(func.sum(models.Payment.amount_paid)).filter(
+        models.Payment.payment_type != "Refund", models.Payment.is_active == True
+    ).scalar() or 0.0
+
+    today_revenue = db.query(func.sum(models.Payment.amount_paid)).filter(
+        models.Payment.payment_type != "Refund",
+        models.Payment.is_active == True,
+        models.Payment.payment_date >= today_start,
+        models.Payment.payment_date <= today_end
+    ).scalar() or 0.0
+
+    pending_dues = db.query(func.sum(models.Bill.balance_amount)).filter(
+        models.Bill.payment_status.in_(["Pending", "Partial Paid"]),
+        models.Bill.is_active == True
+    ).scalar() or 0.0
+
+    total_patients = db.query(models.Patient).filter(models.Patient.is_active == True).count()
+    today_patients = db.query(models.Visit).filter(
+        models.Visit.visit_date >= today_start, models.Visit.visit_date <= today_end, models.Visit.is_active == True
+    ).count()
+
+    cash_today = db.query(func.sum(models.Payment.amount_paid)).filter(
+        models.Payment.payment_method == "Cash", models.Payment.payment_type != "Refund",
+        models.Payment.is_active == True,
+        models.Payment.payment_date >= today_start, models.Payment.payment_date <= today_end
+    ).scalar() or 0.0
+
+    online_today = max(0.0, today_revenue - cash_today)
+    cash_pct = round((cash_today / today_revenue * 100) if today_revenue > 0 else 0, 1)
+
+    prompt = f"""You are a smart hospital revenue analyst AI for an Indian OPD/diagnostic clinic.
+
+Today's Financial Snapshot:
+- Total Registered Patients (All-Time): {total_patients}
+- Today's Visits: {today_patients}
+- Today's Revenue: ₹{today_revenue:,.2f}
+- Today's Cash: ₹{cash_today:,.2f} ({cash_pct}% of today)
+- Today's Digital/Online: ₹{online_today:,.2f} ({100 - cash_pct}% of today)
+- Outstanding Dues (All-Time): ₹{pending_dues:,.2f}
+- Total Revenue (All-Time): ₹{total_revenue:,.2f}
+
+Generate a smart, 2-sentence business insight for the hospital administrator. Be specific, actionable, and data-driven. Focus on the most important trend or issue.
+Also provide: (1) one specific recommended action, (2) the single most important metric to highlight.
+Determine sentiment based on overall financial health: positive (revenue good, low dues), neutral (average), negative (low revenue, high dues).
+
+Output ONLY valid JSON, no preamble:
+{{
+  "insight": "2-sentence data-driven business insight",
+  "action": "One specific recommended action for today",
+  "metric_highlight": "The single most important number/stat to display",
+  "sentiment": "positive" | "neutral" | "negative"
+}}"""
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    groq_headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.3,
+        "response_format": {"type": "json_object"},
+        "max_tokens": 300
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(url, headers=groq_headers, json=payload)
+            response.raise_for_status()
+            result = response.json()
+        data = json.loads(result["choices"][0]["message"]["content"])
+        return schemas.AIInsightResponse(
+            insight=data.get("insight", ""),
+            action=data.get("action", ""),
+            metric_highlight=data.get("metric_highlight", ""),
+            sentiment=data.get("sentiment", "neutral")
+        )
+    except Exception as e:
+        return schemas.AIInsightResponse(
+            insight=f"Revenue insight unavailable: {str(e)[:80]}",
+            action="Check Groq API connectivity.",
+            metric_highlight="—",
+            sentiment="neutral"
+        )
+
 
 @app.post("/api/services", response_model=schemas.ServiceResponse)
 

@@ -64,6 +64,7 @@ function App() {
 
   // Dashboard Stats State
   const [metrics, setMetrics] = useState(null);
+  const [metricsError, setMetricsError] = useState(null);
 
   // Search/Register State
   const [searchQuery, setSearchQuery] = useState('');
@@ -208,7 +209,10 @@ function App() {
 
   useEffect(() => {
     // Reset viewable components depending on tab change
-    if (activeTab === 'dashboard') fetchDashboardMetrics();
+    if (activeTab === 'dashboard') {
+      setMetricsError(null); // clear previous error before fresh fetch
+      fetchDashboardMetrics();
+    }
     if (activeTab === 'catalog') fetchServices();
     if (activeTab === 'audit_logs') fetchAuditLogs();
     if (activeTab === 'users') fetchStaffUsers();
@@ -272,8 +276,11 @@ function App() {
   };
 
   const fetchDashboardMetrics = async () => {
-    if (userRole === 'Receptionist') return; // Receptionist doesn't have access to financials
+    // Read directly from sessionStorage to avoid stale closure issues
+    const currentRole = sessionStorage.getItem('role') || userRole;
+    if (currentRole === 'Receptionist') return; // Receptionist doesn't have access to financials
     try {
+      setMetricsError(null);
       const res = await fetch(`${API_BASE}/dashboard/metrics`, { headers: getHeaders() });
       if (res.status === 401) {
         handleLogout();
@@ -282,9 +289,16 @@ function App() {
       if (res.ok) {
         const data = await res.json();
         setMetrics(data);
+      } else {
+        // API returned an error — set error state so dashboard shows error instead of spinner
+        const errData = await res.json().catch(() => ({}));
+        const errMsg = errData.detail || `Server error (${res.status})`;
+        console.error("Dashboard metrics error:", errMsg);
+        setMetricsError(errMsg);
       }
     } catch (err) {
       console.error("Error fetching dashboard metrics:", err);
+      setMetricsError('Unable to connect to server. Check your network or backend status.');
     }
   };
 
@@ -870,85 +884,129 @@ function App() {
 
   // Render Login page if not authenticated
   if (!token) {
+    const quickLogin = (u, p) => setLoginForm({ username: u, password: p });
+
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative overflow-hidden font-sans">
-        {/* Decorative ambient background elements */}
-        <div className="absolute w-[500px] h-[500px] bg-teal-500/10 rounded-full blur-3xl -top-40 -left-40"></div>
-        <div className="absolute w-[500px] h-[500px] bg-sky-500/10 rounded-full blur-3xl -bottom-40 -right-40"></div>
+      <div className="min-h-screen bg-[#060c18] flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Animated background orbs */}
+        <div className="absolute w-[600px] h-[600px] rounded-full orb-float-1 pointer-events-none" style={{background:'radial-gradient(circle, rgba(20,184,166,0.18) 0%, transparent 70%)', top:'-15%', left:'-10%'}} />
+        <div className="absolute w-[500px] h-[500px] rounded-full orb-float-2 pointer-events-none" style={{background:'radial-gradient(circle, rgba(139,92,246,0.14) 0%, transparent 70%)', bottom:'-10%', right:'-5%'}} />
+        <div className="absolute w-[350px] h-[350px] rounded-full orb-float-3 pointer-events-none" style={{background:'radial-gradient(circle, rgba(99,102,241,0.10) 0%, transparent 70%)', top:'40%', right:'20%'}} />
 
-        <div className="bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 p-8 rounded-3xl w-full max-w-md shadow-2xl relative z-10 transition-all duration-300">
-          <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-tr from-teal-500 to-emerald-400 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/20 mb-4">
-              <Activity className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight text-white font-sans">HospiSynAI</h1>
-            <p className="text-slate-400 text-sm mt-1">Hospital Billing & Receipt Desk</p>
-          </div>
+        {/* Subtle grid overlay */}
+        <div className="absolute inset-0 pointer-events-none" style={{backgroundImage:'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)', backgroundSize:'48px 48px'}} />
 
-          <form onSubmit={handleLogin} className="space-y-5">
-            {authError && (
-              <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm px-4 py-3 rounded-xl flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                <span>{authError}</span>
+        <div className="relative z-10 w-full max-w-md animate-slide-up">
+          {/* Main glass card */}
+          <div className="glass-card p-8 rounded-3xl" style={{border:'1px solid rgba(20,184,166,0.18)'}}>
+            {/* Logo */}
+            <div className="flex flex-col items-center mb-7">
+              <div className="relative mb-4">
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center animate-pulse-teal" style={{background:'linear-gradient(135deg, #14b8a6, #34d399)'}}>
+                  <Activity className="w-8 h-8 text-white" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-400 border-2 border-[#060c18] animate-pulse" />
               </div>
-            )}
-
-            <div>
-              <label className="block text-slate-300 text-xs font-semibold uppercase tracking-wider mb-2">Username</label>
-              <input
-                type="text"
-                className="w-full bg-slate-950/40 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all"
-                placeholder="receptionist / accountant / admin"
-                value={loginForm.username}
-                onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
-                required
-              />
+              <h1 className="text-3xl font-black tracking-tight text-white">HospiSyn<span className="gradient-text-teal">AI</span></h1>
+              <p className="text-slate-400 text-xs mt-1 text-center">Hospital Billing · Receipts · AI Clinical Assistant</p>
             </div>
 
-            <div>
-              <label className="block text-slate-300 text-xs font-semibold uppercase tracking-wider mb-2">Password</label>
-              <input
-                type="password"
-                className="w-full bg-slate-950/40 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all"
-                placeholder="••••••••"
-                value={loginForm.password}
-                onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                required
-              />
+            {/* Quick demo login buttons */}
+            <div className="mb-6">
+              <p className="text-slate-500 text-[10px] uppercase tracking-widest text-center mb-3">⚡ Quick Demo Login</p>
+              <div className="grid grid-cols-3 gap-2">
+                {[['Receptionist','recep123','bg-teal-500/10 border-teal-500/20 text-teal-300 hover:bg-teal-500/20'],
+                  ['Accountant','acct123','bg-violet-500/10 border-violet-500/20 text-violet-300 hover:bg-violet-500/20'],
+                  ['Admin','admin123','bg-amber-500/10 border-amber-500/20 text-amber-300 hover:bg-amber-500/20']
+                ].map(([role, pass, cls]) => (
+                  <button key={role} type="button"
+                    onClick={() => quickLogin(role.toLowerCase(), pass)}
+                    className={`border rounded-xl py-2 px-1 text-[10px] font-bold uppercase tracking-wider transition-all ${cls}`}>
+                    {role}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <button
-              type="submit"
-              className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-teal-500/15 hover:shadow-teal-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-4"
-            >
-              <Lock className="w-4 h-4" />
-              Sign In
-            </button>
-          </form>
+            <form onSubmit={handleLogin} className="space-y-4">
+              {authError && (
+                <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm px-4 py-3 rounded-xl flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  <span>{authError}</span>
+                </div>
+              )}
 
-          <div className="mt-8 text-center text-xs text-slate-500 space-y-1">
-            <p>SDE-3 Production hospital environment billing interface</p>
-            <p className="font-semibold text-teal-500/70">Secure Audited Transactions Active</p>
+              <div>
+                <label className="block text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Username</label>
+                <input type="text"
+                  className="w-full rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all text-sm font-medium"
+                  style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)'}}
+                  placeholder="receptionist / accountant / admin"
+                  value={loginForm.username}
+                  onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                  required />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Password</label>
+                <input type="password"
+                  className="w-full rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all text-sm font-medium"
+                  style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)'}}
+                  placeholder="••••••••"
+                  value={loginForm.password}
+                  onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                  required />
+              </div>
+
+              <button type="submit"
+                className="w-full font-bold py-3.5 rounded-xl text-white text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-2"
+                style={{background:'linear-gradient(135deg, #14b8a6, #0d9488)', boxShadow:'0 4px 20px rgba(20,184,166,0.3)'}}>
+                <Lock className="w-4 h-4" />
+                Secure Sign In
+              </button>
+            </form>
+
+            <div className="mt-6 flex items-center justify-center gap-2 text-slate-600 text-[10px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Encrypted · Audited · RBAC Protected</span>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
+
   // ----------------------------------------------------
   // RENDER APP CORE LAYOUT
   // ----------------------------------------------------
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row relative">
-      {/* Toast Alert */}
+      {/* Toast Alert - Rich version with progress bar */}
       {toast.show && (
-        <div className={`fixed top-4 right-4 z-50 px-5 py-4 rounded-2xl shadow-xl flex items-center gap-3 border animate-in fade-in slide-in-from-top-4 duration-300 ${
-          toast.type === 'success' 
-            ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
-            : 'bg-rose-50 border-rose-200 text-rose-800'
+        <div className={`fixed top-4 right-4 z-50 min-w-[300px] max-w-sm rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-slide-up ${
+          toast.type === 'success' ? 'bg-slate-900 border border-emerald-500/20'
+          : toast.type === 'warning' ? 'bg-slate-900 border border-amber-500/20'
+          : 'bg-slate-900 border border-rose-500/20'
         }`}>
-          <div className={`w-2 h-2 rounded-full ${toast.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
-          <span className="text-sm font-semibold">{toast.message}</span>
+          <div className="flex items-start gap-3 p-4">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+              toast.type === 'success' ? 'bg-emerald-500/15' : toast.type === 'warning' ? 'bg-amber-500/15' : 'bg-rose-500/15'
+            }`}>
+              {toast.type === 'success' ? <CheckCircle className="w-4 h-4 text-emerald-400" /> :
+               toast.type === 'warning' ? <AlertTriangle className="w-4 h-4 text-amber-400" /> :
+               <AlertTriangle className="w-4 h-4 text-rose-400" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className={`text-xs font-bold uppercase tracking-wider mb-0.5 ${
+                toast.type === 'success' ? 'text-emerald-400' : toast.type === 'warning' ? 'text-amber-400' : 'text-rose-400'
+              }`}>{toast.type === 'success' ? 'Success' : toast.type === 'warning' ? 'Notice' : 'Error'}</p>
+              <p className="text-white text-sm font-medium leading-snug">{toast.message}</p>
+            </div>
+          </div>
+          <div className={`toast-progress ${
+            toast.type === 'success' ? 'bg-emerald-500' : toast.type === 'warning' ? 'bg-amber-500' : 'bg-rose-500'
+          }`} />
         </div>
       )}
 
@@ -1049,139 +1107,127 @@ function App() {
         ></div>
       )}
 
-      {/* Sidebar Navigation */}
-      <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between flex-shrink-0 transition-transform duration-300 transform md:translate-x-0 md:static md:h-auto md:w-64 ${
+      {/* Sidebar Navigation — Premium Version */}
+      <aside className={`fixed inset-y-0 left-0 z-40 w-64 flex flex-col justify-between flex-shrink-0 transition-transform duration-300 transform md:translate-x-0 md:static md:h-auto md:w-64 ${
         mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
+      }`} style={{background:'#080d1a', borderRight:'1px solid rgba(255,255,255,0.06)'}}>
         <div>
           {/* Logo & Header */}
-          <div className="p-6 flex items-center gap-3 border-b border-slate-800">
-            <div className="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/20">
+          <div className="p-6 flex items-center gap-3" style={{borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center animate-pulse-teal flex-shrink-0" style={{background:'linear-gradient(135deg,#14b8a6,#34d399)'}}>
               <Activity className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-white font-bold text-lg font-sans tracking-tight">HospiSynAI</h2>
-              <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">{userRole} Panel</span>
+              <h2 className="text-white font-black text-base tracking-tight">HospiSyn<span className="gradient-text-teal">AI</span></h2>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                  userRole === 'Admin' ? 'bg-amber-500/15 text-amber-400'
+                  : userRole === 'Accountant' ? 'bg-violet-500/15 text-violet-400'
+                  : 'bg-teal-500/15 text-teal-400'
+                }`}>{userRole}</span>
+              </div>
             </div>
           </div>
 
           {/* Nav Items */}
-          <nav className="p-4 space-y-1">
-            {/* Dashboard available to Admin and Accountant */}
+          <nav className="p-3 space-y-1">
+            {/* Dashboard — Admin & Accountant */}
             {userRole !== 'Receptionist' && (
               <button
                 onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
                   activeTab === 'dashboard'
-                    ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/10'
-                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+                    ? 'text-white'
+                    : 'text-slate-500 hover:text-slate-300'
                 }`}
+                style={activeTab === 'dashboard' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.2), rgba(20,184,166,0.05))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
               >
-                <Grid className="w-4 h-4" />
+                <Grid className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'dashboard' ? 'text-teal-400' : ''}`} />
                 Dashboard
+                {activeTab === 'dashboard' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
               </button>
             )}
 
-            {/* Receptionist Tabs */}
+            {/* Patient Desk */}
             {['Admin', 'Receptionist', 'Accountant'].includes(userRole) && (
               <button
                 onClick={() => { setActiveTab('search_register'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
                   activeTab === 'search_register'
-                    ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/10'
-                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+                    ? 'text-white'
+                    : 'text-slate-500 hover:text-slate-300'
                 }`}
+                style={activeTab === 'search_register' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.2), rgba(20,184,166,0.05))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
               >
-                <Search className="w-4 h-4" />
+                <Search className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'search_register' ? 'text-teal-400' : ''}`} />
                 Patient Search & Desk
+                {/* AI badge */}
+                <span className="ml-auto flex items-center gap-1 bg-violet-500/15 text-violet-400 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                  <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" />AI
+                </span>
               </button>
             )}
 
-            {/* Accountant Tabs */}
+            {/* Billing Queue */}
             {['Admin', 'Accountant'].includes(userRole) && (
               <button
                 onClick={() => { setActiveTab('billing_history'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
                   activeTab === 'billing_history'
-                    ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/10'
-                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+                    ? 'text-white'
+                    : 'text-slate-500 hover:text-slate-300'
                 }`}
+                style={activeTab === 'billing_history' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.2), rgba(20,184,166,0.05))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
               >
-                <CreditCard className="w-4 h-4" />
+                <CreditCard className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'billing_history' ? 'text-teal-400' : ''}`} />
                 Billing Queue
+                {activeTab === 'billing_history' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
               </button>
             )}
 
-            {/* Admin Tabs */}
+            {/* Admin only */}
             {userRole === 'Admin' && (
               <>
-                <button
-                  onClick={() => { setActiveTab('catalog'); setMobileMenuOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-                    activeTab === 'catalog'
-                      ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/10'
-                      : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
-                  }`}
-                >
-                  <FileText className="w-4 h-4" />
-                  Services Catalog
-                </button>
-
-                <button
-                  onClick={() => { setActiveTab('users'); setMobileMenuOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-                    activeTab === 'users'
-                      ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/10'
-                      : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
-                  }`}
-                >
-                  <UserPlus className="w-4 h-4" />
-                  Staff Accounts
-                </button>
-
-                <button
-                  onClick={() => { setActiveTab('audit_logs'); setMobileMenuOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-                    activeTab === 'audit_logs'
-                      ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/10'
-                      : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
-                  }`}
-                >
-                  <History className="w-4 h-4" />
-                  Audit Logs
-                </button>
-
-                <button
-                  onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-                    activeTab === 'settings'
-                      ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/10'
-                      : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
-                  }`}
-                >
-                  <SettingsIcon className="w-4 h-4" />
-                  Hospital Settings
-                </button>
+                <div className="pt-3 pb-1 px-3">
+                  <p className="text-slate-600 text-[9px] font-bold uppercase tracking-widest">Administration</p>
+                </div>
+                {[['catalog','Services Catalog', FileText],
+                  ['users','Staff Accounts', UserPlus],
+                  ['audit_logs','Audit Logs', History],
+                  ['settings','Hospital Settings', SettingsIcon]
+                ].map(([tab, label, Icon]) => (
+                  <button key={tab}
+                    onClick={() => { setActiveTab(tab); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
+                      activeTab === tab ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                    style={activeTab === tab ? {background:'linear-gradient(90deg, rgba(20,184,166,0.2), rgba(20,184,166,0.05))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
+                  >
+                    <Icon className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === tab ? 'text-teal-400' : ''}`} />
+                    {label}
+                    {activeTab === tab && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                  </button>
+                ))}
               </>
             )}
           </nav>
         </div>
 
         {/* User Footer Profile */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950/20">
+        <div className="p-4" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400 font-bold text-sm">
-                {name.charAt(0)}
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-teal-300 font-black text-sm" style={{background:'rgba(20,184,166,0.12)'}}>
+                {name.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white text-xs font-bold leading-none truncate" title={name}>{name}</p>
-                <span className="text-slate-500 text-[10px] leading-none block mt-1 truncate" title={userRole}>{userRole}</span>
+                <p className="text-white text-xs font-bold leading-none truncate">{name}</p>
+                <span className="text-slate-500 text-[10px] leading-none block mt-0.5 truncate">{userRole}</span>
               </div>
             </div>
             <button
               onClick={handleLogout}
-              className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition-colors"
+              className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors"
               title="Logout"
             >
               <LogOut className="w-4 h-4" />
@@ -1189,37 +1235,45 @@ function App() {
           </div>
         </div>
       </aside>
-
       {/* Main Content Area */}
-      <main className="flex-1 p-6 md:p-10 overflow-y-auto h-full md:max-h-screen">
+      <main className="flex-1 overflow-y-auto h-full md:max-h-screen" style={{background:'#f0f4f8'}}>
         {/* HEADER BAR */}
-        <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <header className="sticky top-0 z-30 px-6 md:px-10 py-4 flex items-center justify-between gap-4 backdrop-blur-md"
+          style={{background:'rgba(240,244,248,0.85)', borderBottom:'1px solid rgba(0,0,0,0.06)'}}>
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 font-sans tracking-tight">
+            <h1 className="text-xl font-black text-slate-900 tracking-tight leading-tight">
               {activeTab === 'dashboard' && 'Dashboard Overview'}
-              {activeTab === 'search_register' && 'Patient Registration & Search'}
-              {activeTab === 'billing_history' && 'Billing & Payment Operations'}
-              {activeTab === 'catalog' && 'Service Catalog Management'}
+              {activeTab === 'search_register' && 'Patient Desk'}
+              {activeTab === 'billing_history' && 'Billing Operations'}
+              {activeTab === 'catalog' && 'Services Catalog'}
               {activeTab === 'users' && 'Staff Accounts'}
-              {activeTab === 'audit_logs' && 'System Audit Trail'}
-              {activeTab === 'settings' && 'Hospital Branding Settings'}
+              {activeTab === 'audit_logs' && 'Audit Trail'}
+              {activeTab === 'settings' && 'Hospital Settings'}
             </h1>
-            <p className="text-slate-500 text-sm mt-0.5">
-              {activeTab === 'dashboard' && 'Real-time collection reports and financial summaries'}
-              {activeTab === 'search_register' && 'Search profiles, check visit histories, register details'}
-              {activeTab === 'billing_history' && 'Process billings, adjust advance items, clear balances'}
-              {activeTab === 'catalog' && 'Edit categories, names, and standardized pricing'}
-              {activeTab === 'users' && 'Create roles for receptionist, accountant, and admins'}
-              {activeTab === 'audit_logs' && 'Chronological sequence tracking of users actions'}
-              {activeTab === 'settings' && 'Customizable branding attributes for receipt PDF rendering'}
+            <p className="text-slate-400 text-xs font-medium mt-0.5">
+              {activeTab === 'dashboard' && 'Real-time financial summary • AI-powered insights'}
+              {activeTab === 'search_register' && 'Search, register patients, log visits, AI clinical assistant'}
+              {activeTab === 'billing_history' && 'Process bills, clear balances, manage advances'}
+              {activeTab === 'catalog' && 'Edit service names, categories, and pricing'}
+              {activeTab === 'users' && 'Create and manage staff roles and credentials'}
+              {activeTab === 'audit_logs' && 'Chronological record of all system actions'}
+              {activeTab === 'settings' && 'Hospital branding for receipt PDF rendering'}
             </p>
           </div>
 
-          <div className="text-slate-400 text-xs font-semibold bg-white border border-slate-200 shadow-sm rounded-xl px-4 py-2.5 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Live Hospital Server Time: {new Date().toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            {/* Live badge */}
+            <div className="hidden sm:flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-slate-500 text-[11px] font-bold">
+                {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+              </span>
+            </div>
           </div>
         </header>
+
+        {/* Page content padding */}
+        <div className="p-6 md:p-8">
 
         {/* ----------------------------------------------------
             TAB 1: DASHBOARD
@@ -1227,6 +1281,7 @@ function App() {
         {activeTab === 'dashboard' && (
           <DashboardTab
             metrics={metrics}
+            metricsError={metricsError}
             API_BASE={API_BASE}
             fetchReceiptDetails={fetchReceiptDetails}
           />
@@ -1359,6 +1414,7 @@ function App() {
             handleAddDoctor={handleAddDoctor}
           />
         )}
+        </div>
       </main>
 
       {/* ----------------------------------------------------

@@ -12,56 +12,97 @@ import {
   Brain,
   Save,
   Loader2,
-  Copy
+  Copy,
+  Download
 } from 'lucide-react';
 
 const MEDICINE_DATASTORE = [
-  // Paracetamol variants
-  { name: 'Paracetamol 650mg (Dolo 650)', dosage: '1 tablet TID after meals for 3 days' },
-  { name: 'Paracetamol 500mg (Crocin)', dosage: '1 tablet TID after meals for 3 days' },
-  { name: 'Paracetamol Syrup 120mg/5ml', dosage: '5ml TID for 3 days' },
+  // Paracetamol & Pain Relievers
+  { name: 'Dolo 650mg (Paracetamol)', dosage: 'Once Daily (OD), After Meals for 3 Days' },
+  { name: 'Crocin 500mg (Paracetamol)', dosage: 'Thrice Daily (TID), After Meals for 3 Days' },
+  { name: 'Calpol 650mg (Paracetamol)', dosage: 'Thrice Daily (TID), After Meals for 3 Days' },
+  { name: 'Combiflam (Ibuprofen + Paracetamol)', dosage: 'Twice Daily (BD), After Meals for 3 Days' },
+  { name: 'Zerodol-P (Aceclofenac + Paracetamol)', dosage: 'Twice Daily (BD), After Meals for 3 Days' },
+  { name: 'Zerodol-SP (Aceclofenac + Paracetamol + Serratiopeptidase)', dosage: 'Twice Daily (BD), After Meals for 5 Days' },
+  { name: 'Ultracet (Tramadol + Paracetamol)', dosage: 'Twice Daily (BD), After Meals for 3 Days' },
+  { name: 'Dynapar AQ Injection (Diclofenac)', dosage: 'Once Daily (OD), As Needed (SOS)' },
+  { name: 'Meftal-Spas (Dicyclomine + Mefenamic Acid)', dosage: 'Thrice Daily (TID), As Needed (SOS) for Spasms' },
   
-  // Antibiotics & Antivirals
-  { name: 'Azithromycin 500mg (Azee)', dosage: '1 tablet OD before food for 3 days' },
-  { name: 'Amoxicillin + Clavulanic Acid 625mg (Augmentin)', dosage: '1 tablet BD after meals for 5 days' },
-  { name: 'Cefixime 200mg (Taxim-O)', dosage: '1 tablet BD after meals for 5 days' },
-  { name: 'Ofloxacin + Ornidazole (O2)', dosage: '1 tablet BD after meals for 5 days' },
-  { name: 'Acyclovir 400mg', dosage: '1 tablet 5 times daily for 5 days' },
+  // Antibiotics & Antivirals & Antifungals
+  { name: 'Azee 500mg (Azithromycin)', dosage: 'Once Daily (OD), Empty Stomach for 3 Days' },
+  { name: 'Augmentin 625mg (Amoxicillin + Clavulanate)', dosage: 'Twice Daily (BD), After Meals for 5 Days' },
+  { name: 'Taxim-O 200mg (Cefixime)', dosage: 'Twice Daily (BD), After Meals for 5 Days' },
+  { name: 'O2 (Ofloxacin + Ornidazole)', dosage: 'Twice Daily (BD), After Meals for 5 Days' },
+  { name: 'Zifi 200mg (Cefixime)', dosage: 'Twice Daily (BD), After Meals for 5 Days' },
+  { name: 'Monocef 1g Injection (Ceftriaxone)', dosage: 'Once Daily (OD), IV/IM Route' },
+  { name: 'Sporidex 500mg (Cephalexin)', dosage: 'Twice Daily (BD), After Meals for 5 Days' },
+  { name: 'Fluka 150mg (Fluconazole)', dosage: 'Once Weekly (OW), After Meals for 2 Weeks' },
+  { name: 'Acyclovir 400mg', dosage: 'Five Times Daily, After Meals for 5 Days' },
   
-  // Cough, Cold & Antihistamines
-  { name: 'Levocetirizine 5mg (Levocet)', dosage: '1 tablet HS (night) for 5 days' },
-  { name: 'Cetirizine 10mg (Okacet)', dosage: '1 tablet HS (night) for 5 days' },
-  { name: 'Montelukast + Levocetirizine (Montair LC)', dosage: '1 tablet HS (night) for 7 days' },
-  { name: 'Cough Syrup (Ascoril LS)', dosage: '5ml TID for 5 days' },
-  { name: 'Cough Syrup (Grilinctus)', dosage: '5ml TID for 5 days' },
-  { name: 'Phenylephrine + Chlorpheniramine (Solvin Cold)', dosage: '1 tablet TID for 3 days' },
+  // Antacids, Gastroesophageal Reflux & Laxatives
+  { name: 'Pan 40mg (Pantoprazole)', dosage: 'Once Daily (OD), Empty Stomach for 10 Days' },
+  { name: 'Pantocid 40mg (Pantoprazole)', dosage: 'Once Daily (OD), Empty Stomach for 14 Days' },
+  { name: 'Omez 20mg (Omeprazole)', dosage: 'Once Daily (OD), Empty Stomach for 7 Days' },
+  { name: 'Rantac 150mg (Ranitidine)', dosage: 'Twice Daily (BD), Empty Stomach for 7 Days' },
+  { name: 'Aciloc 150mg (Ranitidine)', dosage: 'Twice Daily (BD), Empty Stomach for 7 Days' },
+  { name: 'Digene Gel Syrup', dosage: '10ml Twice Daily (BD), After Meals for 5 Days' },
+  { name: 'Gelusil MPS Liquid', dosage: '10ml Thrice Daily (TID), After Meals for 5 Days' },
+  { name: 'Cremaffin Syrup (Liquid Paraffin + Milk of Magnesia)', dosage: '15ml At Bedtime (HS) for Constipation' },
+  { name: 'Duphalac Oral Solution (Lactulose)', dosage: '15ml Once Daily (OD), At Bedtime (HS)' },
   
-  // Antacids & Gastrointestinal
-  { name: 'Pantoprazole 40mg (Pan 40)', dosage: '1 tablet OD before breakfast for 10 days' },
-  { name: 'Omeprazole 20mg (Omez)', dosage: '1 tablet OD before breakfast for 7 days' },
-  { name: 'Ranitidine 150mg (Rantac)', dosage: '1 tablet BD before food for 5 days' },
-  { name: 'Antacid Gel Syrup (Digene)', dosage: '10ml after meals for 5 days' },
-  { name: 'ORS (Oral Rehydration Salts)', dosage: 'Dissolve in 1L water, sip throughout day' },
-  { name: 'Loperamide 2mg (Lopamide)', dosage: '1 tablet after loose motion (max 4/day)' },
+  // Cough, Cold, Allergy & Bronchodilators
+  { name: 'Levocet 5mg (Levocetirizine)', dosage: 'Once Daily (OD), At Bedtime (HS) for 5 Days' },
+  { name: 'Okacet 10mg (Cetirizine)', dosage: 'Once Daily (OD), At Bedtime (HS) for 5 Days' },
+  { name: 'Montair LC (Montelukast + Levocetirizine)', dosage: 'Once Daily (OD), At Bedtime (HS) for 7 Days' },
+  { name: 'Ascoril LS Syrup', dosage: '5ml Thrice Daily (TID), After Meals for 5 Days' },
+  { name: 'Grilinctus Syrup', dosage: '5ml Thrice Daily (TID), After Meals for 5 Days' },
+  { name: 'Solvin Cold (Paracetamol + Phenylephrine + Chlorpheniramine)', dosage: 'Thrice Daily (TID), After Meals for 3 Days' },
+  { name: 'Avil 25mg (Pheniramine Maleate)', dosage: 'Twice Daily (BD), After Meals for 3 Days' },
+  { name: 'Allegra 120mg (Fexofenadine)', dosage: 'Once Daily (OD), After Meals for 5 Days' },
   
-  // Painkillers & Anti-inflammatories
-  { name: 'Ibuprofen 400mg (Brufen)', dosage: '1 tablet BD after meals as needed' },
-  { name: 'Aceclofenac + Paracetamol (Zerodol-P)', dosage: '1 tablet BD after meals for 3 days' },
-  { name: 'Diclofenac Gel 1% (Volini)', dosage: 'Apply locally 3-4 times daily' },
-  { name: 'Tramadol + Paracetamol (Ultracet)', dosage: '1 tablet BD after meals for pain' },
+  // Antidiabetic & Antihypertensive & Cholesterol
+  { name: 'Glycomet 500mg (Metformin)', dosage: 'Twice Daily (BD), After Meals (Long-term)' },
+  { name: 'Glycomet GP 1 (Glimepiride + Metformin)', dosage: 'Once Daily (OD), Before Breakfast (Long-term)' },
+  { name: 'Amlong 5mg (Amlodipine)', dosage: 'Once Daily (OD), In Morning (Long-term)' },
+  { name: 'Telma 40mg (Telmisartan)', dosage: 'Once Daily (OD), In Morning (Long-term)' },
+  { name: 'Telma-H (Telmisartan + Hydrochlorothiazide)', dosage: 'Once Daily (OD), In Morning (Long-term)' },
+  { name: 'Atorva 10mg (Atorvastatin)', dosage: 'Once Daily (OD), At Bedtime (HS) (Long-term)' },
+  { name: 'Lipvas 10mg (Atorvastatin)', dosage: 'Once Daily (OD), At Bedtime (HS) (Long-term)' },
+  { name: 'Thyronorm 50mcg (Thyroxine)', dosage: 'Once Daily (OD), Early Morning Empty Stomach (Long-term)' },
+  
+  // Diarrhea, Antiemetics & Probiotics
+  { name: 'Lopamide 2mg (Loperamide)', dosage: 'Once Daily (OD), As Needed (SOS) after loose motion' },
+  { name: 'Ondem 4mg (Ondansetron)', dosage: 'Thrice Daily (TID), Before Food as needed for vomiting' },
+  { name: 'Domstal 10mg (Domperidone)', dosage: 'Thrice Daily (TID), Before Food for nausea' },
+  { name: 'Econorm Sachet (Saccharomyces boulardii)', dosage: 'Twice Daily (BD), in lukewarm water for 3 Days' },
+  { name: 'Enterogermina Oral Suspension', dosage: 'Once Daily (OD), directly consume for 5 Days' },
+  
+  // Vitamins, Minerals & Supplements
+  { name: 'Limcee 500mg (Vitamin C)', dosage: 'Once Daily (OD), Chewable after meals for 15 Days' },
+  { name: 'Calcirol Sachet (Cholecalciferol D3 60K)', dosage: 'Once Weekly (OW), with warm milk for 4 Weeks' },
+  { name: 'Becosules Capsules (B-Complex + Vitamin C)', dosage: 'Once Daily (OD), After Lunch for 10 Days' },
+  { name: 'Shelcal 500mg (Calcium + Vitamin D3)', dosage: 'Once Daily (OD), After Dinner for 30 Days' },
+  { name: 'Orofer XT (Iron + Folic Acid)', dosage: 'Once Daily (OD), After Dinner for 30 Days' },
+  { name: 'Neurobion Forte (Vitamin B12 + B-Complex)', dosage: 'Once Daily (OD), After Meals for 30 Days' },
+];
 
-  // Chronic (Diabetes, BP, Thyroid, etc.)
-  { name: 'Metformin 500mg (Glycomet)', dosage: '1 tablet BD after meals' },
-  { name: 'Amlodipine 5mg (Amlong)', dosage: '1 tablet OD in morning' },
-  { name: 'Telmisartan 40mg (Telma 40)', dosage: '1 tablet OD in morning' },
-  { name: 'Thyroxine Sodium 50mcg (Thyronorm)', dosage: '1 tablet OD early morning empty stomach' },
-  { name: 'Atorvastatin 10mg (Atorva)', dosage: '1 tablet HS (night)' },
-  
-  // Vitamins & Supplements
-  { name: 'Vitamin C 500mg (Limcee)', dosage: '1 tablet daily (chewable) for 15 days' },
-  { name: 'Vitamin D3 60K UI (Calcirol)', dosage: '1 sachet/capsule weekly with milk for 4 weeks' },
-  { name: 'B-Complex + Zinc (Becosules)', dosage: '1 capsule OD after lunch for 10 days' },
-  { name: 'Iron + Folic Acid (Autrin)', dosage: '1 capsule OD after meals for 30 days' },
+const COMMON_COMPLAINTS = [
+  'Fever', 'Dry Cough', 'Productive Cough', 'Sore Throat', 'Running Nose', 
+  'Headache', 'Body Pain', 'Stomach Ache', 'Vomiting', 'Loose Motions', 
+  'Chest Pain', 'Shortness of Breath', 'Weakness', 'High BP'
+];
+
+const COMMON_TESTS = [
+  'CBC (Complete Blood Count)', 'Chest X-Ray PA View', 'Blood Sugar (Fasting & PP)', 
+  'HbA1c', 'LFT (Liver Function)', 'KFT (Kidney Function)', 
+  'Lipid Profile', 'Thyroid Profile (T3/T4/TSH)', 'Urine RE/ME'
+];
+
+const COMMON_ADVICE = [
+  'Drink warm water frequently', 'Take complete bed rest for 2-3 days', 
+  'Warm saline gargles 3-4 times a day', 'Avoid cold drinks and oily food', 
+  'Monitor temperature and BP daily', 'Maintain a light, low-sugar diet', 
+  'Avoid heavy physical activity'
 ];
 
 export default function PatientSearchTab({
@@ -133,6 +174,136 @@ export default function PatientSearchTab({
   const [medicineSearch, setMedicineSearch] = React.useState('');
   const [medicineSuggestions, setMedicineSuggestions] = React.useState([]);
 
+  // Prescription formatting builder states
+  const [prescTiming, setPrescTiming] = React.useState('After Meals');
+  const [prescFrequency, setPrescFrequency] = React.useState('Twice Daily (BD)');
+  const [prescDuration, setPrescDuration] = React.useState('3 Days');
+  const [aiPrescribeLoading, setAiPrescribeLoading] = React.useState(false);
+
+  // Anomaly Check States
+  const [anomalyCheckLoading, setAnomalyCheckLoading] = React.useState(false);
+  const [anomalyResult, setAnomalyResult] = React.useState(null);
+
+  const [downloadPrescriptionLoading, setDownloadPrescriptionLoading] = React.useState(false);
+  const STATIC_BASE = import.meta.env.VITE_STATIC_BASE_URL || 'http://localhost:5000';
+
+  const runAnomalyCheck = async (visit) => {
+    if (billItems.length === 0) {
+      showToast("Add some items to the bill before running an audit.", "warning");
+      return;
+    }
+    setAnomalyCheckLoading(true);
+    setAnomalyResult(null);
+    try {
+      const itemsPayload = billItems.map(item => ({
+        service_name: item.service_name,
+        amount: parseFloat(item.amount)
+      }));
+
+      const res = await fetch(`${API_BASE}/bills/ai-anomaly-check`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          items: itemsPayload,
+          patient_age: selectedPatient ? parseInt(selectedPatient.age) : null,
+          patient_gender: selectedPatient ? selectedPatient.gender : null,
+          diagnosis: visit.diagnosis || null
+        })
+      });
+      if (!res.ok) {
+        throw new Error("Audit request failed.");
+      }
+      const data = await res.json();
+      setAnomalyResult(data);
+      if (data.status === 'clear') {
+        showToast("AI Bill Audit passed: No anomalies detected.", "success");
+      } else {
+        showToast(`AI Bill Audit flagged: ${data.summary}`, data.status === 'critical' ? 'error' : 'warning');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("AI Auditor is temporarily offline. Continuing with default invoicing.", "warning");
+    } finally {
+      setAnomalyCheckLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    setAnomalyResult(null);
+  }, [billItems]);
+
+  // Toggle quick tag helper
+  const handleToggleTag = (field, tagValue) => {
+    const currentVal = summaryForm[field] || '';
+    
+    if (field === 'chief_complaints' || field === 'advice') {
+      const items = currentVal.trim() ? currentVal.split(',').map(x => x.trim()).filter(Boolean) : [];
+      if (items.includes(tagValue)) {
+        const filtered = items.filter(x => x !== tagValue);
+        setSummaryForm(prev => ({ ...prev, [field]: filtered.join(', ') }));
+      } else {
+        items.push(tagValue);
+        setSummaryForm(prev => ({ ...prev, [field]: items.join(', ') }));
+      }
+    } else if (field === 'tests_list') {
+      const lines = currentVal.trim() ? currentVal.split('\n').map(x => x.trim()).filter(Boolean) : [];
+      const matchIdx = lines.findIndex(line => line.toLowerCase().includes(tagValue.toLowerCase()));
+      if (matchIdx !== -1) {
+        const filtered = lines.filter((_, idx) => idx !== matchIdx);
+        const renumbered = filtered.map((line, idx) => {
+          const clean = line.replace(/^\d+\.\s*/, '');
+          return `${idx + 1}. ${clean}`;
+        });
+        setSummaryForm(prev => ({ ...prev, [field]: renumbered.join('\n') }));
+      } else {
+        const nextNum = lines.length + 1;
+        const newline = `${nextNum}. ${tagValue}`;
+        const updated = currentVal ? `${currentVal.trim()}\n${newline}` : newline;
+        setSummaryForm(prev => ({ ...prev, [field]: updated }));
+      }
+    }
+  };
+
+  // AI Suggest Treatment caller
+  const handleAiSuggestTreatment = async () => {
+    if (!summaryForm.chief_complaints.trim()) {
+      showToast('Please type or select Chief Complaints first so AI has clinical context.', 'warning');
+      return;
+    }
+    setAiPrescribeLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/visits/ai-suggest-treatment`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          chief_complaints: summaryForm.chief_complaints,
+          diagnosis: summaryForm.diagnosis,
+          age: selectedPatient ? selectedPatient.age : null,
+          gender: selectedPatient ? selectedPatient.gender : null
+        })
+      });
+      if (!response.ok) {
+        const errDetails = await response.json();
+        throw new Error(errDetails.detail || 'AI Treatment suggestion request failed.');
+      }
+      const data = await response.json();
+      setSummaryForm(prev => ({
+        ...prev,
+        diagnosis: data.diagnosis || prev.diagnosis,
+        medicines_list: data.medicines_list || prev.medicines_list,
+        tests_list: data.tests_list || prev.tests_list,
+        advice: data.advice || prev.advice,
+        follow_up_date: data.follow_up_date || prev.follow_up_date
+      }));
+      showToast('AI treatment plan loaded! Review and adjust details below.');
+    } catch (e) {
+      console.error(e);
+      showToast(e.message || 'AI Prescribing service is offline. Enter prescription details manually.', 'error');
+    } finally {
+      setAiPrescribeLoading(false);
+    }
+  };
+
   // Auto-filter medicine suggestions
   React.useEffect(() => {
     if (!medicineSearch.trim()) {
@@ -142,7 +313,7 @@ export default function PatientSearchTab({
     const query = medicineSearch.toLowerCase().trim();
     const filtered = MEDICINE_DATASTORE.filter(med => 
       med.name.toLowerCase().includes(query)
-    ).slice(0, 5);
+    ).slice(0, 8); // Expanded list selection limit
     setMedicineSuggestions(filtered);
   }, [medicineSearch]);
 
@@ -150,7 +321,8 @@ export default function PatientSearchTab({
     const currentText = summaryForm.medicines_list || '';
     const lines = currentText.split('\n').map(line => line.trim()).filter(Boolean);
     const nextNum = lines.length + 1;
-    const newline = `${nextNum}. ${med.name} - ${med.dosage}`;
+    const formattedDosage = `${prescFrequency}, ${prescTiming} for ${prescDuration}`;
+    const newline = `${nextNum}. ${med.name} - ${formattedDosage}`;
     const updated = currentText ? `${currentText.trim()}\n${newline}` : newline;
     
     setSummaryForm(prev => ({
@@ -235,6 +407,25 @@ export default function PatientSearchTab({
     setTimeout(() => {
       window.print();
     }, 150);
+  };
+
+  const handleDownloadPrescription = async (visitId) => {
+    const targetVisitId = visitId || selectedVisit?.id;
+    if (!targetVisitId) return;
+    setDownloadPrescriptionLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/visits/${targetVisitId}/prescription-pdf`, {
+        headers: getHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to generate PDF prescription sheet.");
+      const data = await res.json();
+      window.open(`${STATIC_BASE}${data.pdf_path}`, "_blank");
+      showToast("Prescription PDF downloaded successfully!");
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setDownloadPrescriptionLoading(false);
+    }
   };
 
   return (
@@ -367,6 +558,7 @@ export default function PatientSearchTab({
                               <FileText className="w-3 h-3" />
                               <span>Clinical Notes & AI Summary</span>
                             </button>
+
                           </div>
                           <p className="font-bold text-slate-900 text-sm mt-0.5">Reason: {vis.reason || 'Not Specified'}</p>
                           {vis.doctor && (
@@ -656,14 +848,77 @@ export default function PatientSearchTab({
                                     ))}
                                   </div>
 
+                                  {/* AI Billing Auditor */}
+                                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 mt-3 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                                        <Brain className="w-4 h-4 text-violet-500 animate-pulse" />
+                                        <span>AI Billing Auditor</span>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => runAnomalyCheck(vis)}
+                                        disabled={anomalyCheckLoading}
+                                        className="bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 text-[10px] font-bold px-2.5 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1.5"
+                                      >
+                                        {anomalyCheckLoading ? (
+                                          <>
+                                            <span className="animate-spin w-2.5 h-2.5 border-t-2 border-violet-600 rounded-full inline-block"></span>
+                                            Auditing...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Search className="w-3 h-3" />
+                                            Run AI Audit
+                                          </>
+                                        )}
+                                      </button>
+                                    </div>
+
+                                    {anomalyResult ? (
+                                      <div className={`p-2.5 rounded-xl text-xs flex flex-col gap-1.5 transition-all border ${
+                                        anomalyResult.status === 'clear'
+                                          ? 'bg-emerald-50/50 border-emerald-100 text-emerald-800'
+                                          : anomalyResult.status === 'warning'
+                                          ? 'bg-amber-50/50 border-amber-200 text-amber-800'
+                                          : 'bg-rose-50/50 border-rose-200 text-rose-800'
+                                      }`}>
+                                        <div className="flex items-center gap-1.5 font-bold">
+                                          {anomalyResult.status === 'clear' && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
+                                          {anomalyResult.status === 'warning' && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
+                                          {anomalyResult.status === 'critical' && <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />}
+                                          <span className="uppercase text-[9px] tracking-wider font-black">
+                                            Status: {anomalyResult.status}
+                                          </span>
+                                        </div>
+                                        <p className="font-bold text-[11px] leading-snug">{anomalyResult.summary}</p>
+                                        {anomalyResult.issues && anomalyResult.issues.length > 0 && (
+                                          <ul className="list-disc pl-4 space-y-1 mt-0.5 font-semibold text-[10px]">
+                                            {anomalyResult.issues.map((issue, idx) => (
+                                              <li key={idx}>{issue}</li>
+                                            ))}
+                                          </ul>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <p className="text-[10px] text-slate-400 font-semibold">Verify invoice for duplicate tests, suspicious charges, or age discrepancies before generating.</p>
+                                    )}
+                                  </div>
+
                                   {/* Total Summary */}
-                                  <div className="flex justify-between items-center pt-2 px-1">
+                                  <div className="flex justify-between items-center pt-3 px-1 border-t border-slate-100 mt-2">
                                     <div>
-                                      <span className="text-xs text-slate-500">Subtotal:</span>
+                                      <span className="text-xs text-slate-500 font-bold">Subtotal:</span>
                                       <span className="font-extrabold text-slate-900 ml-2">₹{billItems.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()}</span>
                                     </div>
                                     <button
-                                      onClick={() => handleCreateBill(vis.id)}
+                                      onClick={() => {
+                                        if (anomalyResult && !anomalyResult.safe_to_proceed) {
+                                          const proceed = window.confirm(`⚠️ AI Auditor WARNING:\n${anomalyResult.summary}\n\nIssues:\n${anomalyResult.issues.map(i => '- ' + i).join('\n')}\n\nAre you sure you want to generate this invoice anyway?`);
+                                          if (!proceed) return;
+                                        }
+                                        handleCreateBill(vis.id);
+                                      }}
                                       className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs px-5 py-2.5 rounded-lg shadow-sm transition-all"
                                     >
                                       Generate Invoice
@@ -800,14 +1055,67 @@ export default function PatientSearchTab({
             <div className="p-6 overflow-y-auto flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
               {/* Left Pane: Clinical Notes Input Form */}
               <div className="space-y-4 pr-1">
-                <h4 className="text-sm font-bold text-slate-900 border-l-4 border-teal-500 pl-2 uppercase tracking-wide flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-teal-600" />
-                  Doctor's Clinical Notes
+                <h4 className="text-sm font-bold text-slate-900 border-l-4 border-teal-500 pl-2 uppercase tracking-wide flex items-center justify-between gap-1.5 w-full">
+                  <div className="flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-teal-600" />
+                    Doctor's Clinical Notes
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAiSuggestTreatment}
+                    disabled={aiPrescribeLoading}
+                    className={`text-xs font-bold text-white px-3 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1.5 ${
+                      aiPrescribeLoading
+                        ? 'bg-violet-400 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-violet-600 to-indigo-500 hover:from-violet-700 hover:to-indigo-600'
+                    }`}
+                  >
+                    {aiPrescribeLoading ? (
+                      <>
+                        <span className="flex gap-0.5">
+                          <span className="thinking-dot w-1.5 h-1.5 rounded-full bg-white" />
+                          <span className="thinking-dot w-1.5 h-1.5 rounded-full bg-white" />
+                          <span className="thinking-dot w-1.5 h-1.5 rounded-full bg-white" />
+                        </span>
+                        Groq prescribing...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5" />
+                        AI Suggest Treatment
+                      </>
+                    )}
+                  </button>
                 </h4>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1.5">Chief Complaints</label>
+                    <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1 flex justify-between items-center">
+                      <span>Chief Complaints</span>
+                      <span className="text-[9px] text-slate-400 font-semibold italic">click to toggle</span>
+                    </label>
+                    
+                    {/* Quick Complaints Tags */}
+                    <div className="flex flex-wrap gap-1 mb-2 max-h-[50px] overflow-y-auto pb-1">
+                      {COMMON_COMPLAINTS.map((tag) => {
+                        const isSelected = (summaryForm.chief_complaints || '').includes(tag);
+                        return (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => handleToggleTag('chief_complaints', tag)}
+                            className={`text-[9px] px-1.5 py-0.5 rounded-full border transition-all font-semibold ${
+                              isSelected 
+                                ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
+                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200'
+                            }`}
+                          >
+                            {tag}
+                          </button>
+                        );
+                      })}
+                    </div>
+
                     <textarea
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-20 resize-none"
                       placeholder="e.g. Chronic cough for 3 weeks, mild chest congestion, low-grade fever..."
@@ -815,31 +1123,111 @@ export default function PatientSearchTab({
                       onChange={(e) => setSummaryForm({ ...summaryForm, chief_complaints: e.target.value })}
                     />
                   </div>
-
+ 
                   <div>
                     <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1.5">Diagnosis</label>
                     <textarea
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-20 resize-none"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-28 resize-none"
                       placeholder="e.g. Acute Bronchitis secondary to viral infection"
                       value={summaryForm.diagnosis}
                       onChange={(e) => setSummaryForm({ ...summaryForm, diagnosis: e.target.value })}
                     />
                   </div>
                 </div>
-
+ 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="relative">
-                    <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1.5 flex justify-between items-center">
+                    <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1 flex justify-between items-center">
                       <span>Prescribed Medicines</span>
-                      <span className="text-[10px] text-teal-600 font-bold lowercase bg-teal-50 px-1.5 py-0.5 rounded border border-teal-100">(search helper active)</span>
+                      <span className="text-[10px] text-teal-600 font-bold lowercase bg-teal-50 px-1.5 py-0.5 rounded border border-teal-100">(autocomplete & builder active)</span>
                     </label>
                     
-                    {/* Autocomplete Input Helper */}
+                    {/* Prescription Builder Row */}
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-250 mb-2 space-y-1.5 shadow-sm">
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* Timing Selector */}
+                        <div>
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Timing</span>
+                          <div className="flex gap-1">
+                            {['After Meals', 'Empty Stomach'].map((t) => (
+                              <button
+                                key={t}
+                                type="button"
+                                onClick={() => setPrescTiming(t)}
+                                className={`flex-1 text-[9px] py-1 rounded font-bold border transition-all ${
+                                  prescTiming === t 
+                                    ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
+                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                }`}
+                              >
+                                {t === 'After Meals' ? 'Pc (Khane ke Baad)' : 'Ac (Khali Pet)'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        {/* Frequency Selector */}
+                        <div>
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Frequency</span>
+                          <select
+                            value={prescFrequency}
+                            onChange={(e) => setPrescFrequency(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:border-teal-500 font-bold text-slate-700"
+                          >
+                            <option value="Once Daily (OD)">OD (Once Daily)</option>
+                            <option value="Twice Daily (BD)">BD (Twice Daily)</option>
+                            <option value="Thrice Daily (TID)">TID (Thrice Daily)</option>
+                            <option value="At Bedtime (HS)">HS (At Night)</option>
+                            <option value="As Needed (SOS)">SOS (As Needed)</option>
+                          </select>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2 items-center">
+                        {/* Duration Selector */}
+                        <div>
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Duration</span>
+                          <select
+                            value={prescDuration}
+                            onChange={(e) => setPrescDuration(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:border-teal-500 font-bold text-slate-700"
+                          >
+                            <option value="3 Days">3 Days</option>
+                            <option value="5 Days">5 Days</option>
+                            <option value="7 Days">7 Days</option>
+                            <option value="10 Days">10 Days</option>
+                            <option value="15 Days">15 Days</option>
+                            <option value="30 Days">30 Days</option>
+                            <option value="1 Day">1 Day</option>
+                          </select>
+                        </div>
+                        {/* Quick Medicine Dropdown select */}
+                        <div>
+                          <span className="text-[9px] text-teal-600 font-bold uppercase tracking-wider block mb-0.5">Quick Add</span>
+                          <select
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                const med = MEDICINE_DATASTORE.find(m => m.name === e.target.value);
+                                if (med) handleAddMedicineFromSuggest(med);
+                                e.target.value = '';
+                              }
+                            }}
+                            className="w-full bg-white border border-teal-200 rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:border-teal-500 font-bold text-teal-800"
+                          >
+                            <option value="">-- Add Med --</option>
+                            {MEDICINE_DATASTORE.map((m, idx) => (
+                              <option key={idx} value={m.name}>{m.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Autocomplete Input Search */}
                     <div className="relative mb-2">
                       <input
                         type="text"
-                        placeholder="🔍 Type medicine name (e.g. Dolo, Pan, Azee...)"
-                        className="w-full bg-teal-50/40 border border-teal-100 rounded-lg px-2.5 py-1 text-xs placeholder-teal-600/40 focus:outline-none focus:bg-white focus:border-teal-500 font-semibold transition-all text-slate-800"
+                        placeholder="🔍 Search medicine name (e.g. Dolo, Pan, Azee...)"
+                        className="w-full bg-teal-50/40 border border-teal-100 rounded-lg px-2.5 py-1.5 text-xs placeholder-teal-600/40 focus:outline-none focus:bg-white focus:border-teal-500 font-semibold transition-all text-slate-800"
                         value={medicineSearch}
                         onChange={(e) => setMedicineSearch(e.target.value)}
                         onKeyDown={(e) => {
@@ -863,13 +1251,13 @@ export default function PatientSearchTab({
                               className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-teal-50 hover:text-teal-900 transition-colors font-semibold flex justify-between items-center"
                             >
                               <span>{med.name}</span>
-                              <span className="text-[10px] text-teal-600 bg-teal-50/60 px-1.5 py-0.5 rounded font-normal shrink-0">{med.dosage}</span>
+                              <span className="text-[10px] text-teal-600 bg-teal-50/60 px-1.5 py-0.5 rounded font-normal shrink-0">{med.dosage.split(' for')[0]}</span>
                             </button>
                           ))}
                         </div>
                       )}
                     </div>
-
+ 
                     <textarea
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-28 resize-none"
                       placeholder="e.g. 1. Paracetamol 650mg (TID for 3 days)&#10;2. Levocetirizine 5mg (HS for 5 days)"
@@ -877,9 +1265,34 @@ export default function PatientSearchTab({
                       onChange={(e) => setSummaryForm({ ...summaryForm, medicines_list: e.target.value })}
                     />
                   </div>
-
+ 
                   <div>
-                    <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1.5">Recommended Tests</label>
+                    <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1 flex justify-between items-center">
+                      <span>Recommended Tests</span>
+                      <span className="text-[9px] text-slate-400 font-semibold italic">click to toggle</span>
+                    </label>
+                    
+                    {/* Quick Tests Tags */}
+                    <div className="flex flex-wrap gap-1 mb-2 max-h-[50px] overflow-y-auto pb-1">
+                      {COMMON_TESTS.map((tag) => {
+                        const isSelected = (summaryForm.tests_list || '').toLowerCase().includes(tag.toLowerCase());
+                        return (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => handleToggleTag('tests_list', tag)}
+                            className={`text-[9px] px-1.5 py-0.5 rounded-full border transition-all font-semibold ${
+                              isSelected 
+                                ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
+                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200'
+                            }`}
+                          >
+                            {tag.split(' (')[0]}
+                          </button>
+                        );
+                      })}
+                    </div>
+
                     <textarea
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-28 resize-none"
                       placeholder="e.g. CBC (Complete Blood Count), Chest X-Ray PA View"
@@ -888,9 +1301,34 @@ export default function PatientSearchTab({
                     />
                   </div>
                 </div>
-
+ 
                 <div>
-                  <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1.5">Clinical Advice / Lifestyle Instructions</label>
+                  <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1 flex justify-between items-center">
+                    <span>Clinical Advice / Lifestyle Instructions</span>
+                    <span className="text-[9px] text-slate-400 font-semibold italic">click to toggle</span>
+                  </label>
+                  
+                  {/* Quick Advice Tags */}
+                  <div className="flex flex-wrap gap-1 mb-2 max-h-[50px] overflow-y-auto pb-1">
+                    {COMMON_ADVICE.map((tag) => {
+                      const isSelected = (summaryForm.advice || '').includes(tag);
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => handleToggleTag('advice', tag)}
+                          className={`text-[9px] px-1.5 py-0.5 rounded-full border transition-all font-semibold ${
+                            isSelected 
+                              ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200'
+                          }`}
+                        >
+                          {tag.length > 25 ? `${tag.slice(0, 23)}...` : tag}
+                        </button>
+                      );
+                    })}
+                  </div>
+
                   <textarea
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-20 resize-none"
                     placeholder="e.g. Warm saline gargles thrice daily. Drink plenty of warm water. Avoid cold drinks."
@@ -898,7 +1336,7 @@ export default function PatientSearchTab({
                     onChange={(e) => setSummaryForm({ ...summaryForm, advice: e.target.value })}
                   />
                 </div>
-
+ 
                 <div>
                   <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1.5">Follow-up Date / Instructions</label>
                   <input
@@ -938,21 +1376,41 @@ export default function PatientSearchTab({
                   )}
 
                   {summaryGenerating ? (
-                    <div className="flex-1 flex flex-col items-center justify-center py-10 space-y-4">
+                    <div className="flex-1 flex flex-col items-center justify-center py-10 space-y-5">
+                      {/* Groq AI thinking animation */}
                       <div className="relative">
-                        <div className="w-12 h-12 rounded-full border-4 border-teal-100 border-t-teal-600 animate-spin"></div>
-                        <Brain className="w-6 h-6 text-teal-600 absolute top-3 left-3 animate-pulse" />
+                        <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{background:'linear-gradient(135deg,rgba(139,92,246,0.15),rgba(99,102,241,0.1))', border:'1px solid rgba(139,92,246,0.2)'}}>
+                          <Brain className="w-8 h-8 text-violet-500" />
+                        </div>
+                        <div className="absolute -top-1 -right-1 flex gap-0.5">
+                          <span className="thinking-dot w-2 h-2 rounded-full bg-violet-400" />
+                          <span className="thinking-dot w-2 h-2 rounded-full bg-violet-400" />
+                          <span className="thinking-dot w-2 h-2 rounded-full bg-violet-400" />
+                        </div>
                       </div>
-                      <div className="text-center space-y-1">
-                        <p className="text-xs font-bold text-slate-700 animate-pulse">Drafting English & Hindi summary...</p>
-                        <p className="text-xs text-slate-500">Distilling clinical terms, medicines, and advice</p>
+                      <div className="text-center space-y-1.5">
+                        <p className="text-xs font-bold text-slate-700">Groq LLM is drafting the handout...</p>
+                        <p className="text-[11px] text-slate-400 leading-relaxed max-w-xs">
+                          Translating medical terms into simple English & Hindi (हिंदी)
+                        </p>
+                        <div className="flex items-center justify-center gap-1.5 mt-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+                          <span className="text-[10px] text-violet-500 font-bold uppercase tracking-widest">Powered by Groq · Llama 3.3 70B</span>
+                        </div>
                       </div>
                     </div>
                   ) : summaryForm.patient_summary ? (
                     <div className="mt-4 flex-1 flex flex-col">
-                      <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-2">Generated Patient-Friendly Summary (Editable)</label>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs text-slate-500 font-extrabold uppercase tracking-wider">Generated Summary (Editable)</label>
+                        <span className="flex items-center gap-1 bg-violet-50 border border-violet-100 text-violet-600 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                          <span className="w-1 h-1 rounded-full bg-violet-500 animate-pulse" />
+                          EN + हिंदी Bilingual
+                        </span>
+                      </div>
                       <textarea
-                        className="w-full flex-1 bg-white border border-slate-200 rounded-xl p-3 text-xs placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all resize-none leading-relaxed text-slate-700 border-l-3 border-l-teal-500"
+                        className="w-full flex-1 bg-white border border-slate-200 rounded-xl p-3 text-xs placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all resize-none leading-relaxed text-slate-700"
+                        style={{borderLeft: '3px solid #14b8a6', minHeight:'160px'}}
                         value={summaryForm.patient_summary}
                         onChange={(e) => setSummaryForm({ ...summaryForm, patient_summary: e.target.value })}
                       />
@@ -993,14 +1451,34 @@ export default function PatientSearchTab({
               </button>
               
               {summaryForm.patient_summary && (
-                <button
-                  type="button"
-                  onClick={handlePrintSummary}
-                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 text-xs active:scale-95"
-                >
-                  <Printer className="w-4 h-4 text-teal-500" />
-                  Print Handout Sheet
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={handleDownloadPrescription}
+                    disabled={downloadPrescriptionLoading}
+                    className="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 text-xs active:scale-95 disabled:opacity-50"
+                  >
+                    {downloadPrescriptionLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Generating PDF...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Save PDF
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePrintSummary}
+                    className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 text-xs active:scale-95"
+                  >
+                    <Printer className="w-4 h-4 text-teal-500" />
+                    Print Handout Sheet
+                  </button>
+                </>
               )}
 
               <button

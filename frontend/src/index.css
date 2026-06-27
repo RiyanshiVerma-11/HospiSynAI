@@ -2,41 +2,278 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   HOSPISYNAI — PREMIUM DESIGN SYSTEM
+   ============================================================ */
+
+/* --- Google Font Import --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @layer base {
+  :root {
+    /* Brand palette */
+    --clr-teal-400: #2dd4bf;
+    --clr-teal-500: #14b8a6;
+    --clr-teal-600: #0d9488;
+    --clr-emerald-400: #34d399;
+    --clr-violet-400: #a78bfa;
+    --clr-violet-500: #8b5cf6;
+    --clr-indigo-500: #6366f1;
+    --clr-rose-400: #fb7185;
+    --clr-amber-400: #fbbf24;
+
+    /* Glassmorphism tokens */
+    --glass-bg: rgba(255,255,255,0.06);
+    --glass-border: rgba(255,255,255,0.12);
+    --glass-shadow: 0 8px 32px rgba(0,0,0,0.35);
+
+    /* Sidebar */
+    --sidebar-bg: #0a0f1a;
+    --sidebar-border: rgba(255,255,255,0.06);
+
+    /* Glow tokens */
+    --glow-teal: 0 0 20px rgba(20,184,166,0.35), 0 0 60px rgba(20,184,166,0.12);
+    --glow-violet: 0 0 20px rgba(139,92,246,0.4), 0 0 60px rgba(139,92,246,0.15);
+    --glow-emerald: 0 0 20px rgba(52,211,153,0.35), 0 0 60px rgba(52,211,153,0.12);
+    --glow-rose: 0 0 20px rgba(251,113,133,0.35);
+  }
+
+  html { font-family: 'Inter', system-ui, sans-serif; }
+
   body {
-    @apply bg-slate-50 text-slate-800 font-sans;
+    @apply bg-slate-50 text-slate-800;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
 }
 
-/* Custom Scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* ============================================================
+   KEYFRAME ANIMATIONS
+   ============================================================ */
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
 }
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
+
+/* Floating orbs on login */
+@keyframes float-orb {
+  0%, 100% { transform: translateY(0) scale(1); }
+  33%       { transform: translateY(-28px) scale(1.05); }
+  66%       { transform: translateY(14px) scale(0.97); }
 }
+
+/* Card entrance */
+@keyframes slide-up-fade {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* AI pulse glow */
+@keyframes pulse-glow-teal {
+  0%, 100% { box-shadow: var(--glow-teal); }
+  50%       { box-shadow: 0 0 35px rgba(20,184,166,0.55), 0 0 90px rgba(20,184,166,0.2); }
+}
+
+@keyframes pulse-glow-violet {
+  0%, 100% { box-shadow: var(--glow-violet); }
+  50%       { box-shadow: 0 0 35px rgba(139,92,246,0.6), 0 0 90px rgba(139,92,246,0.25); }
+}
+
+/* AI thinking dots */
+@keyframes thinking-dot {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
+  40%            { transform: scale(1);   opacity: 1; }
+}
+
+/* Typewriter cursor blink */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* Number count-up reveal */
+@keyframes count-reveal {
+  from { opacity: 0; transform: translateY(8px) scale(0.9); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Progress bar fill for toast */
+@keyframes progress-bar {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+
+/* Sidebar nav pill */
+@keyframes nav-pill-in {
+  from { opacity: 0; transform: scaleX(0.7); }
+  to   { opacity: 1; transform: scaleX(1); }
+}
+
+/* Rotate for spinners */
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   UTILITY CLASSES
+   ============================================================ */
+
+/* Skeleton loader */
+.skeleton {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+.skeleton-dark {
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* Card entrance */
+.animate-slide-up {
+  animation: slide-up-fade 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-slide-up-delay-1 { animation-delay: 0.05s; }
+.animate-slide-up-delay-2 { animation-delay: 0.10s; }
+.animate-slide-up-delay-3 { animation-delay: 0.15s; }
+.animate-slide-up-delay-4 { animation-delay: 0.20s; }
+
+/* Glow utilities */
+.glow-teal   { box-shadow: var(--glow-teal); }
+.glow-violet { box-shadow: var(--glow-violet); }
+.glow-emerald{ box-shadow: var(--glow-emerald); }
+
+.animate-pulse-teal   { animation: pulse-glow-teal   2.5s ease-in-out infinite; }
+.animate-pulse-violet { animation: pulse-glow-violet 2.5s ease-in-out infinite; }
+
+/* Floating orbs */
+.orb-float-1 { animation: float-orb 8s ease-in-out infinite; }
+.orb-float-2 { animation: float-orb 11s ease-in-out infinite reverse; animation-delay: -3s; }
+.orb-float-3 { animation: float-orb 9s ease-in-out infinite; animation-delay: -5s; }
+
+/* AI thinking dots */
+.thinking-dot {
+  animation: thinking-dot 1.4s ease-in-out infinite;
+}
+.thinking-dot:nth-child(2) { animation-delay: 0.2s; }
+.thinking-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* Typewriter cursor */
+.typewriter-cursor::after {
+  content: '|';
+  animation: blink 0.75s step-end infinite;
+  color: var(--clr-teal-400);
+  margin-left: 1px;
+  font-weight: 300;
+}
+
+/* Count-up number */
+.count-reveal {
+  animation: count-reveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Glassmorphism card */
+.glass-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Gradient text */
+.gradient-text-teal {
+  background: linear-gradient(135deg, var(--clr-teal-400), var(--clr-emerald-400));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-violet {
+  background: linear-gradient(135deg, var(--clr-violet-400), var(--clr-indigo-500));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Premium card base */
+.premium-card {
+  background: #ffffff;
+  border: 1px solid rgba(226,232,240,0.8);
+  border-radius: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
+  transition: box-shadow 0.25s, transform 0.25s;
+}
+.premium-card:hover {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.06), 0 12px 40px rgba(0,0,0,0.10);
+  transform: translateY(-2px);
+}
+
+/* Stat card gradient borders */
+.stat-card-teal    { border-top: 3px solid var(--clr-teal-500); }
+.stat-card-emerald { border-top: 3px solid var(--clr-emerald-400); }
+.stat-card-violet  { border-top: 3px solid var(--clr-violet-500); }
+.stat-card-rose    { border-top: 3px solid var(--clr-rose-400); }
+.stat-card-amber   { border-top: 3px solid var(--clr-amber-400); }
+
+/* AI insight card */
+.ai-insight-card {
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #1e3a5f 100%);
+  border: 1px solid rgba(139,92,246,0.3);
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.ai-insight-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 30% 0%, rgba(139,92,246,0.25) 0%, transparent 70%),
+              radial-gradient(ellipse at 70% 100%, rgba(20,184,166,0.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* Anomaly warning panels */
+.anomaly-clear    { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); border-radius: 14px; }
+.anomaly-warning  { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); border-radius: 14px; }
+.anomaly-critical { background: rgba(239,68,68,0.08);  border: 1px solid rgba(239,68,68,0.25);  border-radius: 14px; }
+
+/* Toast progress bar */
+.toast-progress {
+  height: 3px;
+  border-radius: 2px;
+  animation: progress-bar 4s linear forwards;
+}
+
+/* ============================================================
+   SCROLLBAR PREMIUM
+   ============================================================ */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-200 rounded-full hover:bg-slate-300;
+  background: rgba(100,116,139,0.3);
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.6); }
+
+/* ============================================================
+   PRINT STYLES
+   ============================================================ */
+@media print {
+  body * { visibility: hidden; }
+  #printable-receipt-modal, #printable-receipt-modal *,
+  #printable-summary-modal, #printable-summary-modal * { visibility: visible; }
+  #printable-receipt-modal, #printable-summary-modal {
+    position: absolute; left: 0; top: 0;
+    width: 100%; margin: 0; padding: 0;
+    box-shadow: none; background: white;
+  }
 }
 
-/* Printable styles */
-@media print {
-  body * {
-    visibility: hidden;
-  }
-  #printable-receipt-modal, #printable-receipt-modal *,
-  #printable-summary-modal, #printable-summary-modal * {
-    visibility: visible;
-  }
-  #printable-receipt-modal, #printable-summary-modal {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    box-shadow: none;
-    background: white;
-  }
-}

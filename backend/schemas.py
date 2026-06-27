@@ -282,3 +282,45 @@ class RecommendationResponse(BaseModel):
     recommendations: List[RecommendationItem]
     explanation: str
 
+
+# AI Consultation & Prescription Suggester Schemas
+class AISuggestRequest(BaseModel):
+    chief_complaints: str
+    diagnosis: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+
+class AISuggestResponse(BaseModel):
+    diagnosis: str
+    medicines_list: str
+    tests_list: str
+    advice: str
+    follow_up_date: str
+
+
+# AI Billing Anomaly Checker Schemas
+class BillItemAnomaly(BaseModel):
+    service_name: str
+    amount: float
+
+class AnomalyCheckRequest(BaseModel):
+    items: List[BillItemAnomaly]
+    patient_age: Optional[int] = None
+    patient_gender: Optional[str] = None
+    diagnosis: Optional[str] = None
+
+class AnomalyCheckResponse(BaseModel):
+    status: str  # "clear" | "warning" | "critical"
+    issues: List[str]
+    summary: str
+    safe_to_proceed: bool
+
+
+# AI Dashboard Insight Schema
+class AIInsightResponse(BaseModel):
+    insight: str
+    action: str
+    metric_highlight: str
+    sentiment: str  # "positive" | "neutral" | "negative"
+
+

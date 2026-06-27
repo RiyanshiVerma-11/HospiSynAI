@@ -39,12 +39,28 @@ The entire stack is containerized and orchestrates seamlessly with a single comm
 
 ## 🏗️ Project Architecture
 
+HospiSynAI is built as a decoupled, multi-container system that orchestrates a frontend client, a REST API server, and a relational database.
+
 ```mermaid
 graph TD
-    Client[React Frontend - Vite/Tailwind] -->|HTTP / JSON / JWT| API[FastAPI Backend - Python 3.10]
-    API -->|SQLAlchemy ORM| DB[(PostgreSQL 15)]
-    API -->|ReportLab| PDF[PDF Receipts / receipts_data volume]
-    API -->|Pandas / openpyxl| Excel[In-Memory Excel / CSV Exports]
+    subgraph Frontend Container
+        React[React client - Vite] --> Tailwind[Tailwind CSS Styling]
+        React --> Router[App.jsx Router & Tab Navigator]
+    end
+
+    subgraph Backend Container
+        API[FastAPI Backend - Python 3.10] --> Auth[JWT & bcrypt RBAC Guard]
+        API --> PDF[ReportLab A5 Receipt Engine]
+        API --> Excel[Pandas Ledger Streamer]
+        API --> AI[Groq Llama-3.3 Client]
+    end
+
+    subgraph Database Container
+        DB[(PostgreSQL 15 DB)]
+    end
+
+    React -->|HTTP / REST + Bearer JWT| API
+    API -->|SQLAlchemy ORM| DB
 ```
 
 ### File Structure
@@ -115,23 +131,62 @@ On first startup, the database is automatically seeded with three accounts repre
 > [!WARNING]
 > These credentials are seeded for development and evaluation purposes. For production deployments, change these passwords immediately.
 
+### Security & Role-Based Access Control (RBAC)
+
+The backend implements JWT token-based authentication and role-based checks using FastAPI dependency injections (specifically `auth.RoleChecker`).
+
+| Feature / Workspace | Admin | Accountant | Receptionist | Implementation Details |
+| :--- | :---: | :---: | :---: | :--- |
+| **User Management** | ✅ | ❌ | ❌ | Restricted by `RoleChecker(["Admin"])` |
+| **Hospital Branding Settings** | ✅ | ❌ | ❌ | Restricted by `RoleChecker(["Admin"])` |
+| **Audit Logs** | ✅ | ❌ | ❌ | Restricted by `RoleChecker(["Admin"])` |
+| **Catalog Price Adjustments** | ✅ | ❌ | ❌ | Restricted by `RoleChecker(["Admin"])` |
+| **Soft Delete Patients/Bills** | ✅ | ❌ | ❌ | Restricted by `RoleChecker(["Admin"])` |
+| **Financial KPI Dashboard** | ✅ | ✅ | ❌ | Restricted by `RoleChecker(["Admin", "Accountant"])` |
+| **Spreadsheet Exports (Excel/CSV)** | ✅ | ✅ | ❌ | Restricted by `RoleChecker(["Admin", "Accountant"])` |
+| **Invoice Settlements & Refunds** | ✅ | ✅ | ❌ | Restricted by `RoleChecker(["Admin", "Accountant"])` |
+| **Patient Registration & Visits** | ✅ | ❌ | ✅ | Restricted by `RoleChecker(["Admin", "Receptionist"])` |
+| **Billing Builder (Bill Queue)** | ✅ | ❌ | ✅ | Restricted by `RoleChecker(["Admin", "Receptionist"])` |
+
 ---
 
 ## 🛠️ Relational Database Schema Design
 
-The PostgreSQL database contains the following tables:
+The PostgreSQL database is fully normalized and handles cascading deletions, soft-delete statuses, dynamic branding parameters, and audit trails.
+
+### Entity Relationship Diagram (ERD)
+
+```mermaid
+erDiagram
+    users ||--o{ bills : "creates"
+    users ||--o{ payments : "records"
+    users ||--o{ refunds : "handles"
+    users ||--o{ audit_logs : "triggers"
+    patients ||--o{ visits : "makes"
+    doctors ||--o{ visits : "attends"
+    visits ||--o{ bills : "invoices"
+    visits ||--o{ payments : "collects advance"
+    bills ||--o{ bill_items : "contains"
+    bills ||--o{ payments : "receives settlement"
+    payments ||--o{ receipts : "generates"
+    payments ||--o{ refunds : "reverts"
+    services ||--o{ bill_items : "references"
+```
+
+### Table Schema Definitions
 
 1. `users`: Stores staff authentication credentials (hashed using bcrypt) and role configurations.
 2. `patients`: Core profile table (`patient_id` matches format `PAT-YYYYMMDD-XXXXX`). Contains `is_active` soft-delete index.
-3. `visits`: Index tracking patient entries (`visit_id` formatted `VIS-YYYYMMDD-XXXXX`).
-4. `services`: Price book representing standard hospital rates (OPD registration, ICU bed rent, MRIs, etc.).
-5. `bills`: Financial invoice records (`bill_id` formatted `BILL-YYYYMMDD-XXXXX`) detailing total billed amounts, applied visit advances, remaining outstanding balances, and payment statuses (`Pending`, `Partial Paid`, `Paid`).
-6. `bill_items`: Individual invoice lines referencing standard service IDs, capturing price snapshot at billing.
-7. `payments`: Logs transactions (`payment_id` formatted `PAY-YYYYMMDD-XXXXX`). Links to visit for advance deposits or bill for invoice payments. Stores method (Cash, UPI, etc.), reference notes, and type.
-8. `receipts`: Connects completed payments to customized template paths and generated PDFs (`receipt_id` formatted `REC-YYYYMMDD-XXXXX`).
-9. `refunds`: Outflow tracking table (`refund_id` formatted `REF-YYYYMMDD-XXXXX`) mapping adjustments back to the original transaction.
-10. `settings`: Key-value configuration dictionary storing logo headers, doctor names, addresses, contacts, and tax info.
-11. `audit_logs`: Chronological log entries mapping actions to user sessions.
+3. `doctors`: Stores medical practitioners' information (name, qualifications).
+4. `visits`: Index tracking patient entries (`visit_id` formatted `VIS-YYYYMMDD-XXXXX`). Contains symptoms, diagnosis, and prescription details.
+5. `services`: Price book representing standard hospital rates (OPD registration, ICU bed rent, MRIs, etc.).
+6. `bills`: Financial invoice records (`bill_id` formatted `BILL-YYYYMMDD-XXXXX`) detailing total billed amounts, applied visit advances, remaining outstanding balances, and payment statuses (`Pending`, `Partial Paid`, `Paid`).
+7. `bill_items`: Individual invoice lines referencing standard service IDs, capturing price snapshot at billing.
+8. `payments`: Logs transactions (`payment_id` formatted `PAY-YYYYMMDD-XXXXX`). Links to visit for advance deposits or bill for invoice payments. Stores method (Cash, UPI, etc.), reference notes, and type.
+9. `receipts`: Connects completed payments to customized template paths and generated PDFs (`receipt_id` formatted `REC-YYYYMMDD-XXXXX`).
+10. `refunds`: Outflow tracking table (`refund_id` formatted `REF-YYYYMMDD-XXXXX`) mapping adjustments back to the original transaction.
+11. `settings`: Key-value configuration dictionary storing logo headers, doctor names, addresses, contacts, and tax info.
+12. `audit_logs`: Chronological log entries mapping actions to user sessions.
 
 ---
 
