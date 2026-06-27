@@ -2,15 +2,30 @@ import os
 import datetime
 from reportlab.lib.pagesizes import A5, landscape
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Paragraph as RLParagraph
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.graphics.shapes import Drawing, Line, Rect, String as DString
 from sqlalchemy.orm import Session
 import models
+import re
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
 devanagari_registered = False
+
+def wrap_devanagari(text: str, font_name: str = "Devanagari") -> str:
+    if not devanagari_registered or not text:
+        return text
+    # Match sequences of Devanagari characters: range \u0900-\u097f
+    pattern = re.compile(r'([\u0900-\u097F]+(?:[ \t\r\n\xa0\u200d\u200c]*[\u0900-\u097F]+)*)')
+    return pattern.sub(f'<font name="{font_name}">\\1</font>', text)
+
+def Paragraph(text, style, *args, **kwargs):
+    if not isinstance(text, str):
+        text = str(text)
+    wrapped_text = wrap_devanagari(text)
+    return RLParagraph(wrapped_text, style, *args, **kwargs)
 font_bold_path = None
 
 # Try to find and register a Devanagari-supporting font
@@ -193,8 +208,8 @@ def generate_receipt_pdf(payment: models.Payment, db: Session, output_path: str)
 
     styles = getSampleStyleSheet()
     
-    normal_font = 'Devanagari' if devanagari_registered else 'Helvetica'
-    bold_font = 'Devanagari-Bold' if (devanagari_registered and font_bold_path) else (normal_font if devanagari_registered else 'Helvetica-Bold')
+    normal_font = 'Helvetica'
+    bold_font = 'Helvetica-Bold'
 
     # Custom styles
     style_normal = ParagraphStyle('DocNormal', parent=styles['Normal'], fontName=normal_font, fontSize=8, leading=10, textColor=colors.HexColor('#374151'))
@@ -383,8 +398,8 @@ def generate_prescription_pdf(visit: models.Visit, db: Session, output_path: str
 
     styles = getSampleStyleSheet()
     
-    normal_font = 'Devanagari' if devanagari_registered else 'Helvetica'
-    bold_font = 'Devanagari-Bold' if (devanagari_registered and font_bold_path) else (normal_font if devanagari_registered else 'Helvetica-Bold')
+    normal_font = 'Helvetica'
+    bold_font = 'Helvetica-Bold'
 
     # Custom styles
     style_normal = ParagraphStyle('PrescNormal', parent=styles['Normal'], fontName=normal_font, fontSize=9.5, leading=13.5, textColor=colors.HexColor('#374151'))

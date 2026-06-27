@@ -410,7 +410,7 @@ export default function PatientSearchTab({
   };
 
   const handleDownloadPrescription = async (visitId) => {
-    const targetVisitId = visitId || selectedVisit?.id;
+    const targetVisitId = (typeof visitId === 'string' || typeof visitId === 'number') ? visitId : selectedVisit?.id;
     if (!targetVisitId) return;
     setDownloadPrescriptionLoading(true);
     try {
@@ -1454,7 +1454,7 @@ export default function PatientSearchTab({
                 <>
                   <button
                     type="button"
-                    onClick={handleDownloadPrescription}
+                    onClick={() => handleDownloadPrescription(selectedVisit?.id)}
                     disabled={downloadPrescriptionLoading}
                     className="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2.5 px-5 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 text-xs active:scale-95 disabled:opacity-50"
                   >
