@@ -187,6 +187,11 @@ export default function PatientSearchTab({
   const [downloadPrescriptionLoading, setDownloadPrescriptionLoading] = React.useState(false);
   const STATIC_BASE = import.meta.env.VITE_STATIC_BASE_URL || 'http://localhost:5000';
 
+  // Story View State
+  const [showStoryModal, setShowStoryModal] = React.useState(false);
+  const [storyVisit, setStoryVisit] = React.useState(null);
+  const [summaryTab, setSummaryTab] = React.useState('clinical'); // 'clinical' | 'story'
+
   const runAnomalyCheck = async (visit) => {
     if (billItems.length === 0) {
       showToast("Add some items to the bill before running an audit.", "warning");
@@ -335,6 +340,7 @@ export default function PatientSearchTab({
 
   const handleOpenSummary = (visit) => {
     setSelectedVisit(visit);
+    setSummaryTab('clinical');
     setSummaryForm({
       diagnosis: visit.diagnosis || '',
       chief_complaints: visit.chief_complaints || '',
@@ -348,6 +354,11 @@ export default function PatientSearchTab({
     setMedicineSearch('');
     setMedicineSuggestions([]);
     setShowSummaryModal(true);
+  };
+
+  const handleOpenStory = (visit) => {
+    setStoryVisit(visit);
+    setShowStoryModal(true);
   };
 
   const handleSaveSummary = async (e) => {
@@ -558,7 +569,16 @@ export default function PatientSearchTab({
                               <FileText className="w-3 h-3" />
                               <span>Clinical Notes & AI Summary</span>
                             </button>
-
+                            {vis.patient_summary && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenStory(vis)}
+                                className="bg-gradient-to-r from-violet-50 to-purple-50 hover:from-violet-100 hover:to-purple-100 text-violet-700 border border-violet-200 font-bold text-xs px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 active:scale-95 shadow-sm"
+                              >
+                                <Sparkles className="w-3 h-3" />
+                                <span>Patient Story</span>
+                              </button>
+                            )}
                           </div>
                           <p className="font-bold text-slate-900 text-sm mt-0.5">Reason: {vis.reason || 'Not Specified'}</p>
                           {vis.doctor && (
@@ -1399,23 +1419,132 @@ export default function PatientSearchTab({
                         </div>
                       </div>
                     </div>
-                  ) : summaryForm.patient_summary ? (
-                    <div className="mt-4 flex-1 flex flex-col">
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-xs text-slate-500 font-extrabold uppercase tracking-wider">Generated Summary (Editable)</label>
-                        <span className="flex items-center gap-1 bg-violet-50 border border-violet-100 text-violet-600 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                          <span className="w-1 h-1 rounded-full bg-violet-500 animate-pulse" />
-                          EN + हिंदी Bilingual
-                        </span>
+                  ) : summaryForm.patient_summary ? (() => {
+                    // Parse the structured storytelling output into visual sections
+                    // Handles both old format [English Summary] and new [English Storytelling Summary]
+                    const raw = summaryForm.patient_summary;
+                    const englishMatch = raw.match(/\[English(?:[^\]]*Summary|\s+Storytelling\s+Summary)\]([\s\S]*?)(?=\[Hindi|$)/i);
+                    const hindiMatch = raw.match(/\[Hindi\s*Summary[\s\S]*?\]([\s\S]*?)$/i);
+                    const englishText = englishMatch ? englishMatch[1].trim() : '';
+                    const hindiText = hindiMatch ? hindiMatch[1].trim() : '';
+                    // isStructured: detect either plain "Morning:" or emoji-prefixed "☀️ Morning:"
+                    const isStructured = englishText && (
+                      /morning:/i.test(englishText) || /night:/i.test(englishText)
+                    );
+
+                    // parseSection: handles labels with or without leading emoji (e.g. "☀️ Morning" or plain "Morning")
+                    // Also handles "सुबह (Morning):" where the label has a parenthetical annotation
+                    const parseSection = (text, labels) => {
+                      const result = {};
+                      for (const label of labels) {
+                        // Match: optional non-word/non-newline prefix, then label, then optional annotation chars (not : or \n), then :
+                        const regex = new RegExp(`(?:[^\\w\\n]*)?${label}[^:\\n]*:[^\\S\\n]*(.+?)(?=\\n[^\\n]*:|$)`, 'is');
+                        const m = text.match(regex);
+                        result[label] = m ? m[1].trim() : null;
+                      }
+                      // greeting = first line before any labeled section
+                      const firstLabel = labels.find(l => new RegExp(l + '[^:\\n]*:', 'i').test(text));
+                      if (firstLabel) {
+                        const splitIdx = text.search(new RegExp(`[^\\n]*${firstLabel}[^:\\n]*:`, 'i'));
+                        if (splitIdx > 0) {
+                          result['greeting'] = text.slice(0, splitIdx).trim().split('\n').filter(Boolean).join(' ');
+                        }
+                      }
+                      return result;
+                    };
+
+                    const enSections = parseSection(englishText, ['Morning', 'Afternoon', 'Night', 'Watch Out For']);
+                    // Hindi new labels: "सुबह (Morning)", "दोपहर (Afternoon)", "रात (Night)", "इन बातों का ध्यान रखें"
+                    // Also support old Hindi labels: Subah, Dopahar, Raat, Dhyan Rakhein
+                    const hiSections = parseSection(hindiText, [
+                      'सुबह', 'दोपहर', 'रात', 'इन बातों का ध्यान रखें',
+                      'Subah', 'Dopahar', 'Raat', 'Dhyan Rakhein'
+                    ]);
+
+                    const slotConfig = [
+                      { key: 'Morning', emoji: '☀️', label: 'Morning', color: 'from-amber-50 to-orange-50', border: 'border-amber-200', badge: 'bg-amber-100 text-amber-700' },
+                      { key: 'Afternoon', emoji: '🌤️', label: 'Afternoon', color: 'from-sky-50 to-blue-50', border: 'border-sky-200', badge: 'bg-sky-100 text-sky-700' },
+                      { key: 'Night', emoji: '🌙', label: 'Night', color: 'from-indigo-50 to-violet-50', border: 'border-indigo-200', badge: 'bg-indigo-100 text-indigo-700' },
+                      { key: 'Watch Out For', emoji: '⚠️', label: 'Watch Out For', color: 'from-rose-50 to-red-50', border: 'border-rose-200', badge: 'bg-rose-100 text-rose-700' },
+                    ];
+
+                    // Hindi slot config: new labels take priority, fallback to old romanized keys
+                    const hiSlotConfig = [
+                      { key: 'सुबह', fallbackKey: 'Subah', emoji: '☀️', label: 'सुबह', color: 'from-amber-50 to-orange-50', border: 'border-amber-200' },
+                      { key: 'दोपहर', fallbackKey: 'Dopahar', emoji: '🌤️', label: 'दोपहर', color: 'from-sky-50 to-blue-50', border: 'border-sky-200' },
+                      { key: 'रात', fallbackKey: 'Raat', emoji: '🌙', label: 'रात', color: 'from-indigo-50 to-violet-50', border: 'border-indigo-200' },
+                      { key: 'इन बातों का ध्यान रखें', fallbackKey: 'Dhyan Rakhein', emoji: '⚠️', label: 'ध्यान रखें', color: 'from-rose-50 to-red-50', border: 'border-rose-200' },
+                    ];
+
+                    return (
+                      <div className="mt-3 flex-1 flex flex-col space-y-3 overflow-y-auto">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-slate-500 font-extrabold uppercase tracking-wider">AI Storytelling Summary</label>
+                          <span className="flex items-center gap-1 bg-violet-50 border border-violet-100 text-violet-600 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            <span className="w-1 h-1 rounded-full bg-violet-500 animate-pulse" />
+                            EN + हिंदी Daily Routine
+                          </span>
+                        </div>
+
+                        {isStructured ? (
+                          <div className="space-y-2">
+                            {/* English greeting */}
+                            {enSections.greeting && (
+                              <p className="text-xs text-teal-800 font-semibold italic bg-teal-50 border border-teal-100 rounded-xl px-3 py-2 leading-relaxed">
+                                💬 {enSections.greeting}
+                              </p>
+                            )}
+                            {/* English daily slots */}
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {slotConfig.map(slot => enSections[slot.key] && (
+                                <div key={slot.key} className={`bg-gradient-to-br ${slot.color} border ${slot.border} rounded-xl p-2.5`}>
+                                  <div className={`text-[9px] font-extrabold uppercase tracking-wider mb-1 flex items-center gap-1 ${slot.badge} w-fit px-1.5 py-0.5 rounded-full`}>
+                                    <span>{slot.emoji}</span> {slot.label}
+                                  </div>
+                                  <p className="text-[10px] text-slate-700 leading-relaxed font-medium">{enSections[slot.key]}</p>
+                                </div>
+                              ))}
+                            </div>
+
+                            {hindiText && (
+                              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                                <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider mb-2">हिंदी सारांश</p>
+                                <div className="space-y-1">
+                                  {hiSlotConfig.map(slot => {
+                                    const val = hiSections[slot.key] || hiSections[slot.fallbackKey];
+                                    return val ? (
+                                      <div key={slot.key} className={`flex gap-2 items-start`}>
+                                        <span className="text-[10px] font-bold text-slate-500 w-20 shrink-0">{slot.emoji} {slot.label}:</span>
+                                        <p className="text-[10px] text-slate-700 leading-relaxed">{val}</p>
+                                      </div>
+                                    ) : null;
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          // Fallback for old-format summaries: plain styled display
+                          <div className="bg-white border border-slate-200 rounded-xl p-3 text-[11px] text-slate-700 leading-relaxed whitespace-pre-wrap font-medium" style={{borderLeft: '3px solid #14b8a6', minHeight:'120px'}}>
+                            {summaryForm.patient_summary}
+                          </div>
+                        )}
+
+                        {/* Editable raw textarea for doctor edits */}
+                        <details className="group">
+                          <summary className="cursor-pointer text-[9px] text-slate-400 font-bold uppercase tracking-wider hover:text-slate-600 transition-colors select-none">
+                            ✏️ Edit Raw Summary
+                          </summary>
+                          <textarea
+                            className="mt-1 w-full bg-white border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:border-teal-500 font-medium transition-all resize-none leading-relaxed text-slate-700"
+                            style={{borderLeft: '3px solid #14b8a6', minHeight:'120px'}}
+                            value={summaryForm.patient_summary}
+                            onChange={(e) => setSummaryForm({ ...summaryForm, patient_summary: e.target.value })}
+                          />
+                        </details>
                       </div>
-                      <textarea
-                        className="w-full flex-1 bg-white border border-slate-200 rounded-xl p-3 text-xs placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all resize-none leading-relaxed text-slate-700"
-                        style={{borderLeft: '3px solid #14b8a6', minHeight:'160px'}}
-                        value={summaryForm.patient_summary}
-                        onChange={(e) => setSummaryForm({ ...summaryForm, patient_summary: e.target.value })}
-                      />
-                    </div>
-                  ) : (
+                    );
+                  })() : (
                     <div className="flex-1 flex flex-col items-center justify-center py-10 text-center px-4 space-y-4">
                       <div className="bg-teal-50 p-4 rounded-full border border-teal-100">
                         <Brain className="w-8 h-8 text-teal-600" />
@@ -1574,17 +1703,85 @@ export default function PatientSearchTab({
               </div>
             )}
 
-            {summaryForm.patient_summary && (
-              <div className="bg-teal-50 border border-teal-200 p-4 rounded-xl mt-6">
-                <h3 className="text-xs font-bold text-teal-700 uppercase tracking-wider mb-2 flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-                  Patient-Friendly Consultation Summary
-                </h3>
-                <div className="text-xs text-slate-700 whitespace-pre-line leading-relaxed font-medium">
-                  {summaryForm.patient_summary}
+            {summaryForm.patient_summary && (() => {
+              const _raw = summaryForm.patient_summary;
+              const _enMatch = _raw.match(/\[English(?:[^\]]*Summary|\s+Storytelling\s+Summary)\]([\s\S]*?)(?=\[Hindi|$)/i);
+              const _hiMatch = _raw.match(/\[Hindi\s*Summary[\s\S]*?\]([\s\S]*?)$/i);
+              const _enText = _enMatch ? _enMatch[1].trim() : '';
+              const _hiText = _hiMatch ? _hiMatch[1].trim() : '';
+              const _isStruct = _enText && (/morning:/i.test(_enText) || /night:/i.test(_enText));
+              const _slot = (text, label) => {
+                // Handle labels with optional parenthetical annotations, e.g. "सुबह (Morning):"
+                const m = text.match(new RegExp(`(?:[^\\w\\n]*)?${label}[^:\\n]*:[^\\S\\n]*(.+?)(?=\\n[^\\n]*:|$)`, 'is'));
+                return m ? m[1].trim() : null;
+              };
+              const _greet = (text, labels) => {
+                for (const l of labels) {
+                  const idx = text.search(new RegExp(`[^\\n]*${l}[^:\\n]*:`, 'i'));
+                  if (idx > 0) return text.slice(0, idx).trim().split('\n').filter(Boolean).join(' ');
+                }
+                return '';
+              };
+              if (_isStruct) {
+                const eg = _greet(_enText, ['Morning','Afternoon','Night','Watch Out For']);
+                const printEnSlots = [
+                  { emoji: '\u2600\uFE0F', label: 'Morning', content: _slot(_enText, 'Morning'), color: '#fffbeb', border: '#fcd34d' },
+                  { emoji: '\uD83C\uDF24\uFE0F', label: 'Afternoon', content: _slot(_enText, 'Afternoon'), color: '#eff6ff', border: '#93c5fd' },
+                  { emoji: '\uD83C\uDF19', label: 'Night', content: _slot(_enText, 'Night'), color: '#eef2ff', border: '#a5b4fc' },
+                  { emoji: '\u26A0\uFE0F', label: 'Watch Out For', content: _slot(_enText, 'Watch Out For'), color: '#fff1f2', border: '#fca5a5' },
+                ].filter(s => s.content);
+                const hg = _greet(_hiText, ['\u0938\u0941\u092C\u0939','\u0926\u094B\u092A\u0939\u0930','\u0930\u093E\u0924','Subah','Dopahar','Raat']);
+                const printHiSlots = [
+                  { emoji: '\u2600\uFE0F', label: '\u0938\u0941\u092C\u0939', content: _slot(_hiText, '\u0938\u0941\u092C\u0939') || _slot(_hiText, 'Subah') },
+                  { emoji: '\uD83C\uDF24\uFE0F', label: '\u0926\u094B\u092A\u0939\u0930', content: _slot(_hiText, '\u0926\u094B\u092A\u0939\u0930') || _slot(_hiText, 'Dopahar') },
+                  { emoji: '\uD83C\uDF19', label: '\u0930\u093E\u0924', content: _slot(_hiText, '\u0930\u093E\u0924') || _slot(_hiText, 'Raat') },
+                  { emoji: '\u26A0\uFE0F', label: '\u0927\u094D\u092F\u093E\u0928 \u0930\u0916\u0947\u0902', content: _slot(_hiText, '\u0907\u0928 \u092C\u093E\u0924\u094B\u0902 \u0915\u093E \u0927\u094D\u092F\u093E\u0928 \u0930\u0916\u0947\u0902') || _slot(_hiText, 'Dhyan Rakhein') },
+                ].filter(s => s.content);
+                return (
+                  <div className="bg-teal-50 border border-teal-200 p-4 rounded-xl mt-6">
+                    <h3 className="text-xs font-bold text-teal-700 uppercase tracking-wider mb-3 flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                      Patient Daily Routine — AI Generated
+                    </h3>
+                    {eg && <p className="text-xs italic text-teal-800 font-medium mb-3 leading-relaxed">\uD83D\uDCAC {eg}</p>}
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      {printEnSlots.map(s => (
+                        <div key={s.label} style={{background: s.color, borderLeft: `3px solid ${s.border}`}} className="p-2 rounded-lg">
+                          <p className="text-[10px] font-extrabold text-slate-700 mb-0.5">{s.emoji} {s.label}</p>
+                          <p className="text-[10px] text-slate-700 leading-relaxed">{s.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {printHiSlots.length > 0 && (
+                      <div className="border-t border-teal-200 pt-3">
+                        <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider mb-2">\u0939\u093F\u0902\u0926\u0940 \u0938\u093E\u0930\u093E\u0902\u0936</p>
+                        {hg && <p className="text-[10px] italic text-teal-700 font-medium mb-1.5">{hg}</p>}
+                        <div className="space-y-1">
+                          {printHiSlots.map(s => (
+                            <div key={s.label} className="flex gap-2">
+                              <span className="text-[10px] font-bold text-slate-500 w-16 shrink-0">{s.emoji} {s.label}:</span>
+                              <p className="text-[10px] text-slate-700 leading-relaxed">{s.content}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              // Fallback for old/unstructured summaries
+              return (
+                <div className="bg-teal-50 border border-teal-200 p-4 rounded-xl mt-6">
+                  <h3 className="text-xs font-bold text-teal-700 uppercase tracking-wider mb-2 flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                    Patient-Friendly Consultation Summary
+                  </h3>
+                  <div className="text-xs text-slate-700 whitespace-pre-line leading-relaxed font-medium">
+                    {summaryForm.patient_summary}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Footer signoff */}
@@ -1600,6 +1797,166 @@ export default function PatientSearchTab({
           </div>
         </div>
       )}
+      {/* ───── Patient Story Modal ───── */}
+      {showStoryModal && storyVisit && (() => {
+        const raw = storyVisit.patient_summary || '';
+        const engMatch = raw.match(/\[English(?:[^\]]*Summary|\s+Storytelling\s+Summary)\]([\s\S]*?)(?=\[Hindi|$)/i);
+        const hinMatch = raw.match(/\[Hindi\s*Summary[\s\S]*?\]([\s\S]*?)$/i);
+        const engText = engMatch ? engMatch[1].trim() : '';
+        const hinText = hinMatch ? hinMatch[1].trim() : '';
+        const isStructured = engText && (/morning:/i.test(engText) || /night:/i.test(engText));
+
+        const parseSlot = (text, label) => {
+          // Handle labels with optional parenthetical annotations, e.g. "सुबह (Morning):"
+          const m = text.match(new RegExp(`(?:[^\\w\\n]*)?${label}[^:\\n]*:[^\\S\\n]*(.+?)(?=\\n[^\\n]*:|$)`, 'is'));
+          return m ? m[1].trim() : null;
+        };
+        const parseGreeting = (text, labels) => {
+          for (const l of labels) {
+            const idx = text.search(new RegExp(`[^\\n]*${l}[^:\\n]*:`, 'i'));
+            if (idx > 0) return text.slice(0, idx).trim().split('\n').filter(Boolean).join(' ');
+          }
+          return '';
+        };
+
+        const enGreeting  = parseGreeting(engText, ['Morning','Afternoon','Night','Watch Out For']);
+        const enMorning   = parseSlot(engText, 'Morning');
+        const enAfternoon = parseSlot(engText, 'Afternoon');
+        const enNight     = parseSlot(engText, 'Night');
+        const enWatch     = parseSlot(engText, 'Watch Out For');
+        const hiGreeting  = parseGreeting(hinText, ['\u0938\u0941\u092C\u0939','\u0926\u094B\u092A\u0939\u0930','\u0930\u093E\u0924','Subah','Dopahar','Raat','Dhyan Rakhein']);
+        const hiSubah     = parseSlot(hinText, '\u0938\u0941\u092C\u0939') || parseSlot(hinText, 'Subah');
+        const hiDopahar   = parseSlot(hinText, '\u0926\u094B\u092A\u0939\u0930') || parseSlot(hinText, 'Dopahar');
+        const hiRaat      = parseSlot(hinText, '\u0930\u093E\u0924') || parseSlot(hinText, 'Raat');
+        const hiDhyan     = parseSlot(hinText, '\u0907\u0928 \u092C\u093E\u0924\u094B\u0902 \u0915\u093E \u0927\u094D\u092F\u093E\u0928 \u0930\u0916\u0947\u0902') || parseSlot(hinText, 'Dhyan Rakhein');
+
+        const enSlots = [
+          { emoji: '☀️', label: 'Morning',      content: enMorning,   bg: 'from-amber-400 to-orange-400',   shadow: 'shadow-amber-200',   badge: 'bg-amber-100 text-amber-800' },
+          { emoji: '🌤️', label: 'Afternoon',    content: enAfternoon, bg: 'from-sky-400 to-cyan-400',       shadow: 'shadow-sky-200',     badge: 'bg-sky-100 text-sky-800' },
+          { emoji: '🌙', label: 'Night',         content: enNight,     bg: 'from-indigo-500 to-violet-500',  shadow: 'shadow-indigo-200',  badge: 'bg-indigo-100 text-indigo-800' },
+          { emoji: '⚠️', label: 'Watch Out For', content: enWatch,     bg: 'from-rose-400 to-pink-400',      shadow: 'shadow-rose-200',    badge: 'bg-rose-100 text-rose-800' },
+        ].filter(s => s.content);
+
+        const hiSlots = [
+          { emoji: '☀️', label: 'सुबह',         content: hiSubah },
+          { emoji: '🌤️', label: 'दोपहर',       content: hiDopahar },
+          { emoji: '🌙', label: 'रात',           content: hiRaat },
+          { emoji: '⚠️', label: 'ध्यान रखें',   content: hiDhyan },
+        ].filter(s => s.content);
+
+        return (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+            style={{ background: 'rgba(15,23,42,0.85)', backdropFilter: 'blur(8px)' }}
+            onClick={(e) => { if (e.target === e.currentTarget) setShowStoryModal(false); }}
+          >
+            <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-y-auto shadow-2xl flex flex-col">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-violet-600 to-purple-600 rounded-t-3xl px-6 py-5 flex justify-between items-start">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Sparkles className="w-5 h-5 text-white/80" />
+                    <span className="text-[10px] font-extrabold text-white/70 uppercase tracking-widest">AI Patient Story</span>
+                  </div>
+                  <h2 className="text-white text-xl font-black leading-tight">
+                    {selectedPatient?.name || storyVisit.reason || 'Your Daily Routine'}
+                  </h2>
+                  <p className="text-white/70 text-xs font-semibold mt-0.5">
+                    Visit: {storyVisit.visit_id} &nbsp;·&nbsp; {new Date(storyVisit.visit_date).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}
+                    {storyVisit.doctor && ` · Dr. ${storyVisit.doctor.name}`}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowStoryModal(false)}
+                  className="text-white/70 hover:text-white transition-colors text-2xl font-light leading-none mt-0.5"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="p-6 space-y-5">
+                {/* Greeting card */}
+                {(enGreeting || !isStructured) && (
+                  <div className="bg-teal-50 border border-teal-100 rounded-2xl px-5 py-4">
+                    <p className="text-sm text-teal-800 font-semibold leading-relaxed italic">
+                      💬 {isStructured ? enGreeting : raw.substring(0, 200)}
+                    </p>
+                  </div>
+                )}
+
+                {/* English daily slots */}
+                {isStructured && enSlots.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3">Your Daily Medicine Routine (English)</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {enSlots.map(slot => (
+                        <div key={slot.label} className={`rounded-2xl p-4 shadow-lg ${slot.shadow} overflow-hidden relative`}>
+                          <div className={`absolute inset-0 bg-gradient-to-br ${slot.bg} opacity-10 rounded-2xl`} />
+                          <div className={`relative z-10`}>
+                            <div className={`inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full mb-2.5 ${slot.badge}`}>
+                              <span className="text-sm">{slot.emoji}</span>
+                              {slot.label}
+                            </div>
+                            <p className="text-sm text-slate-800 font-semibold leading-relaxed">{slot.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Hindi section */}
+                {isStructured && hiSlots.length > 0 && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5">
+                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3">हिंदी सारांश (Hindi Summary)</p>
+                    {hiGreeting && (
+                      <p className="text-sm text-teal-700 font-semibold italic mb-4 leading-relaxed">💬 {hiGreeting}</p>
+                    )}
+                    <div className="space-y-3">
+                      {hiSlots.map(slot => (
+                        <div key={slot.label} className="flex items-start gap-3 py-2 border-b border-slate-100 last:border-b-0">
+                          <span className="text-xl shrink-0 mt-0.5">{slot.emoji}</span>
+                          <div>
+                            <span className="text-xs font-extrabold text-slate-600 uppercase tracking-wider">{slot.label}</span>
+                            <p className="text-sm text-slate-700 font-medium leading-relaxed mt-0.5">{slot.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Fallback plain text */}
+                {!isStructured && raw && (
+                  <div className="bg-white border border-slate-200 rounded-2xl p-5 whitespace-pre-wrap text-sm text-slate-700 leading-relaxed font-medium" style={{borderLeft:'4px solid #14b8a6'}}>
+                    {raw}
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                <div className="flex gap-3 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => { setShowStoryModal(false); handleDownloadPrescription(storyVisit.id); }}
+                    className="flex-1 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white text-sm font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download Prescription PDF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowStoryModal(false); handleOpenSummary(storyVisit); }}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold py-3 px-4 rounded-xl transition-all flex items-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Edit Notes
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

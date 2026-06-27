@@ -404,8 +404,8 @@ async def update_visit_summary(
                 detail="Groq API key is not configured. Please set GROQ_API_KEY in your .env file."
             )
         
-        # Structured prompt with red-flag detection
-        prompt = f"""You are a compassionate, senior medical assistant helping Indian hospital patients understand their doctor's consultation.
+        # Storytelling prompt — structured daily routine narrative with emojis
+        prompt = f"""You are a compassionate, senior medical assistant helping Indian hospital patients understand their doctor's consultation. Create a highly visual, easy-to-understand "storytelling" summary of their visit.
 
 Doctor's Clinical Notes:
 - Diagnosis: {visit_update.diagnosis or 'Not specified'}
@@ -416,16 +416,28 @@ Doctor's Clinical Notes:
 - Follow-up: {visit_update.follow_up_date or 'Not specified'}
 
 Your task:
-1. Write a PATIENT-FRIENDLY ENGLISH SUMMARY (4-6 sentences) — simple words, no jargon. Include what was diagnosed, what medicines to take and when, what tests are needed, and what to watch out for.
-2. If any symptoms or medicines indicate URGENT attention (chest pain, breathlessness, high fever, blood pressure extremes), add a ⚠️ RED FLAG WARNING line in English.
-3. Write a HINDI TRANSLATION (हिंदी सारांश) that is simple, warm, and easy to understand for rural/semi-urban patients.
+1. Warm Greeting: A brief, comforting sentence (1-2 lines).
+2. English Storytelling Routine (Your Day at a Glance):
+   - ☀️ Morning: [What medicines to take and why, in plain language — e.g. "Dolo 650mg to bring your fever down, take after breakfast"]
+   - 🌤️ Afternoon: [What to take/do and why, or "Rest well and stay hydrated"]
+   - 🌙 Night: [What to take before bed and why]
+3. Urgent Warnings ⚠️: If any complaint or medicine requires immediate attention (e.g. high fever, chest pain), list them clearly.
+4. Hindi Storytelling Routine using the same warm, simple routine layout.
 
-Strict Output Format (no extra headings, no markdown, follow exactly):
-[English Summary]
-<your English summary here>
+Strict Output Format (follow exactly, do not add extra markdown or headers):
+[English Storytelling Summary]
+<warm greeting>
+☀️ Morning: <details>
+🌤️ Afternoon: <details>
+🌙 Night: <details>
+⚠️ Watch Out For: <warnings or "None — you are on track!">
 
 [Hindi Summary (हिंदी सारांश)]
-<your Hindi summary here>"""
+<greeting in Hindi>
+☀️ सुबह (Morning): <details>
+🌤️ दोपहर (Afternoon): <details>
+🌙 रात (Night): <details>
+⚠️ इन बातों का ध्यान रखें: <warnings or "कोई विशेष चेतावनी नहीं">"""
 
         url = "https://api.groq.com/openai/v1/chat/completions"
         groq_headers = {
@@ -436,7 +448,7 @@ Strict Output Format (no extra headings, no markdown, follow exactly):
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.25,
-            "max_tokens": 800
+            "max_tokens": 1200
         }
 
         try:
@@ -497,8 +509,8 @@ async def ai_suggest_treatment(
     prompt = f"""You are an expert Indian clinical prescribing assistant with 20 years of OPD experience.
 Think step-by-step before prescribing.
 
-Step 1 — DIFFERENTIAL DIAGNOSIS: Based on chief complaints, list 2-3 possible diagnoses (internally). Pick the most likely one.
-Step 2 — DRUG SELECTION: Choose common, affordable Indian generic medicines. Prefer well-known brands (Dolo, Pan, Augmentin, etc.). Check for obvious contraindications based on age.
+Step 1 — DIFFERENTIAL DIAGNOSIS: Based on chief complaints, list 2-3 possible diagnoses (internally). Pick the most likely one. Ensure no contradictory symptoms (e.g., do not suggest treatment for both dry cough and productive cough concurrently).
+Step 2 — DRUG SELECTION & DOSING SAFETY: Choose common, affordable Indian generic/branded medicines. Prefer well-known brands (Dolo, Pan, Augmentin, etc.). 
 Step 3 — TESTS: Only order tests that directly impact treatment decision.
 Step 4 — ADVICE: Give 2-3 practical, actionable lifestyle/home-care tips.
 Step 5 — FOLLOW-UP: Specify exactly when to return or escalate.
@@ -511,13 +523,24 @@ Clinical Input:
 - Chief Complaints: {req.chief_complaints}
 - Working Diagnosis: {req.diagnosis or 'Derive from complaints'}
 
+CLINICAL PRESCRIPTION & DOSING RULES (MANDATORY):
+1. **Augmentin 625mg (Amoxicillin + Clavulanic Acid):** Must ALWAYS be prescribed **BD** (twice daily), NEVER TID, due to GI side effects of Clavulanate.
+2. **Azithromycin (500mg):** Must ALWAYS be prescribed **OD** (once daily) for 3 to 5 days.
+3. **Montek LC (Montelukast + Levocetirizine):** Must ALWAYS be prescribed **OD** (once daily) at bedtime (HS).
+4. **Antacids/PPIs (e.g. Pantoprazole/Pantocid, Pan-D, Omeprazole):** Must be prescribed **OD** (once daily) and taken **AC** (before meals/Khali Pet).
+5. **Dolo 650mg / Paracetamol:** Prescribe **TID** (three times daily) or **SOS** (as needed) for fever/pain, up to 3-4 times a day maximum.
+6. **No Therapeutic Overlap:** Do not prescribe multiple drugs of the same class (e.g., do not prescribe two antihistamines or two NSAIDs).
+7. **Cough Management:** If both dry and productive complaints are present, address the primary diagnosis only (e.g. dry cough remedies for bronchitis/pharyngitis, mucolytics/expectorants for productive cough). Never prescribe a cough suppressant and expectorant together.
+8. **Age Adjustments:** 
+   - If Patient Age < 12: Do not prescribe adult tablets (like Augmentin 625mg or Dolo 650mg). Suggest pediatric suspensions/syrups (e.g., Augmentin DDS suspension, Crocin/Dolo suspension) with body-weight adjusted ml dosages.
+   - If Patient Age > 65: Use conservative geriatric dosing and note hepatic/renal safety.
+
 OUTPUT RULES:
 - Output ONLY a valid JSON object, no markdown, no preamble.
 - medicines_list: number each medicine, include exact dosage + timing + duration (e.g. "1. Dolo 650mg — 1 tab TID after meals for 3 days")
 - tests_list: only clinically necessary tests, numbered
 - advice: 2-3 practical tips, numbered
 - follow_up_date: specific instructions (e.g. "Review in 3 days, or immediately if fever > 103°F")
-- If patient age < 12 or > 65, adjust dosages appropriately and note it.
 
 JSON schema:
 {{

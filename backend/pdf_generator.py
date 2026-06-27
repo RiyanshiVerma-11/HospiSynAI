@@ -517,29 +517,143 @@ def generate_prescription_pdf(visit: models.Visit, db: Session, output_path: str
             story.append(Paragraph(content.strip().replace('\n', '<br/>'), content_style))
             story.append(Spacer(1, 14))
 
-    # 4. Patient-Friendly Bilingual AI Summary Card
+    # 4. Patient-Friendly Storytelling Daily Routine Card
     if visit.patient_summary and visit.patient_summary.strip():
-        story.append(Spacer(1, 5))
-        ai_title = ParagraphStyle('AITitle', parent=style_bold, fontSize=10, textColor=colors.HexColor('#0f766e'))
-        ai_body = ParagraphStyle('AIBody', parent=style_normal, fontSize=9, leading=13, textColor=colors.HexColor('#334155'))
-        
-        ai_content = [
-            Paragraph("<b>PATIENT-FRIENDLY SUMMARY (EN + हिंदी)</b>", ai_title),
-            Spacer(1, 4),
-            Paragraph(visit.patient_summary.strip().replace('\n', '<br/>'), ai_body)
-        ]
-        
-        ai_table = Table([[ai_content]], colWidths=[515])
+        raw_summary = visit.patient_summary.strip()
+
+        # --- Parse structured format ---
+        import re as _re
+        # Handle both old [English Summary] and new [English Storytelling Summary]
+        eng_match = _re.search(r'\[English(?:[^\]]*Summary|\s+Storytelling\s+Summary)\]([\s\S]*?)(?=\[Hindi|$)', raw_summary, _re.IGNORECASE)
+        hin_match = _re.search(r'\[Hindi\s*Summary[\s\S]*?\]([\s\S]*?)$', raw_summary, _re.IGNORECASE)
+        eng_text = eng_match.group(1).strip() if eng_match else ''
+        hin_text = hin_match.group(1).strip() if hin_match else ''
+        is_structured = bool(eng_text and _re.search(r'(morning|night):', eng_text, _re.IGNORECASE))
+
+        story.append(Spacer(1, 8))
+
+        ai_title_style = ParagraphStyle('AITitle2', parent=style_bold, fontSize=9,
+                                        textColor=colors.HexColor('#0f766e'), spaceAfter=4)
+        ai_label_style = ParagraphStyle('AISlotLbl', parent=style_bold, fontSize=8.5,
+                                        textColor=colors.HexColor('#374151'))
+        ai_body_style = ParagraphStyle('AISlotBody', parent=style_normal, fontSize=8.5,
+                                       leading=12, textColor=colors.HexColor('#475569'))
+        ai_hi_label = ParagraphStyle('AIHiLbl', parent=style_bold, fontSize=8,
+                                     textColor=colors.HexColor('#64748b'))
+        ai_hi_body = ParagraphStyle('AIHiBody', parent=style_normal, fontSize=8,
+                                    leading=11.5, textColor=colors.HexColor('#374151'))
+
+        if is_structured:
+            def _slot(text, label, body):
+                # Handles emoji-prefixed labels ("☀️ Morning:") and labels with annotations ("सुबह (Morning):")
+                m = _re.search(rf'(?:[^\w\n]*)?{_re.escape(label)}[^:\n]*:[^\S\n]*(.+?)(?=\n[^\n]*:|$)', text, _re.IGNORECASE | _re.DOTALL)
+                return m.group(1).strip() if m else None
+
+            def _greeting(text, labels):
+                for lbl in labels:
+                    idx = _re.search(rf'[^\n]*{_re.escape(lbl)}[^:\n]*:', text, _re.IGNORECASE)
+                    if idx and idx.start() > 0:
+                        before = text[:idx.start()].strip()
+                        return ' '.join(before.split('\n')).strip()
+                return ''
+
+            en_greeting = _greeting(eng_text, ['Morning', 'Afternoon', 'Night', 'Watch Out For'])
+            en_morning   = _slot(eng_text, 'Morning', ai_body_style)
+            en_afternoon = _slot(eng_text, 'Afternoon', ai_body_style)
+            en_night     = _slot(eng_text, 'Night', ai_body_style)
+            en_watch     = _slot(eng_text, 'Watch Out For', ai_body_style)
+
+            hi_greeting  = _greeting(hin_text, ['\u0938\u0941\u092c\u0939', '\u0926\u094b\u092a\u0939\u0930', '\u0930\u093e\u0924', 'Subah', 'Dopahar', 'Raat', 'Dhyan Rakhein'])
+            hi_subah     = _slot(hin_text, '\u0938\u0941\u092c\u0939', ai_hi_body) or _slot(hin_text, 'Subah', ai_hi_body)
+            hi_dopahar   = _slot(hin_text, '\u0926\u094b\u092a\u0939\u0930', ai_hi_body) or _slot(hin_text, 'Dopahar', ai_hi_body)
+            hi_raat      = _slot(hin_text, '\u0930\u093e\u0924', ai_hi_body) or _slot(hin_text, 'Raat', ai_hi_body)
+            hi_dhyan     = _slot(hin_text, '\u0907\u0928 \u092c\u093e\u0924\u094b\u0902 \u0915\u093e \u0927\u094d\u092f\u093e\u0928 \u0930\u0916\u0947\u0902', ai_hi_body) or _slot(hin_text, 'Dhyan Rakhein', ai_hi_body)
+
+            ai_card_content = [Paragraph('<b>PATIENT DAILY ROUTINE — AI GENERATED</b>', ai_title_style)]
+
+            if en_greeting:
+                ai_card_content.append(Paragraph(f'<i>{en_greeting}</i>', ai_body_style))
+                ai_card_content.append(Spacer(1, 5))
+
+            # English slot rows
+            slot_rows = []
+            for emoji, label, content in [
+                ('☀ Morning', 'Morning', en_morning),
+                ('⛅ Afternoon', 'Afternoon', en_afternoon),
+                ('🌙 Night', 'Night', en_night),
+                ('⚠ Watch Out For', 'Watch Out For', en_watch),
+            ]:
+                if content:
+                    slot_rows.append([
+                        Paragraph(f'<b>{emoji}</b>', ai_label_style),
+                        Paragraph(content, ai_body_style)
+                    ])
+
+            if slot_rows:
+                slot_table = Table(slot_rows, colWidths=[95, 368])
+                slot_table.setStyle(TableStyle([
+                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                    ('TOPPADDING', (0, 0), (-1, -1), 4),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 2),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+                    ('LINEBELOW', (0, 0), (-1, -2), 0.3, colors.HexColor('#e2e8f0')),
+                ]))
+                ai_card_content.append(slot_table)
+
+            # Hindi Section
+            if hin_text:
+                ai_card_content.append(Spacer(1, 6))
+                ai_card_content.append(Paragraph(wrap_devanagari('<b>हिंदी सारांश</b>'), ai_hi_label))
+                if hi_greeting:
+                    ai_card_content.append(Paragraph(wrap_devanagari(hi_greeting), ai_hi_body))
+                    ai_card_content.append(Spacer(1, 3))
+
+                hi_rows = []
+                for label_hi, lbl_key, content_hi in [
+                    ('सुबह', 'Subah', hi_subah),
+                    ('दोपहर', 'Dopahar', hi_dopahar),
+                    ('रात', 'Raat', hi_raat),
+                    ('ध्यान रखें', 'Dhyan Rakhein', hi_dhyan),
+                ]:
+                    if content_hi:
+                        hi_rows.append([
+                            Paragraph(wrap_devanagari(f'<b>{label_hi}:</b>'), ai_hi_label),
+                            Paragraph(wrap_devanagari(content_hi), ai_hi_body)
+                        ])
+                if hi_rows:
+                    hi_table = Table(hi_rows, colWidths=[70, 393])
+                    hi_table.setStyle(TableStyle([
+                        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                        ('TOPPADDING', (0, 0), (-1, -1), 3),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+                        ('LEFTPADDING', (0, 0), (-1, -1), 2),
+                        ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+                    ]))
+                    ai_card_content.append(hi_table)
+
+        else:
+            # Fallback: render old-format plain text
+            ai_body_flat = ParagraphStyle('AIBodyFlat', parent=style_normal, fontSize=8.5,
+                                          leading=12.5, textColor=colors.HexColor('#334155'))
+            ai_card_content = [
+                Paragraph('<b>PATIENT-FRIENDLY SUMMARY (EN + हिंदी)</b>', ai_title_style),
+                Spacer(1, 4),
+                Paragraph(raw_summary.replace('\n', '<br/>'), ai_body_flat)
+            ]
+
+        ai_table = Table([[ai_card_content]], colWidths=[515])
         ai_table.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#f0fdfa')),
-            ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#99f6e4')),
-            ('TOPPADDING', (0,0), (-1,-1), 10),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 10),
-            ('LEFTPADDING', (0,0), (-1,-1), 12),
-            ('RIGHTPADDING', (0,0), (-1,-1), 12),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f0fdfa')),
+            ('BOX', (0, 0), (-1, -1), 1.5, colors.HexColor('#5eead4')),
+            ('LINEBEFORE', (0, 0), (0, -1), 4, colors.HexColor('#0d9488')),
+            ('TOPPADDING', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+            ('LEFTPADDING', (0, 0), (-1, -1), 14),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 12),
         ]))
         story.append(ai_table)
-        story.append(Spacer(1, 20))
+        story.append(Spacer(1, 18))
 
     # 5. Signoff
     story.append(Spacer(1, 10))
