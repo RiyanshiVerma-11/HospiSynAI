@@ -108,6 +108,14 @@ class Bill(Base):
     items = relationship("BillItem", back_populates="bill", cascade="all, delete-orphan")
     payments = relationship("Payment", back_populates="bill")
 
+    @property
+    def patient_name(self) -> str:
+        return self.visit.patient.name if self.visit and self.visit.patient else ""
+
+    @property
+    def patient_id_str(self) -> str:
+        return self.visit.patient.patient_id if self.visit and self.visit.patient else ""
+
 
 class BillItem(Base):
     __tablename__ = "bill_items"

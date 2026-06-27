@@ -12,7 +12,7 @@ export default function BillingTab({
   setActiveBillForPayment,
   paymentForm,
   setPaymentForm,
-  patients,
+  unpaidBills,
   refundForm,
   setRefundForm,
   handleRecordBillPayment,
@@ -150,40 +150,38 @@ export default function BillingTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
-                {patients.flatMap(pat => 
-                  (pat.history || []).filter(b => b.payment_status !== 'Paid').map(bill => (
-                    <tr key={bill.id} className="hover:bg-slate-50/50">
-                      <td className="py-3 px-4 text-slate-900 font-bold text-xs">{bill.bill_id}</td>
-                      <td className="py-3 px-4">{pat.name}</td>
-                      <td className="py-3 px-4 text-slate-500 text-xs">{new Date(bill.created_at).toLocaleDateString()}</td>
-                      <td className="py-3 px-4">
-                        <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                          bill.payment_status === 'Partial Paid' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
-                          'bg-rose-50 text-rose-700 border border-rose-100'
-                        }`}>{bill.payment_status}</span>
-                      </td>
-                      <td className="py-3 px-4 text-right font-semibold">₹{bill.grand_total.toLocaleString()}</td>
-                      <td className="py-3 px-4 text-right font-extrabold text-rose-600">₹{bill.balance_amount.toLocaleString()}</td>
-                      <td className="py-3 px-4 text-center">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveBillForPayment(bill);
-                            setPaymentForm({
-                              amount_paid: bill.balance_amount.toString(),
-                              payment_method: 'UPI',
-                              transaction_reference: ''
-                            });
-                          }}
-                          className="bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold px-2.5 py-1.5 rounded-lg border border-teal-100 transition-colors"
-                        >
-                          Pay
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-                {patients.flatMap(p => p.history || []).filter(b => b.payment_status !== 'Paid').length === 0 && (
+                {unpaidBills.map(bill => (
+                  <tr key={bill.id} className="hover:bg-slate-50/50">
+                    <td className="py-3 px-4 text-slate-900 font-bold text-xs">{bill.bill_id}</td>
+                    <td className="py-3 px-4">{bill.patient_name}</td>
+                    <td className="py-3 px-4 text-slate-500 text-xs">{new Date(bill.created_at).toLocaleDateString()}</td>
+                    <td className="py-3 px-4">
+                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                        bill.payment_status === 'Partial Paid' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                        'bg-rose-50 text-rose-700 border border-rose-100'
+                      }`}>{bill.payment_status}</span>
+                    </td>
+                    <td className="py-3 px-4 text-right font-semibold">₹{bill.grand_total.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right font-extrabold text-rose-600">₹{bill.balance_amount.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-center">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveBillForPayment(bill);
+                          setPaymentForm({
+                            amount_paid: bill.balance_amount.toString(),
+                            payment_method: 'UPI',
+                            transaction_reference: ''
+                          });
+                        }}
+                        className="bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold px-2.5 py-1.5 rounded-lg border border-teal-100 transition-colors"
+                      >
+                        Pay
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {unpaidBills.length === 0 && (
                   <tr>
                     <td colSpan="7" className="py-8 text-center text-slate-400">All generated patient invoices are cleared and paid!</td>
                   </tr>

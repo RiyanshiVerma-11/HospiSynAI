@@ -160,6 +160,8 @@ class BillResponse(BaseModel):
     created_at: datetime
     is_active: bool
     items: List[BillItemResponse]
+    patient_name: Optional[str] = None
+    patient_id_str: Optional[str] = None
 
     class Config:
         orm_mode = True

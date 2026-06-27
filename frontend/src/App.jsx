@@ -108,6 +108,7 @@ function App() {
 
   // Payment Recording State
   const [activeBillForPayment, setActiveBillForPayment] = useState(null);
+  const [unpaidBills, setUnpaidBills] = useState([]);
   const [paymentForm, setPaymentForm] = useState({
     amount_paid: '',
     payment_method: 'UPI',
@@ -200,6 +201,7 @@ function App() {
       fetchPatients();
       fetchServices();
       fetchDoctors();
+      fetchUnpaidBills();
       if (userRole === 'Admin') {
         fetchAuditLogs();
         fetchStaffUsers();
@@ -217,6 +219,7 @@ function App() {
     if (activeTab === 'audit_logs') fetchAuditLogs();
     if (activeTab === 'users') fetchStaffUsers();
     if (activeTab === 'settings') fetchDoctors();
+    if (activeTab === 'billing_history') fetchUnpaidBills();
   }, [activeTab]);
 
   // ----------------------------------------------------
@@ -316,6 +319,23 @@ function App() {
       }
     } catch (err) {
       console.error("Error searching patients:", err);
+    }
+  };
+
+  const fetchUnpaidBills = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/bills`, { headers: getHeaders() });
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
+      if (res.ok) {
+        const data = await res.json();
+        const unpaid = data.filter(b => b.payment_status !== 'Paid');
+        setUnpaidBills(unpaid);
+      }
+    } catch (err) {
+      console.error("Error fetching unpaid bills:", err);
     }
   };
 
@@ -606,6 +626,7 @@ function App() {
       setAiExplanation('');
       setAiRecommenderVisitId(null);
       handleSelectPatient(selectedPatient.id);
+      fetchUnpaidBills();
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -642,6 +663,7 @@ function App() {
       setActiveBillForPayment(null);
       if (selectedPatient) handleSelectPatient(selectedPatient.id);
       fetchDashboardMetrics();
+      fetchUnpaidBills();
       
       // Auto-open Receipt Preview
       fetchReceiptDetails(payment.id);
@@ -670,6 +692,7 @@ function App() {
       setRefundForm({ payment_id: '', amount_refunded: '', reason: '' });
       if (selectedPatient) handleSelectPatient(selectedPatient.id);
       fetchDashboardMetrics();
+      fetchUnpaidBills();
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -826,6 +849,7 @@ function App() {
       if (!res.ok) throw new Error("Failed to delete bill");
       showToast("Bill cancelled (soft deleted) successfully.");
       if (selectedPatient) handleSelectPatient(selectedPatient.id);
+      fetchUnpaidBills();
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -1353,7 +1377,7 @@ function App() {
             setActiveBillForPayment={setActiveBillForPayment}
             paymentForm={paymentForm}
             setPaymentForm={setPaymentForm}
-            patients={patients}
+            unpaidBills={unpaidBills}
             refundForm={refundForm}
             setRefundForm={setRefundForm}
             handleRecordBillPayment={handleRecordBillPayment}
