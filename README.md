@@ -15,9 +15,15 @@ The entire stack is containerized and orchestrates seamlessly with a single comm
 ### 🏢 Core Hospital Workflows
 - **Patient Desk**: Patient profiles registration and search (lookup by Patient ID, Name, Mobile, Receipt ID, or Bill ID).
 - **Consultation & Visit Logger**: Logs sequential patient visits under a visit index (`Patient ➔ Visit ➔ Invoice`).
-- **AI Consultation Summary & Patient Handout**: Allows doctors, receptionists, or accountants to input clinical notes (diagnosis, chief complaints, medicines list, recommended tests, advice) and use a Llama-3.3-70b-powered API (via Groq) to generate a patient-friendly summary in both English and Hindi.
 - **Standardized Services Catalog**: Dynamic catalog grouping doctor consultations, OPD, IPD, ICU, labs, radiology, and pharmacy charges with standard base pricing. Editable via the Admin panel.
 - **Invoice Builder (Billing Queue)**: Interactive multi-item billing builder allowing receptionist staff to override standard catalog pricing, group multiple services, auto-fetch and adjust visit-level advance payments, and calculate balances.
+
+### 🧠 Advanced AI-Powered Assistant Ecosystem
+- **AI Consultation Summary & Patient Handout**: Converts doctor's raw clinical notes (diagnosis, complaints, medicines, advice, follow-up) into a structured daily-routine narrative with emojis (Morning, Afternoon, Night) in both English and Hindi.
+- **AI Clinical Treatment & Prescription Suggester**: Generates clinical recommendations (diagnoses, medicines, diagnostic tests, advice, follow-up schedules) based on patient complaints, age, and gender, following strict Indian clinical prescribing and safety rules (e.g. BD/OD dosing constraints, pediatric vs geriatric modifications, and non-overlapping classes).
+- **AI Service & Diagnostic Test Recommender**: Recommends the most relevant OPD services or tests directly from the hospital's active services catalog based on patient demographics and symptoms, providing clinical justifications.
+- **AI Billing Auditor & Anomaly Checker**: Audits bill items prior to invoice creation to identify financial and clinical anomalies, classifying status as `clear`, `warning`, or `critical` (checks for duplicate tests, clinically unlikely service combinations like ICU + OPD, excessive amounts, missing consultation fees, or age-inappropriate billing).
+- **AI Dashboard Revenue Insights**: Performs real-time server-side analytics on today's transaction ledgers, digital/cash splits, and outstanding dues to produce data-driven business insights, actionable administrative suggestions, highlights, and revenue sentiments (positive, neutral, negative).
 
 ### 💳 Payments & Receipts Desk
 - **Multi-Method Collection**: Support for `Cash`, `UPI`, `Card`, `Net Banking`, and `Wallet` transactions with reference tracking (transaction IDs).
@@ -198,28 +204,32 @@ Follow this standard workflow to verify system capabilities:
 1. Log in to [http://localhost:3000](http://localhost:3000) using `receptionist` / `recep123`.
 2. Navigate to **Patient Search & Desk**.
 3. Fill out the **New Registration** form to register a new patient profile. Check that a unique sequential Patient ID is generated (e.g. `PAT-20260626-00001`).
-4. Select the registered patient. Fill out the **Record Patient Visit** input to start a consultation (e.g. "Pathology Diagnostics"). Check that a Visit ID is generated.
-5. Click the **Clinical Notes & AI Summary** button on the active visit to open the handout modal:
-   - Input the patient's complaints, diagnosis, medicines, and advice.
-   - Click **Generate AI Summary** to trigger the Groq LLM API. Verify that a simplified, bilingual (English + Hindi) explanation is populated.
-   - Click **Save Summary** to store it, and **Print Summary** to generate a clean, print-ready patient handout.
+4. Select the registered patient. Fill out the **Record Patient Visit** input to start a consultation (e.g., inputting "Fever and Dry Cough" as symptoms). Check that a Visit ID is generated.
+5. Click the **Clinical Notes & AI Summary** button on the active visit to open the consultation workspace modal:
+   - In the chief complaints field, write or select symptoms (e.g., "Fever and Dry Cough").
+   - Click the **🧠 AI Suggest Treatment** button. The system will leverage Groq LLM to instantly generate standard clinical prescriptions (diagnosis, medicines with dosages, diagnostic tests, advice, follow-up schedule) compliant with clinical dosing rules.
+   - Review and customize the AI-suggested fields as needed.
+   - Click **Generate AI Summary** to trigger the Groq LLM API. Verify that a simplified, bilingual (English + Hindi) explanation is populated showing structured routines.
+   - Click **Save Summary** to store it, and **Print Summary** or **Download PDF** to retrieve the ReportLab-generated prescription sheet.
 6. In the visit module, record an **Advance Deposit** of `500` via `UPI` (Reference: `TXN987654`).
 7. Build an invoice using the **Multi-Item Bill Creator**:
-   - Select `Laboratory Tests ➔ Complete Blood Count (CBC)` (Standard ₹350) and click **Add**.
-   - Select `Radiology/X-Ray/MRI ➔ Chest X-Ray PA View` (Standard ₹450) and click **Add**.
-   - Click **Generate Invoice**.
+   - To find appropriate tests for the patient's symptoms, click **✨ AI Test Suggester**. The system queries the active services database catalog and returns recommendations with reasons based on the patient's age, gender, and symptoms.
+   - Click **Add to Bill** to select a recommended test (e.g. Complete Blood Count (CBC) - standard ₹350, and Chest X-Ray PA View - standard ₹450).
+   - Before generating the invoice, click **Run AI Audit** under the **AI Billing Auditor** section. The audit scans line items for duplicates, excessive charges, missing consultation codes, clinical mismatches, or age anomalies, returning a `clear`, `warning`, or `critical` verdict.
+   - Click **Generate Invoice** after verifying the audit.
 8. Check that the system automatically applies the `500` advance payment to the `800` grand total, setting the bill status to `Partial Paid` with a remaining balance of `300`.
 
 ### Step 2: Financial Desk (Accountant)
 1. Log in as `accountant` / `acct123`.
-2. Go to **Billing Queue**. Locate the outstanding invoice generated in the previous step.
-3. Click **Pay**, choose `UPI`, and enter `300` as the collection amount.
-4. Click **Process Payment**. Check that the invoice status immediately shifts to `Paid` and a receipt modal opens.
-5. In the receipt modal:
+2. Verify the **AI Dashboard Revenue Insights** card displayed at the top of the Dashboard. It dynamically parses today's financials (revenue, visits, online/cash splits, outstanding dues) to present an administrative summary, data highlight, actionable recommendation, and sentiment color indicator.
+3. Go to **Billing Queue**. Locate the outstanding invoice generated in the previous step.
+4. Click **Pay**, choose `UPI`, and enter `300` as the collection amount.
+5. Click **Process Payment**. Check that the invoice status immediately shifts to `Paid` and a receipt modal opens.
+6. In the receipt modal:
    - Click **Save PDF** to download the high-quality ReportLab PDF generated by the backend.
    - Click **Print Receipt** to verify formatting.
-6. Issue a refund: Copy the **full Payment ID** (starts with `PAY-`) directly from the Patient Desk (which displays full Payment IDs with a one-click copy button next to receipts), the Receipt modal, or the Billing Workspace's transaction log. Paste it into the **Refund Desk** on the right, input a refund amount (e.g., `100` for test cancellation), and click **Issue Refund Receipt**. Check that the invoice balance returns to `100` and a Refund Receipt is logged.
-7. Run spreadsheet reports by clicking **CSV Report** or **Excel Report** at the top of the dashboard.
+7. Issue a refund: Copy the **full Payment ID** (starts with `PAY-`) directly from the Patient Desk (which displays full Payment IDs with a one-click copy button next to receipts), the Receipt modal, or the Billing Workspace's transaction log. Paste it into the **Refund Desk** on the right, input a refund amount (e.g., `100` for test cancellation), and click **Issue Refund Receipt**. Check that the invoice balance returns to `100` and a Refund Receipt is logged.
+8. Run spreadsheet reports by clicking **CSV Report** or **Excel Report** at the top of the dashboard.
 
 ### Step 3: Administration (Admin)
 1. Log in as `admin` / `admin123`.
