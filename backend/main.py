@@ -751,21 +751,107 @@ Return response in clean JSON format only matching this schema:
 # ----------------------------------------------------
 # AI BILLING ANOMALY CHECKER
 # ----------------------------------------------------
+def run_local_anomaly_checks(
+    items: List[schemas.BillItemAnomaly], 
+    patient_age: Optional[int], 
+    patient_gender: Optional[str], 
+    diagnosis: Optional[str]
+) -> List[str]:
+    issues = []
+    item_names = [item.service_name.lower().strip() for item in items]
+    
+    # 1. Duplicates check
+    duplicates = set([name for name in item_names if item_names.count(name) > 1])
+    for dup in duplicates:
+        orig_name = next(item.service_name for item in items if item.service_name.lower().strip() == dup)
+        issues.append(f"Duplicate Billing: '{orig_name}' is billed multiple times on this invoice.")
+        
+    # 2. Clinically Unlikely combinations (ICU Bed + OPD Consult / General Ward Room Rent)
+    has_icu = any("icu" in name for name in item_names)
+    has_opd = any("opd registration" in name or "physician consultation" in name or "specialist consultation" in name for name in item_names)
+    has_room_rent = any("room rent" in name and "icu" not in name for name in item_names)
+    
+    if has_icu and has_opd:
+        issues.append("Operational Mismatch: ICU Bed Charges and OPD Consultation/Registration are billed together on the same invoice.")
+    if has_icu and has_room_rent:
+        issues.append("Billing Redundancy: ICU bed charges and standard room rent are billed concurrently.")
+        
+    # 3. Room Rent GST Threshold (> ₹5,000)
+    for item in items:
+        name_lower = item.service_name.lower()
+        if "room rent" in name_lower and "icu" not in name_lower:
+            if item.amount > 5000:
+                issues.append(f"GST Compliance: Non-ICU AC Room Rent of ₹{item.amount:.2f} exceeds ₹5,000/day limit, attracting 5% GST under Indian tax laws.")
+                
+    # 4. Cosmetic/Plastic Surgery GST (18%)
+    is_accident_reconstructive = False
+    if diagnosis:
+        diag_lower = diagnosis.lower()
+        if any(w in diag_lower for w in ["accident", "injury", "burn", "reconstruction", "trauma", "congenital"]):
+            is_accident_reconstructive = True
+            
+    for item in items:
+        name_lower = item.service_name.lower()
+        if "cosmetic" in name_lower or "plastic surgery" in name_lower:
+            if not is_accident_reconstructive:
+                issues.append(f"GST Compliance: Cosmetic surgery '{item.service_name}' attracts 18% GST unless clinically certified as post-trauma/reconstructive.")
+            else:
+                issues.append(f"GST Exempt: Cosmetic/Plastic surgery '{item.service_name}' is GST exempt due to reconstructive diagnosis.")
+                
+    # 5. Missing Doctor Consultation fee
+    has_diagnostic = any(
+        any(w in name for w in ["test", "profile", "blood", "x-ray", "mri", "ultrasound", "cbc", "lipid", "glucose"])
+        for name in item_names
+    )
+    has_consult = any(
+        any(w in name for w in ["consultation", "opd registration"])
+        for name in item_names
+    )
+    if has_diagnostic and not has_consult:
+        issues.append("Operational Warning: Diagnostic/lab tests are billed without any Doctor Consultation or OPD Registration fee.")
+        
+    # 6. Age appropriateness (Pediatric checking)
+    if patient_age is not None and patient_age < 12:
+        for item in items:
+            name_lower = item.service_name.lower()
+            # check for adult tablets billed instead of pediatric syrups
+            if any(w in name_lower for w in ["625mg", "650mg", "tablet", "tab"]) and not any(w in name_lower for w in ["suspension", "syrup", "susp", "syr", "drops"]):
+                issues.append(f"Clinical Safety Warning: Pediatric patient (Age {patient_age}) billed for adult tablet formulation '{item.service_name}' instead of pediatric suspension.")
+                
+    # 7. High Value Audit Limit
+    for item in items:
+        if item.amount > 5000 and not any(w in item.service_name.lower() for w in ["mri", "icu", "room rent"]):
+            issues.append(f"Financial Alert: Item '{item.service_name}' has high amount of ₹{item.amount:.2f}. Verify pricing.")
+            
+    return issues
+
 @app.post("/api/bills/ai-anomaly-check", response_model=schemas.AnomalyCheckResponse)
 async def check_bill_anomaly(
     req: schemas.AnomalyCheckRequest,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist"]))
 ):
+    # Run deterministic local rules engine first
+    local_issues = run_local_anomaly_checks(
+        items=req.items,
+        patient_age=req.patient_age,
+        patient_gender=req.patient_gender,
+        diagnosis=req.diagnosis
+    )
+    
     api_key = os.getenv("GROQ_API_KEY")
     model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    
     if not api_key:
-        # Return clear status without failing — anomaly check is optional
+        # Fall back completely to local checks if Groq is not configured
+        has_critical = any("duplicate" in iss.lower() or "safety" in iss.lower() for iss in local_issues)
+        status = "critical" if has_critical else ("warning" if local_issues else "clear")
+        summary = "Billing audit executed via Local Rule engine (AI model offline)."
         return schemas.AnomalyCheckResponse(
-            status="clear",
-            issues=[],
-            summary="AI anomaly check not available (GROQ_API_KEY not set).",
-            safe_to_proceed=True
+            status=status,
+            issues=local_issues,
+            summary=summary,
+            safe_to_proceed=not has_critical
         )
 
     items_str = "\n".join([f"- {item.service_name}: ₹{item.amount:.2f}" for item in req.items])
@@ -813,15 +899,33 @@ If no issues, return status "clear", empty issues list, and safe_to_proceed: tru
             response.raise_for_status()
             result = response.json()
         data = json.loads(result["choices"][0]["message"]["content"])
+        
+        # Merge local rules issues and AI-derived issues (avoiding exact string duplicates)
+        ai_issues = data.get("issues", [])
+        combined_issues = list(local_issues)
+        for issue in ai_issues:
+            if not any(dup_check in issue.lower() for dup_check in ["duplicate", "same item"]) or not any("duplicate" in x.lower() for x in local_issues):
+                combined_issues.append(issue)
+                
+        # Status calculation based on merged issues
+        has_critical = any("duplicate" in iss.lower() or "safety" in iss.lower() for iss in combined_issues)
+        status = "critical" if has_critical else ("warning" if combined_issues else "clear")
+        
         return schemas.AnomalyCheckResponse(
-            status=data.get("status", "clear"),
-            issues=data.get("issues", []),
-            summary=data.get("summary", "Bill reviewed."),
-            safe_to_proceed=data.get("safe_to_proceed", True)
+            status=status,
+            issues=combined_issues,
+            summary=data.get("summary", "Billing audit completed via hybrid engine."),
+            safe_to_proceed=not has_critical
         )
     except Exception:
+        # Fall back to local issues in case of api request failure
+        has_critical = any("duplicate" in iss.lower() or "safety" in iss.lower() for iss in local_issues)
+        status = "critical" if has_critical else ("warning" if local_issues else "clear")
         return schemas.AnomalyCheckResponse(
-            status="clear", issues=[], summary="Anomaly check skipped.", safe_to_proceed=True
+            status=status,
+            issues=local_issues,
+            summary="Billing audit completed via Local Rule engine (AI fallback).",
+            safe_to_proceed=not has_critical
         )
 
 
@@ -1729,3 +1833,212 @@ def export_excel(
     response = StreamingResponse(buffer, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     response.headers["Content-Disposition"] = f"attachment; filename=hospisyn_revenue_report_{datetime.date.today().strftime('%Y%m%d')}.xlsx"
     return response
+
+
+# ----------------------------------------------------
+# SIPS DEMO QUICK-SEER
+# ----------------------------------------------------
+@app.post("/api/demo/seed")
+def seed_demo_data(db: Session = Depends(get_db)):
+    # 1. Clean up existing demo patients (so seeding is repeatable)
+    demo_mobiles = ["9876543210", "9988776655", "9566338291", "9456782341", "9900011122", "9900011133", "9900011144", "9900011155", "9900011166"]
+    demo_patients = db.query(models.Patient).filter(models.Patient.mobile_number.in_(demo_mobiles)).all()
+    for p in demo_patients:
+        # Delete related payments, receipts, bills, and visits
+        db.query(models.Receipt).filter(models.Receipt.payment_id.in_(
+            db.query(models.Payment.id).join(models.Bill).join(models.Visit).filter(models.Visit.patient_id == p.id)
+        )).delete(synchronize_session=False)
+        db.query(models.Payment).filter(models.Payment.visit_id.in_(
+            db.query(models.Visit.id).filter(models.Visit.patient_id == p.id)
+        )).delete(synchronize_session=False)
+        db.query(models.Payment).filter(models.Payment.bill_id.in_(
+            db.query(models.Bill.id).join(models.Visit).filter(models.Visit.patient_id == p.id)
+        )).delete(synchronize_session=False)
+        db.query(models.BillItem).filter(models.BillItem.bill_id.in_(
+            db.query(models.Bill.id).join(models.Visit).filter(models.Visit.patient_id == p.id)
+        )).delete(synchronize_session=False)
+        db.query(models.Bill).filter(models.Bill.visit_id.in_(
+            db.query(models.Visit.id).filter(models.Visit.patient_id == p.id)
+        )).delete(synchronize_session=False)
+        db.query(models.Visit).filter(models.Visit.patient_id == p.id).delete(synchronize_session=False)
+        db.delete(p)
+    db.commit()
+
+    # Find the doctor Shweta Grover
+    doctor = db.query(models.Doctor).first()
+    doctor_id = doctor.id if doctor else None
+    
+    # Get active services
+    cbc = db.query(models.Service).filter(models.Service.name.ilike("%cbc%")).first()
+    lipid = db.query(models.Service).filter(models.Service.name.ilike("%lipid%")).first()
+    consult = db.query(models.Service).filter(models.Service.name.ilike("%general physician%")).first()
+    specialist = db.query(models.Service).filter(models.Service.name.ilike("%specialist%")).first()
+    ambulance = db.query(models.Service).filter(models.Service.name.ilike("%ambulance%")).first()
+    
+    # Ensure standard services exist
+    if not cbc:
+        cbc = models.Service(category="Laboratory Tests", name="Complete Blood Count (CBC)", price=350.0)
+        db.add(cbc)
+    if not lipid:
+        lipid = models.Service(category="Laboratory Tests", name="Lipid Profile Panel", price=800.0)
+        db.add(lipid)
+    if not consult:
+        consult = models.Service(category="Doctor Consultation", name="General Physician Consultation", price=400.0)
+        db.add(consult)
+    if not specialist:
+        specialist = models.Service(category="Doctor Consultation", name="Specialist Consultation", price=800.0)
+        db.add(specialist)
+    if not ambulance:
+        ambulance = models.Service(category="Other Hospital Services", name="Ambulance Emergency Transfer", price=1500.0)
+        db.add(ambulance)
+        
+    # Ensure AC Room Rent and Cosmetic Surgery services are present
+    ac_room = db.query(models.Service).filter(models.Service.name.ilike("%private room rent%")).first()
+    if not ac_room:
+        ac_room = models.Service(category="IPD Charges", name="Semi-Private Room Rent (Per Day)", price=5500.0)
+        db.add(ac_room)
+    else:
+        ac_room.price = 5500.0  # Triggers GST (>5000)
+        
+    cosmetic = db.query(models.Service).filter(models.Service.name.ilike("%cosmetic%")).first()
+    if not cosmetic:
+        cosmetic = models.Service(category="Other Hospital Services", name="Cosmetic rhinoplasty surgery", price=12000.0)
+        db.add(cosmetic)
+        
+    db.commit()
+
+    # 1. Seed Aarav Sharma (Pediatric dosing error warning demo)
+    pat1 = models.Patient(
+        patient_id=generate_unique_id(db, "PAT", models.Patient, models.Patient.patient_id),
+        name="Aarav Sharma", age=8, gender="Male", mobile_number="9876543210", address="Saket, Meerut"
+    )
+    db.add(pat1)
+    db.commit()
+    
+    vis1 = models.Visit(
+        visit_id=generate_unique_id(db, "VIS", models.Visit, models.Visit.visit_id),
+        patient_id=pat1.id, doctor_id=doctor_id, reason="Severe throat pain & fever"
+    )
+    db.add(vis1)
+    db.commit()
+    
+    # 2. Seed Sunita Verma (Duplicate billing warning demo)
+    pat2 = models.Patient(
+        patient_id=generate_unique_id(db, "PAT", models.Patient, models.Patient.patient_id),
+        name="Sunita Verma", age=42, gender="Female", mobile_number="9988776655", address="Sanjay Nagar, Meerut"
+    )
+    db.add(pat2)
+    db.commit()
+    
+    vis2 = models.Visit(
+        visit_id=generate_unique_id(db, "VIS", models.Visit, models.Visit.visit_id),
+        patient_id=pat2.id, doctor_id=doctor_id, reason="Fever and generalized weakness"
+    )
+    db.add(vis2)
+    db.commit()
+
+    # 3. Seed Rajesh Malhotra (AC Room Rent GST > 5000 compliance demo)
+    pat3 = models.Patient(
+        patient_id=generate_unique_id(db, "PAT", models.Patient, models.Patient.patient_id),
+        name="Rajesh Malhotra", age=58, gender="Male", mobile_number="9566338291", address="Civil Lines, Meerut"
+    )
+    db.add(pat3)
+    db.commit()
+    
+    vis3 = models.Visit(
+        visit_id=generate_unique_id(db, "VIS", models.Visit, models.Visit.visit_id),
+        patient_id=pat3.id, doctor_id=doctor_id, reason="Inpatient post-op recovery"
+    )
+    db.add(vis3)
+    db.commit()
+
+    # 4. Seed Karan Johar (Cosmetic surgery 18% GST audit demo)
+    pat4 = models.Patient(
+        patient_id=generate_unique_id(db, "PAT", models.Patient, models.Patient.patient_id),
+        name="Karan Johar", age=35, gender="Male", mobile_number="9456782341", address="Shastri Nagar, Meerut"
+    )
+    db.add(pat4)
+    db.commit()
+    
+    vis4 = models.Visit(
+        visit_id=generate_unique_id(db, "VIS", models.Visit, models.Visit.visit_id),
+        patient_id=pat4.id, doctor_id=doctor_id, reason="Elective cosmetic rhinoplasty"
+    )
+    db.add(vis4)
+    db.commit()
+
+    # 5. Seed historical billing/payment cases for dashboard charts
+    admin_user = db.query(models.User).filter(models.User.username == "admin").first()
+    created_by = admin_user.id if admin_user else 1
+    
+    historical_data = [
+        ("Nisha Patel", 29, "Female", "9900011122", 1200.0, 1200.0, "UPI", "Paid"),
+        ("Vikram Singh", 67, "Male", "9900011133", 4500.0, 3000.0, "Cash", "Partial Paid"),
+        ("Sanjay Gupta", 52, "Male", "9900011144", 8000.0, 0.0, "Cash", "Pending"),
+        ("Dr. Priya Rao", 34, "Female", "9900011155", 150.0, 150.0, "Card", "Paid"),
+        ("Amit Verma", 41, "Male", "9900011166", 2400.0, 2400.0, "UPI", "Paid")
+    ]
+    
+    for p_name, p_age, p_gender, p_mob, total_amt, paid_amt, p_method, p_status in historical_data:
+        hist_p = models.Patient(
+            patient_id=generate_unique_id(db, "PAT", models.Patient, models.Patient.patient_id),
+            name=p_name, age=p_age, gender=p_gender, mobile_number=p_mob, address="Meerut"
+        )
+        db.add(hist_p)
+        db.commit()
+        
+        hist_v = models.Visit(
+            visit_id=generate_unique_id(db, "VIS", models.Visit, models.Visit.visit_id),
+            patient_id=hist_p.id, doctor_id=doctor_id, reason="General Consult / Diagnostics"
+        )
+        db.add(hist_v)
+        db.commit()
+        
+        hist_b = models.Bill(
+            bill_id=generate_unique_id(db, "BILL", models.Bill, models.Bill.bill_id),
+            visit_id=hist_v.id,
+            grand_total=total_amt,
+            advance_applied=0.0,
+            payment_status=p_status,
+            balance_amount=max(0.0, total_amt - paid_amt),
+            created_by=created_by
+        )
+        db.add(hist_b)
+        db.commit()
+        
+        b_item = models.BillItem(
+            bill_id=hist_b.id,
+            service_id=consult.id,
+            service_name="General Physician Consultation",
+            amount=total_amt
+        )
+        db.add(b_item)
+        db.commit()
+        
+        if paid_amt > 0:
+            hist_pay = models.Payment(
+                payment_id=generate_unique_id(db, "PAY", models.Payment, models.Payment.payment_id),
+                bill_id=hist_b.id,
+                amount_paid=paid_amt,
+                payment_method=p_method,
+                payment_type="Full" if p_status == "Paid" else "Partial",
+                recorded_by=created_by,
+                transaction_reference=f"TXN{datetime.datetime.now().strftime('%M%S%f')[:8]}"
+            )
+            db.add(hist_pay)
+            db.commit()
+            
+            hist_rec = models.Receipt(
+                receipt_id=generate_unique_id(db, "REC", models.Receipt, models.Receipt.receipt_id),
+                payment_id=hist_pay.id,
+                receipt_type="Payment Settlement",
+                pdf_path=f"/receipts/receipt_{hist_pay.payment_id}.pdf"
+            )
+            db.add(hist_rec)
+            db.commit()
+
+    return {
+        "message": "SIPS Evaluation Demo Data Seeded Successfully",
+        "demo_patients": ["Aarav Sharma", "Sunita Verma", "Rajesh Malhotra", "Karan Johar"],
+        "historical_cases_count": len(historical_data)
+    }

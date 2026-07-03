@@ -19,51 +19,51 @@ export default function BillingTab({
   handleIssueRefund
 }) {
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start animate-in fade-in duration-300">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch animate-in fade-in duration-300 h-full md:h-screen md:max-h-[calc(100vh-6.5rem)] md:overflow-hidden min-h-0 pb-2">
       {/* Left 2 Cols: Unpaid Bills Queue & Processing History */}
-      <div className="xl:col-span-2 space-y-8">
+      <div className="lg:col-span-2 flex flex-col gap-4 md:h-full md:min-h-0">
         {/* Payment Processing Workspace */}
         {activeBillForPayment ? (
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6 animate-in slide-in-from-top-4 duration-300">
-            <div className="flex justify-between items-start pb-4 border-b border-slate-100">
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-4 animate-in slide-in-from-top-4 duration-300 flex-shrink-0">
+            <div className="flex justify-between items-start pb-3 border-b border-slate-100 flex-shrink-0">
               <div>
-                <span className="text-amber-600 font-bold text-xs uppercase tracking-wider font-sans">Payment Collection Workspace</span>
-                <h2 className="text-xl font-bold text-slate-900 mt-1">Invoice: {activeBillForPayment.bill_id}</h2>
-                <p className="text-slate-400 text-xs mt-1">
+                <span className="text-amber-600 font-bold text-[10px] uppercase tracking-wider font-sans">Payment Collection Workspace</span>
+                <h2 className="text-base font-bold text-slate-900 mt-0.5">Invoice: {activeBillForPayment.bill_id}</h2>
+                <p className="text-slate-400 text-xs mt-0.5">
                   Patient Visit: <b>{activeBillForPayment.visit_id}</b> | Total Billed: <b>₹{activeBillForPayment.grand_total.toLocaleString()}</b>
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setActiveBillForPayment(null)}
-                className="text-slate-400 hover:text-slate-600 text-xs font-semibold bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors"
+                className="text-slate-500 hover:text-slate-700 text-[10px] font-bold bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg transition-colors"
               >
-                Cancel Workspace
+                Close Desk
               </button>
             </div>
 
-            {/* Previous Payments list with copy buttons */}
+            {/* Previous Payments list */}
             {activeBillForPayment.payments && activeBillForPayment.payments.length > 0 && (
-              <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-4 space-y-2">
-                <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Previous Transactions / Payments</span>
-                <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
+              <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-3 space-y-2 flex-shrink-0">
+                <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider">Previous Transactions</span>
+                <div className="grid grid-cols-1 gap-1.5 max-h-24 overflow-y-auto">
                   {activeBillForPayment.payments.map((pay) => (
-                    <div key={pay.id} className="flex justify-between items-center bg-white border border-slate-150 rounded-lg p-2 shadow-sm text-xs font-mono">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900 select-all">{pay.payment_id}</span>
-                        <span className="text-[10px] text-slate-400 font-sans">({pay.payment_method})</span>
+                    <div key={pay.id} className="flex justify-between items-center bg-white border border-slate-150 rounded-lg p-2 shadow-sm text-[10px] font-mono">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-slate-800 select-all">{pay.payment_id}</span>
+                        <span className="text-[9px] text-slate-400 font-sans">({pay.payment_method})</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-teal-600 font-sans">₹{pay.amount_paid.toLocaleString()}</span>
+                        <span className="font-extrabold text-teal-650 font-sans text-xs">₹{pay.amount_paid.toLocaleString()}</span>
                         <button
                           type="button"
                           onClick={() => {
                             navigator.clipboard.writeText(pay.payment_id);
                           }}
-                          className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-sans font-bold px-2 py-1 rounded transition-colors text-[10px] flex items-center gap-1"
+                          className="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 font-sans font-bold px-2 py-0.5 rounded transition-colors text-[9px] flex items-center gap-0.5"
                           title="Copy Payment ID"
                         >
-                          <Copy className="w-3 h-3 text-slate-500" />
+                          <Copy className="w-3 h-3 text-slate-400" />
                           Copy
                         </button>
                       </div>
@@ -74,26 +74,26 @@ export default function BillingTab({
             )}
 
             {/* Payment Details Form */}
-            <form onSubmit={handleRecordBillPayment} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <form onSubmit={handleRecordBillPayment} className="space-y-3 flex-shrink-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Amount to Collect (₹)</label>
+                  <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Amount to Collect (₹)</label>
                   <input
                     type="number"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:bg-white focus:border-teal-500 font-extrabold text-slate-950"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:bg-white focus:border-teal-500 font-extrabold text-slate-950"
                     max={activeBillForPayment.balance_amount}
                     min="1"
                     value={paymentForm.amount_paid}
                     onChange={(e) => setPaymentForm({ ...paymentForm, amount_paid: e.target.value })}
                     required
                   />
-                  <p className="text-xs text-slate-500 mt-1 font-semibold">Remaining balance due: ₹{activeBillForPayment.balance_amount.toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-400 mt-1 font-semibold">Remaining balance due: ₹{activeBillForPayment.balance_amount.toLocaleString()}</p>
                 </div>
 
                 <div>
-                  <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Payment Method</label>
+                  <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Payment Method</label>
                   <select
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:bg-white focus:border-teal-500 font-semibold text-slate-600"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:bg-white focus:border-teal-500 font-bold text-slate-600 cursor-pointer"
                     value={paymentForm.payment_method}
                     onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}
                   >
@@ -106,10 +106,10 @@ export default function BillingTab({
                 </div>
 
                 <div>
-                  <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Transaction Reference (UPI/Card Txn ID)</label>
+                  <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Transaction Ref (UPI/Card Txn ID)</label>
                   <input
                     type="text"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium"
                     placeholder="Reference string"
                     value={paymentForm.transaction_reference}
                     onChange={(e) => setPaymentForm({ ...paymentForm, transaction_reference: e.target.value })}
@@ -119,51 +119,51 @@ export default function BillingTab({
 
               <button
                 type="submit"
-                className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 text-xs"
               >
                 <CheckCircle className="w-4 h-4" />
-                Process Payment (Generate Receipt & PDF)
+                Process Payment & Print Receipt
               </button>
             </form>
           </div>
         ) : (
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm text-center">
-            <CreditCard className="w-8 h-8 text-slate-400 mx-auto mb-3" />
-            <p className="text-slate-500 text-sm font-semibold">Select a Patient in Patient Desk tab to create bills, register visits, or select active balance queue invoices to process payments.</p>
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm text-center flex-shrink-0">
+            <CreditCard className="w-6 h-6 text-slate-400 mx-auto mb-2" />
+            <p className="text-slate-500 text-xs font-semibold">Select a Patient in Patient Desk tab to build bills, or select active balance queue invoices below to collect payments.</p>
           </div>
         )}
 
         {/* Complete Pending Dues Invoice Queue */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <h3 className="font-bold text-slate-900 text-sm mb-4 uppercase tracking-wider text-slate-500">Unpaid / Partial Invoices Queue</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm md:flex-1 md:min-h-0 md:overflow-hidden flex flex-col min-h-[300px]">
+          <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 mb-2 flex-shrink-0">Unpaid / Partial Invoices Queue</h3>
+          <div className="overflow-x-auto rounded-xl border border-slate-100 md:flex-1 md:overflow-y-auto min-h-0 compact-scroll">
+            <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-400 font-semibold text-xs">
-                  <th className="py-3 px-4">Bill ID</th>
-                  <th className="py-3 px-4">Patient Name</th>
-                  <th className="py-3 px-4">Date</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Total</th>
-                  <th className="py-3 px-4 text-right">Balance Due</th>
-                  <th className="py-3 px-4 text-center">Action</th>
+                <tr className="bg-slate-50 text-slate-400 font-bold uppercase tracking-wider text-[9px] border-b border-slate-100">
+                  <th className="py-2.5 px-3">Bill ID</th>
+                  <th className="py-2.5 px-3">Patient Name</th>
+                  <th className="py-2.5 px-3">Date</th>
+                  <th className="py-2.5 px-3">Status</th>
+                  <th className="py-2.5 px-3 text-right">Total</th>
+                  <th className="py-2.5 px-3 text-right">Balance Due</th>
+                  <th className="py-2.5 px-3 text-center">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+              <tbody className="divide-y divide-slate-50 text-slate-700 font-medium">
                 {unpaidBills.map(bill => (
-                  <tr key={bill.id} className="hover:bg-slate-50/50">
-                    <td className="py-3 px-4 text-slate-900 font-bold text-xs">{bill.bill_id}</td>
-                    <td className="py-3 px-4">{bill.patient_name}</td>
-                    <td className="py-3 px-4 text-slate-500 text-xs">{new Date(bill.created_at).toLocaleDateString()}</td>
-                    <td className="py-3 px-4">
-                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                  <tr key={bill.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="py-2 px-3 text-slate-900 font-bold text-xs">{bill.bill_id}</td>
+                    <td className="py-2 px-3">{bill.patient_name}</td>
+                    <td className="py-2 px-3 text-slate-450 text-[10px]">{new Date(bill.created_at).toLocaleDateString()}</td>
+                    <td className="py-2 px-3">
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
                         bill.payment_status === 'Partial Paid' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
                         'bg-rose-50 text-rose-700 border border-rose-100'
                       }`}>{bill.payment_status}</span>
                     </td>
-                    <td className="py-3 px-4 text-right font-semibold">₹{bill.grand_total.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right font-extrabold text-rose-600">₹{bill.balance_amount.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-center">
+                    <td className="py-2 px-3 text-right font-semibold">₹{bill.grand_total.toLocaleString()}</td>
+                    <td className="py-2 px-3 text-right font-extrabold text-rose-600">₹{bill.balance_amount.toLocaleString()}</td>
+                    <td className="py-2 px-3 text-center">
                       <button
                         type="button"
                         onClick={() => {
@@ -174,7 +174,7 @@ export default function BillingTab({
                             transaction_reference: ''
                           });
                         }}
-                        className="bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold px-2.5 py-1.5 rounded-lg border border-teal-100 transition-colors"
+                        className="bg-teal-50 hover:bg-teal-100 text-teal-700 text-[10px] font-bold px-2.5 py-1.5 rounded transition-all border border-teal-100 shadow-sm"
                       >
                         Pay
                       </button>
@@ -183,7 +183,7 @@ export default function BillingTab({
                 ))}
                 {unpaidBills.length === 0 && (
                   <tr>
-                    <td colSpan="7" className="py-8 text-center text-slate-400">All generated patient invoices are cleared and paid!</td>
+                    <td colSpan="7" className="py-10 text-center text-slate-400 font-medium italic">All patient invoices are fully paid and cleared!</td>
                   </tr>
                 )}
               </tbody>
@@ -193,58 +193,62 @@ export default function BillingTab({
       </div>
 
       {/* Right Col: Issuing Refunds Panel */}
-      <div className="space-y-8">
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <h3 className="font-bold text-slate-900 text-lg mb-4 flex items-center gap-2">
-            <RotateCcw className="w-5 h-5 text-rose-600" />
-            Refund Desk
-          </h3>
-          <form onSubmit={handleIssueRefund} className="space-y-4">
-            <div>
-              <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Source Transaction ID (PAY-xxx)</label>
-              <input
-                type="text"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-medium"
-                placeholder="PAY-YYYYMMDD-XXXXX"
-                value={refundForm.payment_id}
-                onChange={(e) => setRefundForm({ ...refundForm, payment_id: e.target.value })}
-                required
-              />
-            </div>
+      <div className="lg:col-span-1 flex flex-col gap-4 md:h-full md:min-h-0">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm sticky-form md:h-full md:overflow-y-auto flex flex-col justify-between">
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm mb-2 flex items-center gap-2">
+              <RotateCcw className="w-4.5 h-4.5 text-rose-600 animate-spin-reverse-slow" />
+              Refund Desk
+            </h3>
+            <p className="text-slate-400 text-[11px] mb-3">Re-verify the receipt details and amount prior to issuing refund payouts.</p>
+            <form onSubmit={handleIssueRefund} className="space-y-3">
+              <div>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Source Transaction ID (PAY-xxx)</label>
+                <input
+                  type="text"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-semibold"
+                  placeholder="PAY-YYYYMMDD-XXXXX"
+                  value={refundForm.payment_id}
+                  onChange={(e) => setRefundForm({ ...refundForm, payment_id: e.target.value })}
+                  required
+                />
+              </div>
 
-            <div>
-              <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Refund Amount (₹)</label>
-              <input
-                type="number"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-bold text-slate-900"
-                placeholder="Amount to return"
-                value={refundForm.amount_refunded}
-                onChange={(e) => setRefundForm({ ...refundForm, amount_refunded: e.target.value })}
-                required
-              />
-            </div>
+              <div>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Refund Amount (₹)</label>
+                <input
+                  type="number"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-bold text-slate-900"
+                  placeholder="Amount to return"
+                  value={refundForm.amount_refunded}
+                  onChange={(e) => setRefundForm({ ...refundForm, amount_refunded: e.target.value })}
+                  required
+                />
+              </div>
 
-            <div>
-              <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Reason for Refund</label>
-              <textarea
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-medium h-20 resize-none"
-                placeholder="e.g. Laboratory Test CBC Cancelled by Doctor"
-                value={refundForm.reason}
-                onChange={(e) => setRefundForm({ ...refundForm, reason: e.target.value })}
-                required
-              ></textarea>
-            </div>
+              <div>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Reason for Refund</label>
+                <textarea
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-medium h-20 resize-none"
+                  placeholder="e.g. Laboratory Test cancelled by consulting physician"
+                  value={refundForm.reason}
+                  onChange={(e) => setRefundForm({ ...refundForm, reason: e.target.value })}
+                  required
+                ></textarea>
+              </div>
 
-            <button
-              type="submit"
-              className="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-3.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Issue Refund Receipt
-            </button>
-          </form>
+              <button
+                type="submit"
+                className="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-2 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 text-xs"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Issue Refund Receipt
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </div>
   );
 }
+

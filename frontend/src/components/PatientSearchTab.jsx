@@ -440,19 +440,18 @@ export default function PatientSearchTab({
   };
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start animate-in fade-in duration-300">
-      {/* Search and Registration block (Left 2 cols) */}
-      <div className="xl:col-span-2 space-y-8">
-        {/* Search Bar */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <h3 className="font-bold text-slate-900 text-lg mb-4">Patient Finder</h3>
-          <div className="flex gap-2">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch animate-in fade-in duration-300 h-full md:h-screen md:max-h-[calc(100vh-6.5rem)] md:overflow-hidden min-h-0 pb-2">
+      {/* Search Panel (Left 1 Col) */}
+      <div className="flex flex-col gap-4 md:h-full md:min-h-0">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col md:h-full md:overflow-hidden min-h-[300px] lg:min-h-0">
+          <h3 className="font-bold text-slate-900 text-sm mb-3 uppercase tracking-wider text-slate-500">Patient Finder</h3>
+          <div className="flex gap-2 flex-shrink-0">
             <div className="relative flex-1">
-              <Search className="w-5 h-5 text-slate-400 absolute left-4 top-3.5" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               <input
                 type="text"
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-3.5 text-sm placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all font-medium"
-                placeholder="Search ID, Name, Mobile, Invoice..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-semibold"
+                placeholder="Search ID, Name, Mobile..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -462,75 +461,86 @@ export default function PatientSearchTab({
             </div>
             <button
               onClick={() => fetchPatients(searchQuery)}
-              className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-sm px-5 py-2.5 rounded-xl shadow-sm transition-all"
+              className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm transition-all"
             >
               Search
             </button>
           </div>
 
           {/* Patients Search Results list */}
-          <div className="mt-6 space-y-3 max-h-96 overflow-y-auto pr-1">
+          <div className="mt-4 space-y-2 md:flex-1 md:overflow-y-auto pr-1 min-h-0 compact-scroll">
             {patients.map((pat) => (
               <div
                 key={pat.id}
                 onClick={() => handleSelectPatient(pat.id)}
-                className={`p-4 rounded-xl border cursor-pointer transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
                   selectedPatient?.id === pat.id
                     ? 'border-teal-500 bg-teal-50/20 shadow-sm'
-                    : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50/50'
+                    : 'border-slate-100 hover:border-slate-350 hover:bg-slate-50/50'
                 }`}
               >
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-bold text-slate-900 text-sm">{pat.name}</span>
-                    <span className="text-[10px] font-extrabold bg-slate-100 text-slate-600 px-2 py-0.5 rounded uppercase">{pat.gender}</span>
-                    <span className="text-slate-400 text-xs">{pat.age} Yrs</span>
+                <div className="space-y-0.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-bold text-slate-900 text-xs">{pat.name}</span>
+                    <span className="text-[9px] font-extrabold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded uppercase">{pat.gender}</span>
+                    <span className="text-slate-400 text-[10px]">{pat.age} Yrs</span>
                   </div>
-                  <p className="text-slate-400 text-xs font-semibold">Mobile: {pat.mobile_number} | ID: {pat.patient_id}</p>
+                  <p className="text-slate-400 text-[10px] font-semibold">Mobile: {pat.mobile_number} | ID: {pat.patient_id}</p>
                 </div>
-                <div className="text-teal-600 font-bold text-xs flex items-center justify-center gap-1 bg-white border border-slate-100 px-2.5 py-1.5 rounded-lg shadow-sm self-start sm:self-auto">
-                  View Profile &rarr;
+                <div className="text-teal-600 font-bold text-[10px] flex items-center justify-center gap-1 bg-white border border-slate-100 px-2 py-1 rounded-lg shadow-sm self-start sm:self-auto flex-shrink-0">
+                  Select
                 </div>
               </div>
             ))}
             {patients.length === 0 && (
-              <p className="text-center text-slate-400 text-sm py-4">No matching patient profiles found. Use the panel on the right to register.</p>
+              <p className="text-center text-slate-400 text-xs py-4">No matching patient profiles found.</p>
             )}
           </div>
         </div>
+      </div>
 
-        {/* Selected Patient Workspace */}
-        {selectedPatient && (
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+      {/* Workspace / Register Pane (Right 2 Cols) */}
+      <div className="lg:col-span-2 flex flex-col gap-4 md:h-full md:min-h-0">
+        {selectedPatient ? (
+          /* Selected Patient Workspace */
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-4 md:h-full md:overflow-hidden flex flex-col min-h-[400px] lg:min-h-0 animate-in fade-in duration-150">
             {/* Patient Quick Header Details */}
-            <div className="flex justify-between items-start pb-4 border-b border-slate-100">
+            <div className="flex justify-between items-start pb-3 border-b border-slate-100 flex-shrink-0 flex-wrap gap-2">
               <div>
-                <span className="text-teal-600 font-bold text-xs uppercase tracking-wider font-sans">Patient Workspace</span>
-                <h2 className="text-2xl font-bold text-slate-900 mt-1">{selectedPatient.name}</h2>
-                <p className="text-slate-400 text-xs mt-1">
+                <span className="text-teal-600 font-bold text-[10px] uppercase tracking-wider font-sans">Patient Workspace</span>
+                <h2 className="text-base font-bold text-slate-900 mt-0.5">{selectedPatient.name}</h2>
+                <p className="text-slate-400 text-xs mt-0.5">
                   Age: <b>{selectedPatient.age}</b> | Gender: <b>{selectedPatient.gender}</b> | Mobile: <b>{selectedPatient.mobile_number}</b> | ID: <b>{selectedPatient.patient_id}</b>
                 </p>
                 {selectedPatient.address && (
-                  <p className="text-slate-500 text-xs mt-1">Address: {selectedPatient.address}</p>
+                  <p className="text-slate-500 text-[11px] mt-0.5">Address: {selectedPatient.address}</p>
                 )}
               </div>
-              {userRole === 'Admin' && (
+              <div className="flex gap-2">
                 <button
-                  onClick={() => handleSoftDeletePatient(selectedPatient.id)}
-                  className="text-rose-600 hover:text-rose-800 text-xs font-semibold bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors"
+                  onClick={() => handleSelectPatient(null)}
+                  className="text-slate-500 hover:text-slate-850 text-[10px] font-bold bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg transition-colors"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Delete Profile
+                  Close Desk
                 </button>
-              )}
+                {userRole === 'Admin' && (
+                  <button
+                    onClick={() => handleSoftDeletePatient(selectedPatient.id)}
+                    className="text-rose-600 hover:text-rose-800 text-[10px] font-bold bg-rose-50 hover:bg-rose-100 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    Delete
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Create Visit Panel */}
             {['Admin', 'Receptionist'].includes(userRole) && (
-              <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 flex-shrink-0">
                 <div>
-                  <h4 className="font-bold text-slate-800 text-sm">Consultation Entry</h4>
-                  <p className="text-xs text-slate-500 mt-0.5">Record a new visit or pathology reference under an active doctor.</p>
+                  <h4 className="font-bold text-slate-800 text-xs">Consultation Entry</h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Record a new visit or pathology reference under an active doctor.</p>
                 </div>
                 <button
                   onClick={() => {
@@ -538,33 +548,33 @@ export default function PatientSearchTab({
                     setNewVisitDoctorId('');
                     setShowVisitModal(true);
                   }}
-                  className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 justify-center whitespace-nowrap active:scale-[0.98]"
+                  className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 justify-center whitespace-nowrap active:scale-[0.98]"
                 >
-                  <PlusCircle className="w-4 h-4" />
-                  Log Consultation / Visit
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  Log Visit / Consult
                 </button>
               </div>
             )}
 
-            {/* Patient Visit Log List */}
-            <div>
-              <h3 className="font-bold text-slate-900 text-sm mb-4 uppercase tracking-wider text-slate-500 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-teal-600" />
-                Patient Visits & Invoices Grid
+            {/* Patient Visit Log List - local scroll */}
+            <div className="flex-1 flex flex-col min-h-0">
+              <h3 className="font-bold text-slate-500 text-[10px] mb-2 uppercase tracking-wider flex items-center gap-1.5 flex-shrink-0">
+                <Calendar className="w-3.5 h-3.5 text-teal-600" />
+                Visits & Invoices Grid
               </h3>
-              <div className="space-y-4">
+              <div className="md:flex-1 md:overflow-y-auto space-y-3 pr-1 min-h-0 compact-scroll">
                 {selectedPatient.visits?.map((vis) => {
                   const visitBills = patientHistory.filter(b => b.visit_id === vis.id);
                   return (
-                    <div key={vis.id} className="border border-slate-200 rounded-xl p-4 space-y-4 hover:border-teal-200 bg-white transition-all shadow-sm">
+                    <div key={vis.id} className="border border-slate-200 rounded-xl p-3 space-y-3 hover:border-teal-200 bg-white transition-all shadow-sm">
                       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                         <div>
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <span className="text-slate-400 text-xs font-semibold">Visit ID: <b className="text-slate-800">{vis.visit_id}</b></span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-slate-400 text-[11px] font-semibold">Visit ID: <b className="text-slate-800">{vis.visit_id}</b></span>
                             <button
                               type="button"
                               onClick={() => handleOpenSummary(vis)}
-                              className="bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 font-bold text-xs px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 active:scale-95 shadow-sm"
+                              className="bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 font-bold text-[10px] px-2 py-1 rounded transition-all flex items-center gap-1 active:scale-95 shadow-sm"
                             >
                               <FileText className="w-3 h-3" />
                               <span>Clinical Notes & AI Summary</span>
@@ -573,35 +583,35 @@ export default function PatientSearchTab({
                               <button
                                 type="button"
                                 onClick={() => handleOpenStory(vis)}
-                                className="bg-gradient-to-r from-violet-50 to-purple-50 hover:from-violet-100 hover:to-purple-100 text-violet-700 border border-violet-200 font-bold text-xs px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 active:scale-95 shadow-sm"
+                                className="bg-gradient-to-r from-violet-50 to-purple-50 hover:from-violet-100 hover:to-purple-100 text-violet-700 border border-violet-200 font-bold text-[10px] px-2 py-1 rounded transition-all flex items-center gap-1 active:scale-95 shadow-sm"
                               >
                                 <Sparkles className="w-3 h-3" />
                                 <span>Patient Story</span>
                               </button>
                             )}
                           </div>
-                          <p className="font-bold text-slate-900 text-sm mt-0.5">Reason: {vis.reason || 'Not Specified'}</p>
+                          <p className="font-bold text-slate-900 text-xs mt-1">Reason: {vis.reason || 'Not Specified'}</p>
                           {vis.doctor && (
-                            <p className="text-xs text-teal-700 font-bold mt-0.5">Consulting Doctor: <span className="text-slate-800">{vis.doctor.name}</span></p>
+                            <p className="text-[11px] text-teal-700 font-semibold mt-0.5">Consulting Doctor: <span className="text-slate-800 font-bold">{vis.doctor.name}</span></p>
                           )}
-                          <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Date: {new Date(vis.visit_date).toLocaleString()}</p>
+                          <p className="text-[9px] text-slate-400 font-semibold mt-0.5">Date: {new Date(vis.visit_date).toLocaleString()}</p>
                         </div>
                         
                         {/* Advance Payment creation for receptionist */}
                         {['Admin', 'Receptionist'].includes(userRole) && visitBills.length === 0 && (
-                          <div className="border border-teal-100 bg-teal-50/30 p-3 rounded-lg flex flex-col gap-2">
-                            <span className="text-xs text-teal-700 font-extrabold uppercase tracking-wider">Record Advance Deposit</span>
-                            <form onSubmit={(e) => handleRecordAdvance(e, vis.id)} className="flex items-center gap-2 flex-wrap">
+                          <div className="border border-teal-100 bg-teal-50/30 p-2 rounded-lg flex flex-col gap-1">
+                            <span className="text-[10px] text-teal-700 font-extrabold uppercase tracking-wider">Record Advance Deposit</span>
+                            <form onSubmit={(e) => handleRecordAdvance(e, vis.id)} className="flex items-center gap-1.5 flex-wrap">
                               <input
                                 type="number"
-                                className="w-24 bg-white border border-slate-200 rounded px-2.5 py-1 text-xs focus:outline-none focus:border-teal-500 font-bold text-slate-800"
+                                className="w-20 bg-white border border-slate-200 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-teal-500 font-bold text-slate-800"
                                 placeholder="₹ Amount"
                                 value={newAdvancePayment.amount_paid}
                                 onChange={(e) => setNewAdvancePayment({ ...newAdvancePayment, amount_paid: e.target.value })}
                                 required
                               />
                               <select
-                                className="bg-white border border-slate-200 rounded px-2.5 py-1 text-xs focus:outline-none font-semibold text-slate-600"
+                                className="bg-white border border-slate-200 rounded px-1 py-0.5 text-[10px] focus:outline-none font-semibold text-slate-600"
                                 value={newAdvancePayment.payment_method}
                                 onChange={(e) => setNewAdvancePayment({ ...newAdvancePayment, payment_method: e.target.value })}
                               >
@@ -613,16 +623,16 @@ export default function PatientSearchTab({
                               </select>
                               <input
                                 type="text"
-                                className="w-28 bg-white border border-slate-200 rounded px-2.5 py-1 text-xs focus:outline-none font-medium text-slate-800"
-                                placeholder="Ref No (Optional)"
+                                className="w-20 bg-white border border-slate-200 rounded px-1 py-0.5 text-[10px] focus:outline-none font-medium text-slate-800"
+                                placeholder="Ref No"
                                 value={newAdvancePayment.transaction_reference}
                                 onChange={(e) => setNewAdvancePayment({ ...newAdvancePayment, transaction_reference: e.target.value })}
                               />
                               <button
                                 type="submit"
-                                className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs px-3 py-1 rounded"
+                                className="bg-teal-650 hover:bg-teal-700 text-white font-bold text-[10px] px-2 py-0.5 rounded"
                               >
-                                Save Deposit
+                                Save
                               </button>
                             </form>
                           </div>
@@ -631,24 +641,24 @@ export default function PatientSearchTab({
 
                       {/* Bills table linked to this visit */}
                       <div className="space-y-2">
-                        <div className="text-slate-400 text-xs font-bold uppercase tracking-wider">Invoices / Bills:</div>
+                        <div className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Invoices / Bills:</div>
                         {visitBills.map(bill => (
-                          <div key={bill.id} className="border border-slate-100 rounded-lg p-3 flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-slate-50/50">
+                          <div key={bill.id} className="border border-slate-100 rounded-lg p-2 flex flex-col sm:flex-row justify-between sm:items-center gap-2 bg-slate-50/50">
                             <div>
                               <div className="flex items-center gap-2">
                                 <span className="font-bold text-slate-900 text-xs">{bill.bill_id}</span>
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
                                   bill.payment_status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
                                   bill.payment_status === 'Partial Paid' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
                                   'bg-rose-50 text-rose-700 border border-rose-100'
                                 }`}>{bill.payment_status}</span>
                               </div>
-                              <div className="text-[10px] text-slate-400 mt-1 font-semibold">
+                              <div className="text-[10px] text-slate-400 mt-0.5 font-semibold">
                                 Total: ₹{bill.grand_total.toLocaleString()} | Adjusted Advance: ₹{bill.advance_applied.toLocaleString()} | Outstanding: <b className="text-slate-700 font-bold">₹{bill.balance_amount.toLocaleString()}</b>
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               {/* Link to record payment if Accountant/Admin and balance exists */}
                               {['Admin', 'Accountant'].includes(userRole) && bill.balance_amount > 0 && (
                                 <button
@@ -661,31 +671,31 @@ export default function PatientSearchTab({
                                     });
                                     setActiveTab('billing_history');
                                   }}
-                                  className="bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold px-3 py-1.5 rounded-lg border border-teal-100 transition-colors"
+                                  className="bg-teal-50 hover:bg-teal-100 text-teal-700 text-[10px] font-bold px-2 py-1 rounded border border-teal-100 transition-colors"
                                 >
-                                  Record Payment
+                                  Collect
                                 </button>
                               )}
 
                               {/* Print/Download Receipts button if any payment exists */}
                               {bill.payments?.map(pay => (
-                                <div key={pay.id} className="flex items-center gap-1">
+                                <div key={pay.id} className="flex items-center gap-0.5">
                                   <button
                                     onClick={() => fetchReceiptDetails(pay.id)}
-                                    className="bg-white border border-slate-200 text-slate-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-sm hover:bg-slate-50 transition-colors"
-                                    title={`View receipt for transaction ${pay.payment_id}`}
+                                    className="bg-white border border-slate-200 text-slate-700 text-[10px] font-semibold px-2 py-1 rounded flex items-center gap-1 shadow-sm hover:bg-slate-55 transition-colors"
+                                    title={`View receipt`}
                                   >
-                                    <Printer className="w-3.5 h-3.5 text-slate-500" />
-                                    <span className="font-mono text-[10px]">{pay.payment_id}</span>
+                                    <Printer className="w-3 h-3 text-slate-500" />
+                                    <span className="font-mono text-[9px]">{pay.payment_id.slice(-6)}</span>
                                   </button>
                                   <button
                                     onClick={() => {
                                       navigator.clipboard.writeText(pay.payment_id);
                                     }}
-                                    className="bg-white border border-slate-200 text-slate-400 hover:text-slate-600 p-1.5 rounded-lg flex items-center justify-center transition-colors shadow-sm"
+                                    className="bg-white border border-slate-200 text-slate-400 hover:text-slate-600 p-1 rounded transition-colors shadow-sm"
                                     title="Copy Payment ID"
                                   >
-                                    <Copy className="w-3.5 h-3.5" />
+                                    <Copy className="w-3 h-3" />
                                   </button>
                                 </div>
                               ))}
@@ -694,58 +704,53 @@ export default function PatientSearchTab({
                               {userRole === 'Admin' && (
                                 <button
                                   onClick={() => handleSoftDeleteBill(bill.id)}
-                                  className="text-rose-600 hover:text-rose-800 p-1.5 rounded bg-rose-50 hover:bg-rose-100 transition-colors"
+                                  className="text-rose-600 hover:text-rose-800 p-1 rounded bg-rose-50 hover:bg-rose-100 transition-colors"
                                   title="Cancel invoice"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <Trash2 className="w-3 h-3" />
                                 </button>
                               )}
                             </div>
                           </div>
                         ))}
 
-                        {/* Create bill button for receptionist */}
+                        {/* Create bill builder if visits has no invoices */}
                         {['Admin', 'Receptionist'].includes(userRole) && visitBills.length === 0 && (
-                          <div className="border border-dashed border-slate-300 p-4 rounded-lg bg-slate-50/20 text-center">
-                            <p className="text-slate-500 text-sm mb-3">No bills generated for this visit. Open billing builder below.</p>
+                          <div className="border border-dashed border-slate-200 p-2.5 rounded-lg bg-slate-50/20">
                             
                             {/* BILL BUILDER COMPONENT */}
-                            <div className="text-left bg-white border border-slate-200/80 rounded-xl p-4 space-y-4">
-                              <div className="flex justify-between items-center pb-2 border-b border-slate-100 flex-wrap gap-2">
-                                <h5 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Multi-Item Bill Creator</h5>
-                                <div className="flex items-center gap-2">
+                            <div className="bg-white border border-slate-200 rounded-xl p-2.5 space-y-2.5">
+                              <div className="flex justify-between items-center pb-1 border-b border-slate-100 flex-wrap gap-2 flex-shrink-0">
+                                <h5 className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">Invoice Builder</h5>
+                                <div className="flex items-center gap-1.5">
                                   <button
                                     type="button"
                                     onClick={() => fetchAiRecommendations(vis.id, vis.reason)}
                                     disabled={aiRecommendationsLoading}
-                                    className={`text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all duration-150 flex items-center gap-1 shadow-sm ${
+                                    className={`text-[10px] font-bold px-2 py-1 rounded transition-all flex items-center gap-1 shadow-sm ${
                                       aiRecommendationsLoading
                                         ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                                        : 'bg-teal-50 hover:bg-teal-100 text-teal-700 hover:text-teal-800 border border-teal-200'
+                                        : 'bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200'
                                     }`}
                                   >
                                     {aiRecommendationsLoading && aiRecommenderVisitId === vis.id ? (
                                       <>
-                                        <span className="animate-spin w-2.5 h-2.5 border-t-2 border-teal-600 rounded-full inline-block"></span>
+                                        <span className="animate-spin w-2 h-2 border-t-2 border-teal-600 rounded-full inline-block"></span>
                                         Analyzing...
                                       </>
                                     ) : (
-                                      <>✨ AI Test Suggester</>
+                                      <>✨ AI Suggester</>
                                     )}
                                   </button>
-                                  <span className="text-xs text-teal-600 font-bold bg-teal-50 px-2.5 py-1.5 rounded border border-teal-200">Active Catalog Linked</span>
                                 </div>
                               </div>
 
                               {/* AI Recommendations Section */}
                               {aiRecommenderVisitId === vis.id && (aiRecommendations.length > 0 || aiRecommendationsLoading || aiExplanation) && (
-                                <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-xs text-slate-500 font-extrabold uppercase tracking-wider flex items-center gap-1">
-                                      <span>✦ AI Smart Suggestions</span>
-                                      {aiRecommendationsLoading && (
-                                        <span className="text-[10px] text-teal-500 font-normal normal-case animate-pulse">(fetching recommendations...)</span>
-                                      )}
+                                <div className="bg-slate-50 rounded-lg p-2 border border-slate-200 space-y-1.5">
+                                  <div className="flex justify-between items-center flex-shrink-0">
+                                    <span className="text-[10px] text-slate-500 font-extrabold uppercase tracking-wider flex items-center gap-1">
+                                      <span>✦ AI Suggestions</span>
                                     </span>
                                     {aiRecommendations.length > 0 && (
                                       <button 
@@ -755,50 +760,50 @@ export default function PatientSearchTab({
                                           setAiExplanation('');
                                           setAiRecommenderVisitId(null);
                                         }}
-                                        className="text-xs text-rose-600 hover:text-rose-700 font-bold"
+                                        className="text-[10px] text-rose-600 hover:text-rose-700 font-bold"
                                       >
-                                        Clear AI suggestions
+                                        Clear
                                       </button>
                                     )}
                                   </div>
 
                                   {aiRecommendationsLoading ? (
-                                    <div className="py-4 text-center space-y-2">
-                                      <div className="w-5 h-5 border-t-2 border-b-2 border-teal-605 rounded-full animate-spin mx-auto text-teal-650"></div>
-                                      <p className="text-xs text-slate-500 font-semibold">Consulting doctor assistant for {selectedPatient.gender}, {selectedPatient.age} yrs...</p>
+                                    <div className="py-2 text-center space-y-1">
+                                      <div className="w-3.5 h-3.5 border-t-2 border-b-2 border-teal-650 rounded-full animate-spin mx-auto"></div>
+                                      <p className="text-[9px] text-slate-500 font-semibold">Consulting AI...</p>
                                     </div>
                                   ) : (
                                     <>
                                       {aiRecommendations.length === 0 && !aiExplanation ? (
-                                        <p className="text-xs text-slate-500 italic">No recommendations found. Try refining symptoms/visit reason.</p>
+                                        <p className="text-[9px] text-slate-500 italic">No recommendations.</p>
                                       ) : (
-                                        <div className="space-y-3">
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div className="space-y-1.5">
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
                                             {aiRecommendations.map((item, index) => (
-                                              <div key={index} className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col justify-between shadow-sm hover:border-teal-500 hover:shadow transition-all duration-200">
+                                              <div key={index} className="bg-white border border-slate-200 rounded-lg p-2 flex flex-col justify-between shadow-sm hover:border-teal-500 transition-all duration-200">
                                                 <div>
-                                                  <div className="flex justify-between items-start gap-2">
-                                                    <span className="font-bold text-slate-800 text-xs leading-tight">{item.service_name}</span>
-                                                    <span className="font-extrabold text-teal-600 text-xs whitespace-nowrap">₹{item.price}</span>
+                                                  <div className="flex justify-between items-start gap-1">
+                                                    <span className="font-bold text-slate-800 text-[10px] leading-tight">{item.service_name}</span>
+                                                    <span className="font-extrabold text-teal-600 text-[10px]">₹{item.price}</span>
                                                   </div>
-                                                  <p className="text-xs text-slate-500 leading-relaxed mt-2 font-medium">"{item.reason}"</p>
+                                                  <p className="text-[9px] text-slate-500 leading-normal mt-1 italic">"{item.reason}"</p>
                                                 </div>
-                                                <div className="mt-3 flex justify-end">
+                                                <div className="mt-2 flex justify-end">
                                                   <button
                                                     type="button"
                                                     onClick={() => addRecommendedItem(item)}
-                                                    className="bg-teal-650 hover:bg-teal-705 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-sm"
+                                                    className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-[9px] px-2 py-0.5 rounded transition-colors flex items-center gap-0.5 shadow-sm"
                                                   >
-                                                    <Plus className="w-3.5 h-3.5" />
-                                                    Add to Bill
+                                                    <Plus className="w-3 h-3" />
+                                                    Add
                                                   </button>
                                                 </div>
                                               </div>
                                             ))}
                                           </div>
                                           {aiExplanation && (
-                                            <div className="text-xs bg-teal-50/50 border border-teal-100 rounded-xl p-3 text-slate-600 font-medium italic leading-relaxed border-l-4 border-teal-500">
-                                              <strong className="text-teal-800 font-bold not-italic">Clinical Analysis:</strong> {aiExplanation}
+                                            <div className="text-[9px] bg-teal-50/50 border border-teal-100 rounded-lg p-1.5 text-slate-600 italic leading-relaxed border-l-2 border-teal-500">
+                                              <strong className="text-teal-800 font-bold not-italic">Clinical Context:</strong> {aiExplanation}
                                             </div>
                                           )}
                                         </div>
@@ -809,11 +814,11 @@ export default function PatientSearchTab({
                               )}
 
                               {/* Service item selector */}
-                              <div className="flex gap-3 flex-wrap items-end">
-                                <div className="flex-1 min-w-[200px]">
-                                  <label className="block text-xs text-slate-500 font-bold uppercase tracking-wider mb-1.5">Select Service</label>
+                              <div className="flex gap-2 flex-wrap items-end flex-shrink-0">
+                                <div className="flex-1 min-w-[150px]">
+                                  <label className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Select Service</label>
                                   <select
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-semibold text-slate-700 focus:outline-none focus:border-teal-500 cursor-pointer"
                                     value={selectedServiceId}
                                     onChange={(e) => setSelectedServiceId(e.target.value)}
                                   >
@@ -824,12 +829,12 @@ export default function PatientSearchTab({
                                   </select>
                                 </div>
 
-                                <div className="w-32">
-                                  <label className="block text-xs text-slate-500 font-bold uppercase tracking-wider mb-1.5">Price Override</label>
+                                <div className="w-20 flex-shrink-0">
+                                  <label className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Price (₹)</label>
                                   <input
                                     type="number"
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-teal-500"
-                                    placeholder="Price (₹)"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-700 focus:outline-none focus:border-teal-500"
+                                    placeholder="Price"
                                     value={customItemPrice}
                                     onChange={(e) => setCustomItemPrice(e.target.value)}
                                   />
@@ -838,28 +843,26 @@ export default function PatientSearchTab({
                                 <button
                                   type="button"
                                   onClick={addBillItem}
-                                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all flex items-center gap-1 shadow-sm h-[38px] self-end"
+                                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] px-3 py-1 rounded-lg transition-all flex items-center gap-0.5 shadow-sm h-[26px] self-end"
                                 >
-                                  <Plus className="w-3.5 h-3.5" />
+                                  <Plus className="w-3 h-3" />
                                   Add
                                 </button>
                               </div>
 
                               {/* Active items list for this bill */}
                               {billItems.length > 0 && (
-                                <div className="space-y-2 pt-2 border-t border-slate-100">
-                                  <span className="text-xs text-slate-500 font-extrabold uppercase tracking-wider">Bill Line Items</span>
-                                  <div className="divide-y divide-slate-100 border border-slate-100 rounded-lg overflow-hidden bg-slate-50/30">
+                                <div className="space-y-1.5 pt-2 border-t border-slate-100 flex-shrink-0">
+                                  <span className="text-[10px] text-slate-450 font-bold uppercase tracking-wider">Bill Line Items</span>
+                                  <div className="divide-y divide-slate-100 border border-slate-100 rounded-lg overflow-hidden bg-slate-50/30 text-[10px]">
                                     {billItems.map((item, index) => (
-                                      <div key={index} className="flex justify-between items-center py-2 px-3 text-xs">
-                                        <div>
-                                          <span className="font-semibold text-slate-800">{item.service_name}</span>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                          <span className="font-extrabold text-slate-900">₹{item.amount.toLocaleString()}</span>
+                                      <div key={index} className="flex justify-between items-center py-1 px-2.5">
+                                        <span className="font-semibold text-slate-800">{item.service_name}</span>
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-extrabold text-slate-950">₹{item.amount.toLocaleString()}</span>
                                           <button
                                             onClick={() => removeBillItem(index)}
-                                            className="text-rose-600 hover:text-rose-800 transition-colors p-1"
+                                            className="text-rose-600 hover:text-rose-800 p-0.5"
                                           >
                                             <Trash2 className="w-3.5 h-3.5" />
                                           </button>
@@ -869,51 +872,51 @@ export default function PatientSearchTab({
                                   </div>
 
                                   {/* AI Billing Auditor */}
-                                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 mt-3 space-y-2">
+                                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 space-y-1 flex-shrink-0">
                                     <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-                                        <Brain className="w-4 h-4 text-violet-500 animate-pulse" />
-                                        <span>AI Billing Auditor</span>
+                                      <div className="flex items-center gap-1 text-[10px] font-bold text-slate-700">
+                                        <Brain className="w-3.5 h-3.5 text-violet-500 animate-pulse" />
+                                        <span>AI Invoicing Audit</span>
                                       </div>
                                       <button
                                         type="button"
                                         onClick={() => runAnomalyCheck(vis)}
                                         disabled={anomalyCheckLoading}
-                                        className="bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 text-[10px] font-bold px-2.5 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1.5"
+                                        className="bg-violet-50 hover:bg-violet-100 text-violet-750 border border-violet-200 text-[9px] font-bold px-2 py-1 rounded transition-all flex items-center gap-1"
                                       >
                                         {anomalyCheckLoading ? (
                                           <>
-                                            <span className="animate-spin w-2.5 h-2.5 border-t-2 border-violet-600 rounded-full inline-block"></span>
+                                            <span className="animate-spin w-2 h-2 border-t-2 border-violet-600 rounded-full inline-block"></span>
                                             Auditing...
                                           </>
                                         ) : (
                                           <>
-                                            <Search className="w-3 h-3" />
-                                            Run AI Audit
+                                            <Search className="w-2.5 h-2.5" />
+                                            Audit
                                           </>
                                         )}
                                       </button>
                                     </div>
 
                                     {anomalyResult ? (
-                                      <div className={`p-2.5 rounded-xl text-xs flex flex-col gap-1.5 transition-all border ${
+                                      <div className={`p-1.5 rounded border text-[9px] ${
                                         anomalyResult.status === 'clear'
                                           ? 'bg-emerald-50/50 border-emerald-100 text-emerald-800'
                                           : anomalyResult.status === 'warning'
                                           ? 'bg-amber-50/50 border-amber-200 text-amber-800'
                                           : 'bg-rose-50/50 border-rose-200 text-rose-800'
                                       }`}>
-                                        <div className="flex items-center gap-1.5 font-bold">
-                                          {anomalyResult.status === 'clear' && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
-                                          {anomalyResult.status === 'warning' && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
-                                          {anomalyResult.status === 'critical' && <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />}
-                                          <span className="uppercase text-[9px] tracking-wider font-black">
-                                            Status: {anomalyResult.status}
+                                        <div className="flex items-center gap-1 font-bold">
+                                          {anomalyResult.status === 'clear' && <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />}
+                                          {anomalyResult.status === 'warning' && <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />}
+                                          {anomalyResult.status === 'critical' && <span className="w-1 h-1 rounded-full bg-rose-500 animate-pulse" />}
+                                          <span className="uppercase text-[8px] tracking-wider font-extrabold">
+                                            {anomalyResult.status}
                                           </span>
                                         </div>
-                                        <p className="font-bold text-[11px] leading-snug">{anomalyResult.summary}</p>
+                                        <p className="font-bold text-[9px] leading-snug mt-0.5">{anomalyResult.summary}</p>
                                         {anomalyResult.issues && anomalyResult.issues.length > 0 && (
-                                          <ul className="list-disc pl-4 space-y-1 mt-0.5 font-semibold text-[10px]">
+                                          <ul className="list-disc pl-3 mt-0.5 space-y-0.5 text-[8px] font-medium">
                                             {anomalyResult.issues.map((issue, idx) => (
                                               <li key={idx}>{issue}</li>
                                             ))}
@@ -921,15 +924,15 @@ export default function PatientSearchTab({
                                         )}
                                       </div>
                                     ) : (
-                                      <p className="text-[10px] text-slate-400 font-semibold">Verify invoice for duplicate tests, suspicious charges, or age discrepancies before generating.</p>
+                                      <p className="text-[8px] text-slate-400 font-medium">Checks duplicate test charges or age discrepancies.</p>
                                     )}
                                   </div>
 
                                   {/* Total Summary */}
-                                  <div className="flex justify-between items-center pt-3 px-1 border-t border-slate-100 mt-2">
+                                  <div className="flex justify-between items-center pt-1.5 px-1 border-t border-slate-100 text-[11px] flex-shrink-0">
                                     <div>
-                                      <span className="text-xs text-slate-500 font-bold">Subtotal:</span>
-                                      <span className="font-extrabold text-slate-900 ml-2">₹{billItems.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()}</span>
+                                      <span className="text-slate-400 font-bold">Subtotal:</span>
+                                      <span className="font-extrabold text-slate-905 ml-1">₹{billItems.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()}</span>
                                     </div>
                                     <button
                                       onClick={() => {
@@ -939,7 +942,7 @@ export default function PatientSearchTab({
                                         }
                                         handleCreateBill(vis.id);
                                       }}
-                                      className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs px-5 py-2.5 rounded-lg shadow-sm transition-all"
+                                      className="bg-teal-505 hover:bg-teal-605 text-white font-bold text-[10px] px-3 py-1 rounded-lg shadow-sm transition-all"
                                     >
                                       Generate Invoice
                                     </button>
@@ -954,92 +957,91 @@ export default function PatientSearchTab({
                   );
                 })}
                 {selectedPatient.visits?.length === 0 && (
-                  <p className="text-center text-slate-400 text-xs py-4">No logged visits or consultations for this patient yet. Use the Log Visit panel above.</p>
+                  <p className="text-center text-slate-450 text-xs py-6 italic">No consults logged.</p>
                 )}
               </div>
             </div>
           </div>
-        )}
-      </div>
-
-      {/* Register Patient Profile form (Right col) */}
-      {['Admin', 'Receptionist'].includes(userRole) && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <h3 className="font-bold text-slate-900 text-lg mb-4 flex items-center gap-2">
-            <UserCheck className="w-5 h-5 text-teal-600" />
-            New Registration
-          </h3>
-          <form onSubmit={handleRegisterPatient} className="space-y-4">
-            <div>
-              <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Patient Full Name</label>
-              <input
-                type="text"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-medium"
-                placeholder="e.g. Rahul Sharma"
-                value={newPatient.name}
-                onChange={(e) => setNewPatient({ ...newPatient, name: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+        ) : (
+          /* Register Patient Profile form (displayed in right panel when no patient is selected) */
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm max-w-xl md:overflow-y-auto">
+            <h3 className="font-bold text-slate-900 text-sm mb-2 flex items-center gap-2">
+              <UserCheck className="w-4.5 h-4.5 text-teal-600" />
+              New Patient Registration
+            </h3>
+            <p className="text-slate-400 text-[11px] mb-3">Register a new patient profile into the central hospital records directory.</p>
+            <form onSubmit={handleRegisterPatient} className="space-y-3">
               <div>
-                <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Age</label>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Patient Full Name</label>
                 <input
-                  type="number"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-medium"
-                  placeholder="Age in Yrs"
-                  value={newPatient.age}
-                  onChange={(e) => setNewPatient({ ...newPatient, age: e.target.value })}
+                  type="text"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-semibold"
+                  placeholder="e.g. Rahul Sharma"
+                  value={newPatient.name}
+                  onChange={(e) => setNewPatient({ ...newPatient, name: e.target.value })}
                   required
                 />
               </div>
-              <div>
-                <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Gender</label>
-                <select
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-semibold text-slate-600"
-                  value={newPatient.gender}
-                  onChange={(e) => setNewPatient({ ...newPatient, gender: e.target.value })}
-                >
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Age</label>
+                  <input
+                    type="number"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-semibold"
+                    placeholder="Age in Yrs"
+                    value={newPatient.age}
+                    onChange={(e) => setNewPatient({ ...newPatient, age: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-505 text-[10px] font-bold uppercase tracking-wider mb-1">Gender</label>
+                  <select
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-bold text-slate-600 cursor-pointer"
+                    value={newPatient.gender}
+                    onChange={(e) => setNewPatient({ ...newPatient, gender: e.target.value })}
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Mobile Number</label>
-              <input
-                type="text"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-medium"
-                placeholder="10-digit Phone"
-                value={newPatient.mobile_number}
-                onChange={(e) => setNewPatient({ ...newPatient, mobile_number: e.target.value })}
-                required
-              />
-            </div>
+              <div>
+                <label className="block text-slate-550 text-[10px] font-bold uppercase tracking-wider mb-1">Mobile Number</label>
+                <input
+                  type="text"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-semibold"
+                  placeholder="10-digit Phone"
+                  value={newPatient.mobile_number}
+                  onChange={(e) => setNewPatient({ ...newPatient, mobile_number: e.target.value })}
+                  required
+                />
+              </div>
 
-            <div>
-              <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Residential Address</label>
-              <textarea
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-medium h-20 resize-none"
-                placeholder="Street, City, pincode"
-                value={newPatient.address}
-                onChange={(e) => setNewPatient({ ...newPatient, address: e.target.value })}
-              ></textarea>
-            </div>
+              <div>
+                <label className="block text-slate-550 text-[10px] font-bold uppercase tracking-wider mb-1">Residential Address</label>
+                <textarea
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-medium h-14 resize-none"
+                  placeholder="Street, City, Pincode"
+                  value={newPatient.address}
+                  onChange={(e) => setNewPatient({ ...newPatient, address: e.target.value })}
+                ></textarea>
+              </div>
 
-            <button
-              type="submit"
-              className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
-            >
-              <PlusCircle className="w-4 h-4" />
-              Save Patient Profile
-            </button>
-          </form>
-        </div>
-      )}
+              <button
+                type="submit"
+                className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 text-xs"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                Register Patient Profile
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
 
       {/* Consultation Summary & AI Handout Modal */}
       {showSummaryModal && selectedVisit && (

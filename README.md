@@ -18,6 +18,20 @@ The entire stack is containerized and orchestrates seamlessly with a single comm
 - **Standardized Services Catalog**: Dynamic catalog grouping doctor consultations, OPD, IPD, ICU, labs, radiology, and pharmacy charges with standard base pricing. Editable via the Admin panel.
 - **Invoice Builder (Billing Queue)**: Interactive multi-item billing builder allowing receptionist staff to override standard catalog pricing, group multiple services, auto-fetch and adjust visit-level advance payments, and calculate balances.
 
+```mermaid
+graph TD
+    A[Receptionist / Admin] -->|1. Register Patient| B(patient_id PAT-YYYYMMDD-XXXXX)
+    B -->|2. Create Visit| C(visit_id VIS-YYYYMMDD-XXXXX)
+    C -->|3. Enter Symptoms/Chief Complaints| D{Doctor / AI Assistant Console}
+    D -->|4. AI Prescription Suggester| E[Groq Llama 3.3]
+    E -->|Generates clinical suggestions| F[Prescription Draft]
+    F -->|5. Customize & Save| G[(PostgreSQL db)]
+    F -->|6. Generate Handout| H[Vernacular Summarizer]
+    H -->|Translate to Hindi/English| I[Vernacular Handout with emojis]
+    I -->|7. PDF Generator| J[ReportLab A5 Printout]
+```
+
+
 ### 🧠 Advanced AI-Powered Assistant Ecosystem
 - **AI Consultation Summary & Patient Handout**: Converts doctor's raw clinical notes (diagnosis, complaints, medicines, advice, follow-up) into a structured daily-routine narrative with emojis (Morning, Afternoon, Night) in both English and Hindi.
 - **AI Clinical Treatment & Prescription Suggester**: Generates clinical recommendations (diagnoses, medicines, diagnostic tests, advice, follow-up schedules) based on patient complaints, age, and gender, following strict Indian clinical prescribing and safety rules (e.g. BD/OD dosing constraints, pediatric vs geriatric modifications, and non-overlapping classes).
@@ -25,12 +39,83 @@ The entire stack is containerized and orchestrates seamlessly with a single comm
 - **AI Billing Auditor & Anomaly Checker**: Audits bill items prior to invoice creation to identify financial and clinical anomalies, classifying status as `clear`, `warning`, or `critical` (checks for duplicate tests, clinically unlikely service combinations like ICU + OPD, excessive amounts, missing consultation fees, or age-inappropriate billing).
 - **AI Dashboard Revenue Insights**: Performs real-time server-side analytics on today's transaction ledgers, digital/cash splits, and outstanding dues to produce data-driven business insights, actionable administrative suggestions, highlights, and revenue sentiments (positive, neutral, negative).
 
+```mermaid
+flowchart TD
+    A[Start Bill Verification] --> B[Retrieve Bill Items & Patient Metadata]
+    B --> C{Verify via Hybrid Auditor}
+    
+    subgraph Local Deterministic Engine
+        C -->|Check Room Rent GST| D1[GST Compliance Check]
+        C -->|Check Pediatric Age < 12| D2[Adult Tablet vs Pediatric Syrup Check]
+        C -->|Check Duplicate Items| D3[Duplicate Test Check]
+        C -->|Check Diagnostic Code| D4[Missing Doctor Consultation Fee Check]
+    end
+    
+    subgraph Semantic AI Auditor
+        C -->|Send payload to Groq API| E1[Groq Llama 3.3 Model]
+        E1 -->|Analyze clinical inconsistencies| E2[Validate Symptoms vs Test Appropriateness]
+    end
+    
+    D1 & D2 & D3 & D4 --> F[Merge Issues Lists]
+    E2 --> F
+    
+    F --> G{Are there critical warnings?}
+    G -->|Yes: duplicate/safety warning| H[Set status to CRITICAL]
+    G -->|No: other warnings| I{Are there minor warnings?}
+    I -->|Yes| J[Set status to WARNING]
+    I -->|No| K[Set status to CLEAR]
+    
+    H --> L[Display Red Alert Panel + Block Checkout]
+    J --> M[Display Yellow Warning Panel + Permit Override]
+    K --> N[Display Green Approval Panel + Permit Checkout]
+```
+
+
 ### 💳 Payments & Receipts Desk
 - **Multi-Method Collection**: Support for `Cash`, `UPI`, `Card`, `Net Banking`, and `Wallet` transactions with reference tracking (transaction IDs).
 - **Payment Types**: Supports `Advance`, `Partial`, `Full` (Final Settlement), and `Refund` payment flows.
 - **ReportLab Dynamic PDF Receipt Engine**: Strictly mimics standard diagnostic slip templates (reproducing "Vedam Diagnostics" / "Dr. Shweta Grover" headers).
 - **Customizable Templates**: Hospital branding, addresses, contacts, GSTIN, doctor details, and header layouts are stored in a `settings` table and editable in real-time from the Admin settings panel without code rebuilds.
 - **Refund Desk**: Allows accountants or admins to issue refunds against specific transaction references, automatically adjusting the parent invoice balance and writing refund receipts.
+
+#### Billing Lifecycle State Machine
+```mermaid
+stateDiagram-v2
+    [*] --> Invoice_Created : Generate Invoice
+    Invoice_Created --> Pending : No Payments Recorded
+    
+    state Pending {
+        [*] --> Balance_Due
+    }
+    
+    Pending --> Partial_Paid : Record Advance Deposit or Partial Payment
+    Partial_Paid --> Partial_Paid : Add partial payments
+    
+    Pending --> Paid : Full payment settled
+    Partial_Paid --> Paid : Pay outstanding balance
+    
+    state Paid {
+        [*] --> Balance_Zero
+    }
+    
+    Paid --> Partial_Paid : Issue refund (Invoice Balance > 0)
+    Paid --> Refunded : Full refund issued
+    Partial_Paid --> Refunded : Refund all payments
+    
+    Refunded --> [*]
+```
+
+#### Dynamic PDF Receipt Compilation
+```mermaid
+graph LR
+    A[Request Download / Print] --> B[Fetch Settings Table]
+    B -->|Hospital Name, GSTIN, Contact, Logo| C[ReportLab PDF Engine]
+    D[Fetch Payment, Bill, Patient details] --> C
+    C -->|Calculate positioning & dynamic spacers| E[Render A5 PDF Layout]
+    E -->|Write binary payload| F[Save to local storage / receipts_data volume]
+    F -->|Serve static URL| G[React Client Preview iframe / Download]
+```
+
 
 ### 📊 Administrative Controls
 - **Advanced KPI Dashboard**: Aggregated counters for total registered patients, today's patient visits, total revenue, outstanding dues, cash/online collection splits, and refund aggregates with interactive charts.
@@ -40,6 +125,30 @@ The entire stack is containerized and orchestrates seamlessly with a single comm
   - **Receptionist**: Registration, visits, deposits, and bill creation.
   - **Accountant**: Billing queues, payment processing, refunds, downloads, and receipts.
   - **Admin**: All views, audit log table, catalog standard pricing, user management, and branding settings.
+
+---
+
+## 📸 Product Interface Preview
+
+Here is a visual overview of the HospiSynAI user interface and product screens:
+
+### 🔐 1. Secured Unified Login Desk
+![Secure Login Desk](screenshots/login.png)
+
+### 📊 2. Main KPI Dashboard & AI Revenue Analyst
+![Dashboard Overview](screenshots/dashboard.png)
+
+### 🏢 3. Front Desk (Patient Search, Logs & AI Prescription Suggester)
+![Patient Desk](screenshots/patient_desk.png)
+
+### 💳 4. Financial Operations (Billing Queue & Payment Checkout)
+![Billing Queue](screenshots/billing_desk.png)
+
+### 📈 5. Return on Investment (ROI) & GST Compliance Calculator
+![ROI Calculator](screenshots/roi_calculator.png)
+
+### ⚙️ 6. System Settings & Custom Branding
+![Branding Settings](screenshots/settings.png)
 
 ---
 
@@ -140,6 +249,40 @@ On first startup, the database is automatically seeded with three accounts repre
 ### Security & Role-Based Access Control (RBAC)
 
 The backend implements JWT token-based authentication and role-based checks using FastAPI dependency injections (specifically `auth.RoleChecker`).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User (Client Browser)
+    participant React as React Router & Guard
+    participant API as FastAPI Backend
+    participant Auth as auth.RoleChecker
+
+    User->>React: Enter Credentials (e.g., receptionist/recep123)
+    React->>API: POST /api/auth/login
+    API->>API: Verify password (bcrypt)
+    API-->>React: Return JWT Access Token + Role
+    React->>React: Store token in sessionStorage
+    
+    Note over User, React: Navigating / Triggering action...
+    
+    User->>React: Click Protected Tab (e.g. SettingsTab)
+    React->>React: Check local role permissions
+    React->>API: HTTP Request with Bearer JWT
+    API->>Auth: Invoke RoleChecker(["Admin"])
+    alt Token Invalid or Expired
+        Auth-->>React: HTTP 401 Unauthorized
+        React->>User: Redirect to Login Screen
+    else Role Mismatch
+        Auth-->>React: HTTP 403 Forbidden
+        React->>User: Display "Access Denied" Notification
+    else Authorized
+        Auth-->>API: Allow endpoint execution
+        API-->>React: Return JSON Response
+        React-->>User: Update View with Data
+    end
+```
+
 
 | Feature / Workspace | Admin | Accountant | Receptionist | Implementation Details |
 | :--- | :---: | :---: | :---: | :--- |

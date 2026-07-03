@@ -38,6 +38,8 @@ import CatalogTab from './components/CatalogTab';
 import UsersTab from './components/UsersTab';
 import AuditLogsTab from './components/AuditLogsTab';
 import SettingsTab from './components/SettingsTab';
+import ROICalculatorTab from './components/ROICalculatorTab';
+import DemoTour from './components/DemoTour';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
@@ -1132,7 +1134,7 @@ function App() {
       )}
 
       {/* Sidebar Navigation — Premium Version */}
-      <aside className={`fixed inset-y-0 left-0 z-40 w-64 flex flex-col justify-between flex-shrink-0 transition-transform duration-300 transform md:translate-x-0 md:static md:h-auto md:w-64 ${
+      <aside className={`fixed inset-y-0 left-0 z-40 w-64 flex flex-col justify-between flex-shrink-0 transition-transform duration-300 transform md:translate-x-0 md:static md:h-screen md:max-h-screen md:w-64 ${
         mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
       }`} style={{background:'#080d1a', borderRight:'1px solid rgba(255,255,255,0.06)'}}>
         <div>
@@ -1169,6 +1171,23 @@ function App() {
                 <Grid className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'dashboard' ? 'text-teal-400' : ''}`} />
                 Dashboard
                 {activeTab === 'dashboard' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+              </button>
+            )}
+
+            {/* ROI & Business Model — Admin & Accountant */}
+            {userRole !== 'Receptionist' && (
+              <button
+                onClick={() => { setActiveTab('roi_calculator'); setMobileMenuOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
+                  activeTab === 'roi_calculator'
+                    ? 'text-white'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+                style={activeTab === 'roi_calculator' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.2), rgba(20,184,166,0.05))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
+              >
+                <TrendingUp className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'roi_calculator' ? 'text-teal-400' : ''}`} />
+                ROI & Business Model
+                {activeTab === 'roi_calculator' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
               </button>
             )}
 
@@ -1260,24 +1279,26 @@ function App() {
         </div>
       </aside>
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto h-full md:max-h-screen" style={{background:'#f0f4f8'}}>
+      <main className="flex-1 flex flex-col h-full md:h-screen md:max-h-screen overflow-y-auto md:overflow-hidden" style={{background:'#f0f4f8'}}>
         {/* HEADER BAR */}
-        <header className="sticky top-0 z-30 px-6 md:px-10 py-4 flex items-center justify-between gap-4 backdrop-blur-md"
+        <header className="sticky top-0 z-30 px-4 md:px-6 py-3 flex items-center justify-between gap-4 backdrop-blur-md flex-shrink-0"
           style={{background:'rgba(240,244,248,0.85)', borderBottom:'1px solid rgba(0,0,0,0.06)'}}>
           <div>
-            <h1 className="text-xl font-black text-slate-900 tracking-tight leading-tight">
+            <h1 className="text-lg font-black text-slate-900 tracking-tight leading-tight">
               {activeTab === 'dashboard' && 'Dashboard Overview'}
               {activeTab === 'search_register' && 'Patient Desk'}
               {activeTab === 'billing_history' && 'Billing Operations'}
+              {activeTab === 'roi_calculator' && 'ROI & Business Model'}
               {activeTab === 'catalog' && 'Services Catalog'}
               {activeTab === 'users' && 'Staff Accounts'}
               {activeTab === 'audit_logs' && 'Audit Trail'}
               {activeTab === 'settings' && 'Hospital Settings'}
             </h1>
-            <p className="text-slate-400 text-xs font-medium mt-0.5">
+            <p className="text-slate-400 text-[11px] font-medium mt-0.5">
               {activeTab === 'dashboard' && 'Real-time financial summary • AI-powered insights'}
               {activeTab === 'search_register' && 'Search, register patients, log visits, AI clinical assistant'}
               {activeTab === 'billing_history' && 'Process bills, clear balances, manage advances'}
+              {activeTab === 'roi_calculator' && 'Interactive product ROI, GST tax compliance, and SaaS configurations'}
               {activeTab === 'catalog' && 'Edit service names, categories, and pricing'}
               {activeTab === 'users' && 'Create and manage staff roles and credentials'}
               {activeTab === 'audit_logs' && 'Chronological record of all system actions'}
@@ -1287,9 +1308,9 @@ function App() {
 
           <div className="flex items-center gap-3 flex-shrink-0">
             {/* Live badge */}
-            <div className="hidden sm:flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
+            <div className="hidden sm:flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-slate-500 text-[11px] font-bold">
+              <span className="text-slate-500 text-[10px] font-bold">
                 {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
               </span>
             </div>
@@ -1297,7 +1318,7 @@ function App() {
         </header>
 
         {/* Page content padding */}
-        <div className="p-6 md:p-8">
+        <div className="flex-1 overflow-y-auto md:overflow-hidden p-4 md:p-5 min-h-0">
 
         {/* ----------------------------------------------------
             TAB 1: DASHBOARD
@@ -1309,6 +1330,13 @@ function App() {
             API_BASE={API_BASE}
             fetchReceiptDetails={fetchReceiptDetails}
           />
+        )}
+
+        {/* ----------------------------------------------------
+            TAB 1B: ROI & BUSINESS COMPLIANCE DESK
+            ---------------------------------------------------- */}
+        {activeTab === 'roi_calculator' && (
+          <ROICalculatorTab />
         )}
 
 
@@ -1691,6 +1719,20 @@ function App() {
             </form>
           </div>
         </div>
+      )}
+      {/* SIPS DEMO & EVALUATION TOUR FLOATING CONTROL */}
+      {token && (
+        <DemoTour
+          API_BASE={API_BASE}
+          onSeedSuccess={(msg) => {
+            showToast(msg, 'success');
+            fetchDashboardMetrics();
+            if (activeTab === 'search_register') {
+              fetchPatients();
+            }
+          }}
+          setActiveTab={setActiveTab}
+        />
       )}
     </div>
   );
