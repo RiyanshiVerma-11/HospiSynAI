@@ -15,7 +15,7 @@ export default function SettingsTab({
   handleAddDoctor
 }) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch animate-in fade-in duration-300 h-full md:h-screen md:max-h-[calc(100vh-6.5rem)] md:overflow-hidden min-h-0 pb-2">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch animate-in fade-in duration-300 h-full md:h-full md:max-h-full md:overflow-hidden min-h-0">
       {/* Receipt Branding configurations */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm md:h-full md:overflow-y-auto flex flex-col justify-between">
         <div>

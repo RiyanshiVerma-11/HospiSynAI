@@ -7,8 +7,30 @@ HospiSynAI is a production-grade, real-time hospital billing, receptionist desk,
 
 The entire stack is containerized and orchestrates seamlessly with a single command via Docker Compose.
 
+---
+
+## 🌟 What Makes HospiSynAI Stand Out
+
+| # | Standout Capability | What It Does |
+| :---: | :--- | :--- |
+| 🧠 **1** | **AI-Powered Prescription Suggester** | Doctor enters patient symptoms → Groq LLM instantly generates a full clinical plan: diagnosis, medicines with BD/OD/TID dosing, pediatric & geriatric safety rules, diagnostic tests, lifestyle advice, and follow-up schedule. All embedded directly in the OPD desk. |
+| 🛡️ **2** | **Pre-Invoice AI Billing Auditor** | Before an invoice is even created, a hybrid rule engine + LLM scans every line item for duplicate tests, clinically impossible service combinations (e.g. ICU + OPD), age-inappropriate charges, and missing consultation codes — returning a `clear`, `warning`, or `critical` verdict with specific issues listed. |
+| 🌐 **3** | **Live Multilingual Patient Handout in 11 Indian Languages** | The AI converts the doctor's prescription into a patient-friendly storytelling summary (Morning / Afternoon / Night routine + warnings), then auto-translates it into any of 11 Indian languages — Hindi, Kannada, Tamil, Telugu, Bengali, Marathi, Gujarati, Malayalam, Punjabi, Odia, Urdu — the moment a language is selected from the dropdown. No extra click needed. |
+| 📊 **4** | **AI Revenue Narrative Dashboard** | Instead of just charts, the dashboard reads today's actual live transaction data and generates a paragraph-level business insight with sentiment (positive / neutral / negative), a specific financial highlight, and an actionable recommendation for the hospital admin. |
+| 🧾 **5** | **AI Test & Service Recommender** | Before billing, the system queries the hospital's own active services catalog and recommends the most relevant OPD tests based on patient age, gender, and symptoms — with clinical reasoning for each suggestion. |
+| 📄 **6** | **Customisable ReportLab PDF Receipts & Prescriptions** | A5 receipts and prescription sheets are generated server-side by ReportLab. Every branding detail — hospital name, logo, GSTIN, doctor name, contact, address — is editable via the Admin panel and reflects on every new PDF instantly, without code rebuilds. |
+| 💳 **7** | **Complete Payment Lifecycle** | Supports Cash, UPI, Card, Net Banking, and Wallet. Handles Advance deposits, Partial payments, Full settlements, and Refunds — advance amounts are automatically detected and applied to the matching invoice during checkout. |
+| 🔐 **8** | **Fine-Grained Role-Based Access Control** | Three distinct roles — `Admin`, `Accountant`, `Receptionist` — each with precisely scoped permissions enforced at every API endpoint via FastAPI's `RoleChecker` dependency injection. |
+| 📋 **9** | **Immutable System Audit Trail** | Every action — logins, patient registrations, billing edits, payments, refunds, settings changes — is automatically logged with the user identity and timestamp. The log is read-only, tamper-evident, and visible only to Admins. |
+| 📤 **10** | **One-Click Data Export** | Transaction ledgers stream directly from the server as Excel (`.xlsx`) or CSV via Pandas — no third-party BI tool needed. |
+| 🚀 **11** | **Zero-Config Docker Deployment** | The entire stack — React frontend, FastAPI backend, PostgreSQL database, and PDF engine — launches with a single command: `docker-compose up --build`. No manual database setup, no dependency conflicts. |
+| 🆓 **12** | **Fully Open-Source, Zero Licensing Cost** | Every line of code is open and auditable. No per-bed pricing, no SaaS subscription, no vendor lock-in. Deployable on any machine or cloud server. |
+
+> [!NOTE]
+> All AI outputs (prescription suggestions, billing audit verdicts, patient handouts, revenue insights) are **assistive** — final clinical and financial decisions remain with the attending doctor and accountant respectively.
 
 ---
+
 
 ## 🌟 Key Features
 
@@ -33,7 +55,7 @@ graph TD
 
 
 ### 🧠 Advanced AI-Powered Assistant Ecosystem
-- **AI Consultation Summary & Patient Handout**: Converts doctor's raw clinical notes (diagnosis, complaints, medicines, advice, follow-up) into a structured daily-routine narrative with emojis (Morning, Afternoon, Night) in both English and Hindi.
+- **AI Consultation Summary & Patient Handout**: Converts doctor's raw clinical notes (diagnosis, complaints, medicines, advice, follow-up) into a structured daily-routine narrative with emojis (Morning, Afternoon, Night) in English and dynamically translates to 11 Indian native languages (Hindi, Kannada, Tamil, Telugu, Bengali, Marathi, Gujarati, Malayalam, Punjabi, Odia, Urdu) selected in real time.
 - **AI Clinical Treatment & Prescription Suggester**: Generates clinical recommendations (diagnoses, medicines, diagnostic tests, advice, follow-up schedules) based on patient complaints, age, and gender, following strict Indian clinical prescribing and safety rules (e.g. BD/OD dosing constraints, pediatric vs geriatric modifications, and non-overlapping classes).
 - **AI Service & Diagnostic Test Recommender**: Recommends the most relevant OPD services or tests directly from the hospital's active services catalog based on patient demographics and symptoms, providing clinical justifications.
 - **AI Billing Auditor & Anomaly Checker**: Audits bill items prior to invoice creation to identify financial and clinical anomalies, classifying status as `clear`, `warning`, or `critical` (checks for duplicate tests, clinically unlikely service combinations like ICU + OPD, excessive amounts, missing consultation fees, or age-inappropriate billing).
@@ -190,6 +212,7 @@ HospiSynAI/
 │   ├── schemas.py              # Pydantic validation boundaries
 │   ├── auth.py                 # JWT, Bcrypt & RBAC logic
 │   ├── pdf_generator.py        # ReportLab customizable layout PDF engine
+│   ├── test_main.py            # Automated Pytest suite for auth & billing rules
 │   └── main.py                 # FastAPI endpoints, exports, seeder & audits
 └── frontend/
     ├── Dockerfile              # Vite React development build
@@ -380,6 +403,15 @@ Follow this standard workflow to verify system capabilities:
 3. Open any receipt. Check that the printed/displayed PDF headers update dynamically.
 4. Check the **System Audit Trail** tab. Verify that all patient registrations, visit additions, payments, settings modifications, and user logins are logged with their corresponding timestamp and user session.
 
+### Step 4: Automated Testing (Verification)
+Verify backend routing logic and clinical/GST billing rules using the automated test suite:
+1. Open a terminal in the project root directory.
+2. Run pytest inside the backend environment:
+   ```bash
+   python -m pytest backend/test_main.py
+   ```
+3. Check that all 8 unit tests pass successfully, confirming correctness of password hashing, token validation, duplicate test auditing, room rent GST calculations, and pediatric dosage safety flags.
+
 ---
 
 ## 🔒 Security & Configuration / Deployment Notes
@@ -412,4 +444,30 @@ For deployment and local setup, the project supports a `.env` configuration file
 3. **Exposed Ports**: Customize `BACKEND_PORT` and `FRONTEND_PORT` if there are conflicts on the host system.
 4. **SSL/TLS & Domain**: Update `VITE_API_BASE_URL` and `VITE_STATIC_BASE_URL` to your production domain (using `https`) and host backend/frontend behind an Nginx reverse proxy.
 5. **Backup Plan**: Create automated cron jobs to backup the `pgdata` volume (PostgreSQL state) and `receipts_data` volume (generated receipt files).
+
+---
+
+## 🏥 HospiSynAI for Tier 2 & Tier 3 Hospitals — How We Compare
+
+> Tier 2 and Tier 3 hospitals in India — district hospitals, nursing homes, standalone OPD clinics, and small multi-speciality setups — typically run on basic billing software, desktop ERP tools, or even paper registers. AI features, if any, are locked behind expensive enterprise tiers they can't afford. **HospiSynAI brings hospital-grade AI to exactly this segment, at zero licensing cost.**
+
+| Capability | 🏚️ Typical Tier 2 / Tier 3 HMS | 🚀 HospiSynAI |
+| :--- | :---: | :---: |
+| **AI Prescription Suggester** (LLM generates diagnosis + medicines + tests from symptoms) | ❌ Not available | ✅ Built-in, no extra cost |
+| **Pre-Invoice Billing Fraud Auditor** (catches duplicate tests, age errors, clinical mismatches before checkout) | ❌ Not available | ✅ Runs automatically before every invoice |
+| **Patient Handout in Regional Language** (Kannada, Tamil, Telugu, Hindi, Bengali etc.) | ❌ English only or fixed Hindi printout | ✅ 11 live Indian languages, auto-generated by AI |
+| **AI-Driven Dashboard Insights** (narrative analysis of revenue, sentiment, recommendations) | ❌ Static counters / bar charts only | ✅ AI writes a paragraph summary of today's financial health |
+| **AI Test & Service Recommender** (suggests relevant OPD tests from hospital's own catalog) | ❌ Staff manually checks catalog | ✅ AI recommends with clinical reasoning |
+| **Customisable PDF Receipts & Prescriptions** | ❌ Fixed vendor template, needs IT support to change | ✅ Admin panel — edit hospital name, logo, GSTIN, doctor in 30 seconds |
+| **Advance → Invoice Auto-Adjustment** | ❌ Manual calculation by staff | ✅ Advance automatically detected and deducted from invoice total |
+| **Refund Processing with Receipt** | ❌ Manual ledger entry | ✅ Structured refund desk, PDF receipt generated automatically |
+| **Role-Based Access Control** (Receptionist / Accountant / Admin scoped separately) | ❌ Single login or basic admin/user split | ✅ Fine-grained per-endpoint enforcement via JWT + FastAPI |
+| **Immutable Audit Trail** | ❌ Absent or easily editable | ✅ Every action logged with user + timestamp, Admin-only read |
+| **Excel / CSV Export** | ❌ Manual report printing or absent | ✅ One-click server-side streaming export |
+| **Setup & Deployment** | ❌ Vendor installation visit, days of setup | ✅ `docker-compose up --build` — running in under 60 seconds |
+| **Licensing Cost** | ❌ Monthly per-bed / per-user SaaS fee | ✅ Completely free — open-source, self-hosted |
+| **Open Source / Auditable** | ❌ Closed black-box software | ✅ Every line of code is open and auditable |
+
+> [!TIP]
+> For a Tier 2 or Tier 3 hospital with 5–50 beds, HospiSynAI replaces the billing counter software, the prescription notepad, and the revenue spreadsheet — all in one system — while adding AI assistance that was previously only available to large corporate hospital chains paying for enterprise HMS subscriptions.
 

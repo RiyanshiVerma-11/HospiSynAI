@@ -3,7 +3,9 @@ import {
   CreditCard,
   CheckCircle,
   RotateCcw,
-  Copy
+  Copy,
+  Search,
+  X
 } from 'lucide-react';
 
 export default function BillingTab({
@@ -16,10 +18,33 @@ export default function BillingTab({
   refundForm,
   setRefundForm,
   handleRecordBillPayment,
-  handleIssueRefund
+  handleIssueRefund,
+  viewingPayment,
+  setViewingPayment,
+  STATIC_BASE
 }) {
+  const [searchQuery, setSearchQuery] = React.useState('');
+
+  const filteredBills = unpaidBills.filter(bill => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    
+    const billId = (bill.bill_id || '').toLowerCase();
+    const patientName = (bill.patient_name || '').toLowerCase();
+    const status = (bill.payment_status || '').toLowerCase();
+    const grandTotal = String(bill.grand_total || '');
+    const balanceAmount = String(bill.balance_amount || '');
+    const dateStr = new Date(bill.created_at).toLocaleDateString().toLowerCase();
+
+    return billId.includes(q) ||
+           patientName.includes(q) ||
+           status.includes(q) ||
+           grandTotal.includes(q) ||
+           balanceAmount.includes(q) ||
+           dateStr.includes(q);
+  });
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch animate-in fade-in duration-300 h-full md:h-screen md:max-h-[calc(100vh-6.5rem)] md:overflow-hidden min-h-0 pb-2">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch animate-in fade-in duration-300 h-full md:h-full md:max-h-full md:overflow-hidden min-h-0">
       {/* Left 2 Cols: Unpaid Bills Queue & Processing History */}
       <div className="lg:col-span-2 flex flex-col gap-4 md:h-full md:min-h-0">
         {/* Payment Processing Workspace */}
@@ -54,7 +79,7 @@ export default function BillingTab({
                         <span className="text-[9px] text-slate-400 font-sans">({pay.payment_method})</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-teal-650 font-sans text-xs">₹{pay.amount_paid.toLocaleString()}</span>
+                        <span className="font-extrabold text-teal-655 font-sans text-xs">₹{pay.amount_paid.toLocaleString()}</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -87,7 +112,7 @@ export default function BillingTab({
                     onChange={(e) => setPaymentForm({ ...paymentForm, amount_paid: e.target.value })}
                     required
                   />
-                  <p className="text-[10px] text-slate-400 mt-1 font-semibold">Remaining balance due: ₹{activeBillForPayment.balance_amount.toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-450 mt-1 font-semibold">Remaining balance due: ₹{activeBillForPayment.balance_amount.toLocaleString()}</p>
                 </div>
 
                 <div>
@@ -135,7 +160,23 @@ export default function BillingTab({
 
         {/* Complete Pending Dues Invoice Queue */}
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm md:flex-1 md:min-h-0 md:overflow-hidden flex flex-col min-h-[300px]">
-          <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 mb-2 flex-shrink-0">Unpaid / Partial Invoices Queue</h3>
+          <div className="flex justify-between items-center mb-3 flex-shrink-0">
+            <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500">Unpaid / Partial Invoices Queue</h3>
+            <div className="relative min-w-[200px]">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-1.5" />
+              <input type="text"
+                placeholder="Search Bill ID or Patient..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-7 pr-7 py-1 text-[10px] font-semibold placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all text-slate-700"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)} />
+              {searchQuery && (
+                <button type="button" onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-650">
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              )}
+            </div>
+          </div>
           <div className="overflow-x-auto rounded-xl border border-slate-100 md:flex-1 md:overflow-y-auto min-h-0 compact-scroll">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
@@ -150,7 +191,7 @@ export default function BillingTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 text-slate-700 font-medium">
-                {unpaidBills.map(bill => (
+                {filteredBills.map(bill => (
                   <tr key={bill.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="py-2 px-3 text-slate-900 font-bold text-xs">{bill.bill_id}</td>
                     <td className="py-2 px-3">{bill.patient_name}</td>
@@ -181,9 +222,13 @@ export default function BillingTab({
                     </td>
                   </tr>
                 ))}
-                {unpaidBills.length === 0 && (
+                {filteredBills.length === 0 && (
                   <tr>
-                    <td colSpan="7" className="py-10 text-center text-slate-400 font-medium italic">All patient invoices are fully paid and cleared!</td>
+                    <td colSpan="7" className="py-10 text-center text-slate-450 font-medium italic">
+                      {unpaidBills.length === 0 
+                        ? "All patient invoices are fully paid and cleared!" 
+                        : "No invoices match your search query."}
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -192,61 +237,96 @@ export default function BillingTab({
         </div>
       </div>
 
-      {/* Right Col: Issuing Refunds Panel */}
+      {/* Right Col: Issuing Refunds Panel OR PDF Receipt Preview */}
       <div className="lg:col-span-1 flex flex-col gap-4 md:h-full md:min-h-0">
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm sticky-form md:h-full md:overflow-y-auto flex flex-col justify-between">
-          <div>
-            <h3 className="font-bold text-slate-900 text-sm mb-2 flex items-center gap-2">
-              <RotateCcw className="w-4.5 h-4.5 text-rose-600 animate-spin-reverse-slow" />
-              Refund Desk
-            </h3>
-            <p className="text-slate-400 text-[11px] mb-3">Re-verify the receipt details and amount prior to issuing refund payouts.</p>
-            <form onSubmit={handleIssueRefund} className="space-y-3">
-              <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Source Transaction ID (PAY-xxx)</label>
-                <input
-                  type="text"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-semibold"
-                  placeholder="PAY-YYYYMMDD-XXXXX"
-                  value={refundForm.payment_id}
-                  onChange={(e) => setRefundForm({ ...refundForm, payment_id: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Refund Amount (₹)</label>
-                <input
-                  type="number"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-bold text-slate-900"
-                  placeholder="Amount to return"
-                  value={refundForm.amount_refunded}
-                  onChange={(e) => setRefundForm({ ...refundForm, amount_refunded: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Reason for Refund</label>
-                <textarea
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-medium h-20 resize-none"
-                  placeholder="e.g. Laboratory Test cancelled by consulting physician"
-                  value={refundForm.reason}
-                  onChange={(e) => setRefundForm({ ...refundForm, reason: e.target.value })}
-                  required
-                ></textarea>
-              </div>
-
+        {viewingPayment && viewingPayment.receipt ? (
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm md:h-full flex flex-col justify-between">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100 flex-shrink-0">
+              <span className="text-teal-650 font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 font-sans">
+                Receipt Preview
+              </span>
               <button
-                type="submit"
-                className="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-2 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 text-xs"
+                onClick={() => setViewingPayment(null)}
+                className="text-slate-500 hover:text-slate-700 text-[10px] font-bold bg-slate-50 border border-slate-200 px-2 py-1 rounded shadow-sm transition-all"
               >
-                <RotateCcw className="w-4 h-4" />
-                Issue Refund Receipt
+                Close Preview
               </button>
-            </form>
+            </div>
+            
+            <div className="flex-1 min-h-[300px] my-3 rounded-xl border border-slate-200 bg-slate-50 overflow-hidden relative">
+              <iframe
+                src={`${STATIC_BASE}${viewingPayment.receipt.pdf_path}?t=${Date.now()}`}
+                title="Receipt PDF Preview"
+                className="w-full h-full border-none"
+              />
+            </div>
+
+            <div className="flex gap-2 flex-shrink-0 pt-2 border-t border-slate-100">
+              <a
+                href={`${STATIC_BASE}${viewingPayment.receipt.pdf_path}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2 rounded-xl text-center shadow-sm block transition-all"
+              >
+                Open in New Tab
+              </a>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm sticky-form md:h-full md:overflow-y-auto flex flex-col justify-between">
+            <div>
+              <h3 className="font-bold text-slate-900 text-sm mb-2 flex items-center gap-2">
+                <RotateCcw className="w-4.5 h-4.5 text-rose-600 animate-spin-reverse-slow" />
+                Refund Desk
+              </h3>
+              <p className="text-slate-400 text-[11px] mb-3 font-semibold">Re-verify the receipt details and amount prior to issuing refund payouts.</p>
+              <form onSubmit={handleIssueRefund} className="space-y-3">
+                <div>
+                  <label className="block text-slate-505 text-[10px] font-bold uppercase tracking-wider mb-1">Source Transaction ID (PAY-xxx)</label>
+                  <input
+                    type="text"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-semibold"
+                    placeholder="PAY-YYYYMMDD-XXXXX"
+                    value={refundForm.payment_id}
+                    onChange={(e) => setRefundForm({ ...refundForm, payment_id: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-505 text-[10px] font-bold uppercase tracking-wider mb-1">Refund Amount (₹)</label>
+                  <input
+                    type="number"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-bold text-slate-900"
+                    placeholder="Amount to return"
+                    value={refundForm.amount_refunded}
+                    onChange={(e) => setRefundForm({ ...refundForm, amount_refunded: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-505 text-[10px] font-bold uppercase tracking-wider mb-1">Reason for Refund</label>
+                  <textarea
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-medium h-20 resize-none"
+                    placeholder="e.g. Laboratory Test cancelled by consulting physician"
+                    value={refundForm.reason}
+                    onChange={(e) => setRefundForm({ ...refundForm, reason: e.target.value })}
+                    required
+                  ></textarea>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-2 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 text-xs"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Issue Refund Receipt
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

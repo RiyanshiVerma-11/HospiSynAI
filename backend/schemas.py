@@ -39,6 +39,7 @@ class PatientBase(BaseModel):
     gender: str
     mobile_number: str
     address: Optional[str] = None
+    abha_id: Optional[str] = None
 
 class PatientCreate(PatientBase):
     pass
@@ -79,6 +80,7 @@ class VisitBase(BaseModel):
     advice: Optional[str] = None
     follow_up_date: Optional[str] = None
     patient_summary: Optional[str] = None
+    status: Optional[str] = "Waiting"
 
 class VisitSummaryUpdate(BaseModel):
     diagnosis: Optional[str] = None
@@ -88,6 +90,7 @@ class VisitSummaryUpdate(BaseModel):
     advice: Optional[str] = None
     follow_up_date: Optional[str] = None
     patient_summary: Optional[str] = None
+    status: Optional[str] = None
 
 class VisitCreate(VisitBase):
     patient_id: int
@@ -101,6 +104,7 @@ class VisitResponse(VisitBase):
     visit_date: datetime
     is_active: bool
     doctor: Optional[DoctorResponse] = None
+    patient: Optional[PatientResponse] = None
 
     class Config:
         orm_mode = True

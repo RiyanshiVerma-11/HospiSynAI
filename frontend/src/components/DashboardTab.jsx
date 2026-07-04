@@ -315,7 +315,7 @@ export default function DashboardTab({ metrics, metricsError, API_BASE, fetchRec
   }
 
   return (
-    <div className="flex flex-col gap-4 h-full md:max-h-[calc(100vh-6.5rem)] overflow-y-auto md:overflow-hidden min-h-0 pb-2">
+    <div className="flex flex-col gap-4 h-full md:max-h-full overflow-y-auto md:overflow-hidden min-h-0">
 
       {/* ── KPI Cards ───────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-shrink-0">

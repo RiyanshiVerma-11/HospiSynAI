@@ -105,6 +105,11 @@ const COMMON_ADVICE = [
   'Avoid heavy physical activity'
 ];
 
+const STATIC_BASE = import.meta.env.VITE_STATIC_BASE_URL || 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? "http://localhost:5000" 
+    : "https://hospisyn-backend.onrender.com");
+
 export default function PatientSearchTab({
   API_BASE,
   getHeaders,
@@ -170,6 +175,38 @@ export default function PatientSearchTab({
   const [summaryGenerating, setSummaryGenerating] = React.useState(false);
   const [summarySaving, setSummarySaving] = React.useState(false);
   const [summaryError, setSummaryError] = React.useState('');
+  const [selectedLanguage, setSelectedLanguage] = React.useState('Hindi');
+  const [viewMode, setViewMode] = React.useState('en'); // 'en' | 'native' | 'pdf'
+  const [pdfPreviewUrl, setPdfPreviewUrl] = React.useState('');
+  const [pdfLoading, setPdfLoading] = React.useState(false);
+
+  const INDIAN_LANGUAGES = [
+    { code: 'Hindi', label: 'Hindi (हिंदी)' },
+    { code: 'Kannada', label: 'Kannada (ಕನ್ನಡ)' },
+    { code: 'Tamil', label: 'Tamil (தமிழ்)' },
+    { code: 'Telugu', label: 'Telugu (తెలుగు)' },
+    { code: 'Bengali', label: 'Bengali (বাংলা)' },
+    { code: 'Marathi', label: 'Marathi (मराठी)' },
+    { code: 'Gujarati', label: 'Gujarati (ગુજરાતી)' },
+    { code: 'Malayalam', label: 'Malayalam (മലയാളം)' },
+    { code: 'Punjabi', label: 'Punjabi (ਪੰਜਾਬੀ)' },
+    { code: 'Odia', label: 'Odia (ଓଡ଼ିଆ)' },
+    { code: 'Urdu', label: 'Urdu (اردو)' }
+  ];
+
+  const NATIVE_LABELS = {
+    Hindi: { Morning: 'सुबह', Afternoon: 'दोपहर', Night: 'रात', 'Watch Out For': 'इन बातों का ध्यान रखें' },
+    Kannada: { Morning: 'ಬೆಳಿಗ್ಗೆ', Afternoon: 'मध्याह्न', Night: 'ರಾತ್ರಿ', 'Watch Out For': 'ಎಚ್ಚರಿಕೆ' },
+    Tamil: { Morning: 'காலை', Afternoon: 'மதியம்', Night: 'இரவு', 'Watch Out For': 'எச்சரிக்கை' },
+    Telugu: { Morning: 'ఉదయం', Afternoon: 'మధ్యాహ్నం', Night: 'రాత్రి', 'Watch Out For': 'హెచ్చరిక' },
+    Bengali: { Morning: 'সকাল', Afternoon: 'দুপুর', Night: 'রাত', 'Watch Out For': 'সতর্কতা' },
+    Marathi: { Morning: 'सकाळ', Afternoon: 'दुपार', Night: 'रात्र', 'Watch Out For': 'सावधानता' },
+    Gujarati: { Morning: 'સવાર', Afternoon: 'બપોર', Night: 'રાત', 'Watch Out For': 'ચેતવણી' },
+    Malayalam: { Morning: 'രാവിലെ', Afternoon: 'ഉച്ചയ്ക്ക്', Night: 'രാത്രി', 'Watch Out For': 'മുന്നറിയിപ്പ്' },
+    Punjabi: { Morning: 'ਸਵੇਰ', Afternoon: 'ਦੁਪਹਿਰ', Night: 'ਰਾਤ', 'Watch Out For': 'ਚੇਤਾਵਨੀ' },
+    Odia: { Morning: 'ସକାଳ', Afternoon: 'ମଧ୍ୟାହ୍ନ', Night: 'ରାତି', 'Watch Out For': 'ସତର୍କତା' },
+    Urdu: { Morning: 'صبح', Afternoon: 'دوپہر', Night: 'رات', 'Watch Out For': 'انتباہ' }
+  };
   
   const [medicineSearch, setMedicineSearch] = React.useState('');
   const [medicineSuggestions, setMedicineSuggestions] = React.useState([]);
@@ -303,6 +340,7 @@ export default function PatientSearchTab({
       showToast('AI treatment plan loaded! Review and adjust details below.');
     } catch (e) {
       console.error(e);
+      setSummaryError(e.message);
       showToast(e.message || 'AI Prescribing service is offline. Enter prescription details manually.', 'error');
     } finally {
       setAiPrescribeLoading(false);
@@ -390,7 +428,7 @@ export default function PatientSearchTab({
     setSummaryGenerating(true);
     setSummaryError('');
     try {
-      const res = await fetch(`${API_BASE}/visits/${selectedVisit.id}/summary?generate_ai_summary=true`, {
+      const res = await fetch(`${API_BASE}/visits/${selectedVisit.id}/summary?generate_ai_summary=true&target_language=${selectedLanguage}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(summaryForm)
@@ -404,6 +442,7 @@ export default function PatientSearchTab({
         ...prev,
         patient_summary: updatedVisit.patient_summary || ''
       }));
+      setViewMode('native');
       showToast('AI Patient summary generated!');
       handleSelectPatient(selectedPatient.id);
     } catch (err) {
@@ -439,8 +478,27 @@ export default function PatientSearchTab({
     }
   };
 
+  const handleTriggerPdfPreview = async () => {
+    if (!selectedVisit) return;
+    setPdfLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/visits/${selectedVisit.id}/prescription-pdf`, {
+        headers: getHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to compile prescription PDF sheet.");
+      const data = await res.json();
+      setPdfPreviewUrl(`${STATIC_BASE}${data.pdf_path}?t=${Date.now()}`);
+      setViewMode('pdf');
+      showToast("Prescription PDF compiled! Previewing...");
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch animate-in fade-in duration-300 h-full md:h-screen md:max-h-[calc(100vh-6.5rem)] md:overflow-hidden min-h-0 pb-2">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch animate-in fade-in duration-300 h-full md:h-full md:max-h-full md:overflow-hidden min-h-0">
       {/* Search Panel (Left 1 Col) */}
       <div className="flex flex-col gap-4 md:h-full md:min-h-0">
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col md:h-full md:overflow-hidden min-h-[300px] lg:min-h-0">
@@ -1391,10 +1449,30 @@ export default function PatientSearchTab({
                     )}
                   </div>
 
-                  {summaryError && (
-                    <div className="mt-3 bg-rose-50 border border-rose-100 rounded-xl p-3 text-rose-700 text-xs font-semibold leading-relaxed">
-                      Error: {summaryError}
-                    </div>
+                   {summaryError && (
+                    summaryError.includes("Groq API key") ? (
+                      <div className="mt-3 bg-violet-50/70 border border-violet-100 rounded-xl p-4 text-slate-750 text-xs font-medium space-y-2.5">
+                        <div className="flex items-center gap-1.5 text-violet-700 font-extrabold uppercase tracking-wider text-[10px]">
+                          <AlertTriangle className="w-4 h-4 text-violet-600 animate-pulse" />
+                          Groq AI Sandbox Setup Required
+                        </div>
+                        <p className="leading-normal">
+                          The AI features require a valid <strong>Groq API Key</strong> to be configured in your environment.
+                        </p>
+                        <div className="bg-white border border-violet-100 rounded-lg p-2.5 font-mono text-[10px] text-slate-650 leading-relaxed shadow-sm">
+                          1. Open the project root <code className="bg-slate-100 px-1 py-0.5 rounded font-sans font-bold">.env</code> file<br />
+                          2. Set <code className="bg-slate-100 px-1 py-0.5 rounded text-violet-700 font-bold">GROQ_API_KEY=your_groq_key</code><br />
+                          3. Restart Docker Compose or local servers
+                        </div>
+                        <p className="text-[10px] text-slate-400 italic">
+                          💡 Register for free keys at console.groq.com. Local rule checks are still fully operational.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="mt-3 bg-rose-50 border border-rose-100 rounded-xl p-3 text-rose-700 text-xs font-semibold leading-relaxed">
+                        Error: {summaryError}
+                      </div>
+                    )
                   )}
 
                   {summaryGenerating ? (
@@ -1425,26 +1503,25 @@ export default function PatientSearchTab({
                     // Parse the structured storytelling output into visual sections
                     // Handles both old format [English Summary] and new [English Storytelling Summary]
                     const raw = summaryForm.patient_summary;
-                    const englishMatch = raw.match(/\[English(?:[^\]]*Summary|\s+Storytelling\s+Summary)\]([\s\S]*?)(?=\[Hindi|$)/i);
-                    const hindiMatch = raw.match(/\[Hindi\s*Summary[\s\S]*?\]([\s\S]*?)$/i);
+                    const englishMatch = raw.match(/\[English(?:[^\]]*Summary|\s+Storytelling\s+Summary)\]([\s\S]*?)(?=\[(?:Hindi|Kannada|Tamil|Telugu|Marathi|Bengali|Gujarati|Malayalam|Punjabi|Odia|Urdu|Native|Translation|Language)[^\]]*\]|$)/i);
+                    const nativeMatch = raw.match(/\[(?:Hindi|Kannada|Tamil|Telugu|Marathi|Bengali|Gujarati|Malayalam|Punjabi|Odia|Urdu|Native|Translation|Language)[^\]]*\]([\s\S]*?)$/i);
+                    
                     const englishText = englishMatch ? englishMatch[1].trim() : '';
-                    const hindiText = hindiMatch ? hindiMatch[1].trim() : '';
+                    const nativeText = nativeMatch ? nativeMatch[1].trim() : '';
+                    
                     // isStructured: detect either plain "Morning:" or emoji-prefixed "☀️ Morning:"
                     const isStructured = englishText && (
                       /morning:/i.test(englishText) || /night:/i.test(englishText)
                     );
 
                     // parseSection: handles labels with or without leading emoji (e.g. "☀️ Morning" or plain "Morning")
-                    // Also handles "सुबह (Morning):" where the label has a parenthetical annotation
                     const parseSection = (text, labels) => {
                       const result = {};
                       for (const label of labels) {
-                        // Match: optional non-word/non-newline prefix, then label, then optional annotation chars (not : or \n), then :
                         const regex = new RegExp(`(?:[^\\w\\n]*)?${label}[^:\\n]*:[^\\S\\n]*(.+?)(?=\\n[^\\n]*:|$)`, 'is');
                         const m = text.match(regex);
                         result[label] = m ? m[1].trim() : null;
                       }
-                      // greeting = first line before any labeled section
                       const firstLabel = labels.find(l => new RegExp(l + '[^:\\n]*:', 'i').test(text));
                       if (firstLabel) {
                         const splitIdx = text.search(new RegExp(`[^\\n]*${firstLabel}[^:\\n]*:`, 'i'));
@@ -1456,13 +1533,8 @@ export default function PatientSearchTab({
                     };
 
                     const enSections = parseSection(englishText, ['Morning', 'Afternoon', 'Night', 'Watch Out For']);
-                    // Hindi new labels: "सुबह (Morning)", "दोपहर (Afternoon)", "रात (Night)", "इन बातों का ध्यान रखें"
-                    // Also support old Hindi labels: Subah, Dopahar, Raat, Dhyan Rakhein
-                    const hiSections = parseSection(hindiText, [
-                      'सुबह', 'दोपहर', 'रात', 'इन बातों का ध्यान रखें',
-                      'Subah', 'Dopahar', 'Raat', 'Dhyan Rakhein'
-                    ]);
-
+                    const nativeSections = parseSection(nativeText, ['Morning', 'Afternoon', 'Night', 'Watch Out For']);
+                    
                     const slotConfig = [
                       { key: 'Morning', emoji: '☀️', label: 'Morning', color: 'from-amber-50 to-orange-50', border: 'border-amber-200', badge: 'bg-amber-100 text-amber-700' },
                       { key: 'Afternoon', emoji: '🌤️', label: 'Afternoon', color: 'from-sky-50 to-blue-50', border: 'border-sky-200', badge: 'bg-sky-100 text-sky-700' },
@@ -1470,60 +1542,139 @@ export default function PatientSearchTab({
                       { key: 'Watch Out For', emoji: '⚠️', label: 'Watch Out For', color: 'from-rose-50 to-red-50', border: 'border-rose-200', badge: 'bg-rose-100 text-rose-700' },
                     ];
 
-                    // Hindi slot config: new labels take priority, fallback to old romanized keys
-                    const hiSlotConfig = [
-                      { key: 'सुबह', fallbackKey: 'Subah', emoji: '☀️', label: 'सुबह', color: 'from-amber-50 to-orange-50', border: 'border-amber-200' },
-                      { key: 'दोपहर', fallbackKey: 'Dopahar', emoji: '🌤️', label: 'दोपहर', color: 'from-sky-50 to-blue-50', border: 'border-sky-200' },
-                      { key: 'रात', fallbackKey: 'Raat', emoji: '🌙', label: 'रात', color: 'from-indigo-50 to-violet-50', border: 'border-indigo-200' },
-                      { key: 'इन बातों का ध्यान रखें', fallbackKey: 'Dhyan Rakhein', emoji: '⚠️', label: 'ध्यान रखें', color: 'from-rose-50 to-red-50', border: 'border-rose-200' },
-                    ];
+                    const activeSections = viewMode === 'en' ? enSections : nativeSections;
+                    const isNative = viewMode === 'native';
 
                     return (
                       <div className="mt-3 flex-1 flex flex-col space-y-3 overflow-y-auto">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs text-slate-500 font-extrabold uppercase tracking-wider">AI Storytelling Summary</label>
-                          <span className="flex items-center gap-1 bg-violet-50 border border-violet-100 text-violet-600 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                            <span className="w-1 h-1 rounded-full bg-violet-500 animate-pulse" />
-                            EN + हिंदी Daily Routine
-                          </span>
+                        {/* Tab header / selector bar */}
+                        <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-150">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setViewMode('en')}
+                              className={`px-3 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                                viewMode === 'en'
+                                  ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
+                                  : 'bg-white text-slate-650 border-slate-200 hover:bg-slate-50'
+                              }`}
+                            >
+                              English
+                            </button>
+                            {nativeText && (
+                              <button
+                                type="button"
+                                onClick={() => setViewMode('native')}
+                                className={`px-3 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                                  viewMode === 'native'
+                                    ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
+                                    : 'bg-white text-slate-650 border-slate-200 hover:bg-slate-50'
+                                }`}
+                              >
+                                {selectedLanguage} Summary
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={handleTriggerPdfPreview}
+                              disabled={pdfLoading}
+                              className={`px-3 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border flex items-center gap-1 ${
+                                viewMode === 'pdf'
+                                  ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
+                                  : 'bg-white text-slate-650 border-slate-200 hover:bg-slate-50'
+                              }`}
+                            >
+                              {pdfLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Printer className="w-3.5 h-3.5" />}
+                              Prescription Preview
+                            </button>
+                          </div>
+                          
+                          <div className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200">
+                            <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">Target Language:</span>
+                            <select
+                              value={selectedLanguage}
+                              onChange={(e) => {
+                                const newLang = e.target.value;
+                                setSelectedLanguage(newLang);
+                                // Auto-regenerate immediately if a summary already exists
+                                if (summaryForm.patient_summary) {
+                                  // We need to call with the new language value directly
+                                  // since selectedLanguage state update is async
+                                  setSummaryGenerating(true);
+                                  setSummaryError('');
+                                  fetch(`${API_BASE}/visits/${selectedVisit.id}/summary?generate_ai_summary=true&target_language=${newLang}`, {
+                                    method: 'PUT',
+                                    headers: getHeaders(),
+                                    body: JSON.stringify(summaryForm)
+                                  })
+                                    .then(res => {
+                                      if (!res.ok) return res.json().then(d => { throw new Error(d.detail || 'Failed to generate AI summary'); });
+                                      return res.json();
+                                    })
+                                    .then(updatedVisit => {
+                                      setSummaryForm(prev => ({ ...prev, patient_summary: updatedVisit.patient_summary || '' }));
+                                      setViewMode('native');
+                                      showToast(`Summary regenerated in ${newLang}!`);
+                                      handleSelectPatient(selectedPatient.id);
+                                    })
+                                    .catch(err => {
+                                      setSummaryError(err.message);
+                                      showToast(err.message, 'error');
+                                    })
+                                    .finally(() => setSummaryGenerating(false));
+                                }
+                              }}
+                              className="bg-transparent text-[10px] font-bold text-slate-700 focus:outline-none cursor-pointer"
+                            >
+                              {INDIAN_LANGUAGES.map(lang => (
+                                <option key={lang.code} value={lang.code}>{lang.label}</option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
 
-                        {isStructured ? (
-                          <div className="space-y-2">
-                            {/* English greeting */}
-                            {enSections.greeting && (
-                              <p className="text-xs text-teal-800 font-semibold italic bg-teal-50 border border-teal-100 rounded-xl px-3 py-2 leading-relaxed">
-                                💬 {enSections.greeting}
-                              </p>
-                            )}
-                            {/* English daily slots */}
-                            <div className="grid grid-cols-2 gap-1.5">
-                              {slotConfig.map(slot => enSections[slot.key] && (
-                                <div key={slot.key} className={`bg-gradient-to-br ${slot.color} border ${slot.border} rounded-xl p-2.5`}>
-                                  <div className={`text-[9px] font-extrabold uppercase tracking-wider mb-1 flex items-center gap-1 ${slot.badge} w-fit px-1.5 py-0.5 rounded-full`}>
-                                    <span>{slot.emoji}</span> {slot.label}
-                                  </div>
-                                  <p className="text-[10px] text-slate-700 leading-relaxed font-medium">{enSections[slot.key]}</p>
-                                </div>
-                              ))}
-                            </div>
-
-                            {hindiText && (
-                              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                                <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider mb-2">हिंदी सारांश</p>
-                                <div className="space-y-1">
-                                  {hiSlotConfig.map(slot => {
-                                    const val = hiSections[slot.key] || hiSections[slot.fallbackKey];
-                                    return val ? (
-                                      <div key={slot.key} className={`flex gap-2 items-start`}>
-                                        <span className="text-[10px] font-bold text-slate-500 w-20 shrink-0">{slot.emoji} {slot.label}:</span>
-                                        <p className="text-[10px] text-slate-700 leading-relaxed">{val}</p>
-                                      </div>
-                                    ) : null;
-                                  })}
-                                </div>
+                        {viewMode === 'pdf' ? (
+                          <div className="flex-1 min-h-[300px] rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden relative shadow-inner">
+                            {pdfPreviewUrl ? (
+                              <iframe
+                                src={pdfPreviewUrl}
+                                title="Prescription PDF Preview"
+                                className="w-full h-full border-none"
+                              />
+                            ) : (
+                              <div className="flex flex-col items-center justify-center p-8 text-center h-full">
+                                <Loader2 className="w-6 h-6 animate-spin text-teal-650 mb-2" />
+                                <span className="text-xs font-semibold text-slate-500 font-sans">Loading prescription PDF sheet...</span>
                               </div>
                             )}
+                          </div>
+                        ) : isStructured ? (
+                          <div className="space-y-3">
+                            {/* Greeting */}
+                            {activeSections.greeting && (
+                              <p className="text-xs text-teal-850 font-semibold italic bg-teal-50 border border-teal-100 rounded-xl px-3 py-2 leading-relaxed">
+                                💬 {activeSections.greeting}
+                              </p>
+                            )}
+                            
+                            {/* Routine Slots Grid */}
+                            <div className="grid grid-cols-2 gap-2">
+                              {slotConfig.map(slot => {
+                                const val = activeSections[slot.key];
+                                const displayLabel = isNative && NATIVE_LABELS[selectedLanguage]?.[slot.key]
+                                  ? NATIVE_LABELS[selectedLanguage][slot.key]
+                                  : slot.label;
+                                  
+                                return val ? (
+                                  <div key={slot.key} className={`bg-gradient-to-br ${slot.color} border ${slot.border} rounded-xl p-3 shadow-sm`}>
+                                    <div className={`text-[9px] font-extrabold uppercase tracking-wider mb-1.5 flex items-center gap-1 ${slot.badge} w-fit px-2 py-0.5 rounded-full`}>
+                                      <span>{slot.emoji}</span> {displayLabel}
+                                    </div>
+                                    <p className="text-[10px] text-slate-700 leading-relaxed font-semibold">{val}</p>
+                                  </div>
+                                ) : null;
+                              })}
+                            </div>
                           </div>
                         ) : (
                           // Fallback for old-format summaries: plain styled display
@@ -1547,16 +1698,30 @@ export default function PatientSearchTab({
                       </div>
                     );
                   })() : (
-                    <div className="flex-1 flex flex-col items-center justify-center py-10 text-center px-4 space-y-4">
+                    <div className="flex-1 flex flex-col items-center justify-center py-8 text-center px-4 space-y-4">
                       <div className="bg-teal-50 p-4 rounded-full border border-teal-100">
                         <Brain className="w-8 h-8 text-teal-600" />
                       </div>
                       <div>
                         <h5 className="text-xs font-bold text-slate-800">Generate Patient-Friendly Consultation Handout</h5>
-                        <p className="text-xs text-slate-500 mt-1 max-w-xs leading-normal">
-                          Fill out the doctor's clinical notes on the left and click below to automatically translate and explain the prescription, diagnosis, and advice in simple English and Hindi.
+                        <p className="text-[11px] text-slate-500 mt-1 max-w-xs leading-normal">
+                          Fill out the doctor's clinical notes on the left, select the patient's preferred language, and generate a simplified bilingual routine schedule.
                         </p>
                       </div>
+                      
+                      <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+                        <span className="text-[10px] text-slate-500 font-extrabold uppercase tracking-wider">Preferred Language:</span>
+                        <select
+                          value={selectedLanguage}
+                          onChange={(e) => setSelectedLanguage(e.target.value)}
+                          className="bg-transparent text-[10px] font-bold text-slate-800 focus:outline-none cursor-pointer"
+                        >
+                          {INDIAN_LANGUAGES.map(lang => (
+                            <option key={lang.code} value={lang.code}>{lang.label}</option>
+                          ))}
+                        </select>
+                      </div>
+
                       <button
                         type="button"
                         onClick={handleGenerateAiSummary}

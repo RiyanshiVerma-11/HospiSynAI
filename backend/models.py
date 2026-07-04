@@ -25,6 +25,7 @@ class Patient(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(String, unique=True, index=True, nullable=False) # PAT-YYYYMMDD-XXXXX
+    abha_id = Column(String, index=True, nullable=True) # ABHA ID format: XX-XXXX-XXXX-XXXX
     name = Column(String, index=True, nullable=False)
     age = Column(Integer, nullable=False)
     gender = Column(String, nullable=False)
@@ -64,6 +65,7 @@ class Visit(Base):
     advice = Column(String, nullable=True)
     follow_up_date = Column(String, nullable=True)
     patient_summary = Column(Text, nullable=True)
+    status = Column(String, default="Waiting", nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     deleted_at = Column(DateTime, nullable=True)
 

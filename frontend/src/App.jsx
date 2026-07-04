@@ -28,7 +28,8 @@ import {
   Database,
   Server,
   Check,
-  Copy
+  Copy,
+  Brain
 } from 'lucide-react';
 import DashboardTab from './components/DashboardTab';
 import PatientSearchTab from './components/PatientSearchTab';
@@ -40,6 +41,7 @@ import AuditLogsTab from './components/AuditLogsTab';
 import SettingsTab from './components/SettingsTab';
 import ROICalculatorTab from './components/ROICalculatorTab';
 import DemoTour from './components/DemoTour';
+import DoctorConsoleTab from './components/DoctorConsoleTab';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
@@ -1211,6 +1213,25 @@ function App() {
               </button>
             )}
 
+            {/* Doctor's Workspace Desk */}
+            {['Admin', 'Receptionist'].includes(userRole) && (
+              <button
+                onClick={() => { setActiveTab('doctor_console'); setMobileMenuOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
+                  activeTab === 'doctor_console'
+                    ? 'text-white'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+                style={activeTab === 'doctor_console' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.2), rgba(20,184,166,0.05))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
+              >
+                <Brain className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'doctor_console' ? 'text-teal-400' : ''}`} />
+                Doctor's Desk
+                <span className="ml-auto flex items-center gap-1 bg-violet-500/15 text-violet-400 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                  <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" />AI
+                </span>
+              </button>
+            )}
+
             {/* Billing Queue */}
             {['Admin', 'Accountant'].includes(userRole) && (
               <button
@@ -1341,6 +1362,18 @@ function App() {
 
 
         {/* ----------------------------------------------------
+            TAB 1C: DOCTOR CLINICAL WORKSPACE CONSOLE
+            ---------------------------------------------------- */}
+        {activeTab === 'doctor_console' && (
+          <DoctorConsoleTab
+            API_BASE={API_BASE}
+            getHeaders={getHeaders}
+            showToast={showToast}
+            userRole={userRole}
+          />
+        )}
+
+        {/* ----------------------------------------------------
             TAB 2: PATIENT SEARCH & REGISTER DESK
             ---------------------------------------------------- */}
         {activeTab === 'search_register' && (
@@ -1410,6 +1443,9 @@ function App() {
             setRefundForm={setRefundForm}
             handleRecordBillPayment={handleRecordBillPayment}
             handleIssueRefund={handleIssueRefund}
+            viewingPayment={viewingPayment}
+            setViewingPayment={setViewingPayment}
+            STATIC_BASE={STATIC_BASE}
           />
         )}
 

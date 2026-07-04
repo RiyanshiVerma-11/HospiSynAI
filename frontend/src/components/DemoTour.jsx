@@ -96,7 +96,7 @@ export default function DemoTour({ API_BASE, onSeedSuccess, setActiveTab, setSel
   };
 
   return (
-    <div className="fixed bottom-4 left-4 z-50 print:hidden font-sans">
+    <div className="fixed bottom-4 right-4 z-50 print:hidden font-sans">
       
       {/* Collapsed floating button */}
       {!isOpen && (
