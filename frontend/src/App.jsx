@@ -42,6 +42,7 @@ import SettingsTab from './components/SettingsTab';
 import ROICalculatorTab from './components/ROICalculatorTab';
 import DemoTour from './components/DemoTour';
 import DoctorConsoleTab from './components/DoctorConsoleTab';
+import LandingPage from './components/LandingPage';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
@@ -61,6 +62,7 @@ function App() {
   const [name, setName] = useState(sessionStorage.getItem('name') || '');
   const [authError, setAuthError] = useState('');
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [viewMode, setViewMode] = useState('landing');
 
   // Navigation State
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -280,6 +282,7 @@ function App() {
     setUsername('');
     setName('');
     setActiveTab('dashboard');
+    setViewMode('landing');
   };
 
   const fetchDashboardMetrics = async () => {
@@ -914,6 +917,10 @@ function App() {
   if (!token) {
     const quickLogin = (u, p) => setLoginForm({ username: u, password: p });
 
+    if (viewMode === 'landing') {
+      return <LandingPage onEnterWorkspace={() => setViewMode('login')} />;
+    }
+
     return (
       <div className="min-h-screen bg-[#060c18] flex items-center justify-center p-4 relative overflow-hidden">
         {/* Animated background orbs */}
@@ -925,6 +932,16 @@ function App() {
         <div className="absolute inset-0 pointer-events-none" style={{backgroundImage:'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)', backgroundSize:'48px 48px'}} />
 
         <div className="relative z-10 w-full max-w-md animate-slide-up">
+          {/* Back button */}
+          <div className="mb-4">
+            <button
+              onClick={() => setViewMode('landing')}
+              className="text-slate-400 hover:text-white transition-colors text-xs font-bold flex items-center gap-1 bg-[#0b1329]/40 border border-white/5 hover:border-slate-700 px-3.5 py-2 rounded-xl"
+            >
+              ← Back to Product Overview
+            </button>
+          </div>
+
           {/* Main glass card */}
           <div className="glass-card p-8 rounded-3xl" style={{border:'1px solid rgba(20,184,166,0.18)'}}>
             {/* Logo */}
