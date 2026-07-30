@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Activity,
   ArrowRight,
@@ -14,12 +14,57 @@ import {
   Terminal,
   Settings,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Download,
+  X,
+  Smartphone,
+  Monitor
 } from 'lucide-react';
 
 export default function LandingPage({ onEnterWorkspace }) {
   const [activeSimTab, setActiveSimTab] = useState('clinical');
   const [activeLang, setActiveLang] = useState('hi');
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallBtn, setShowInstallBtn] = useState(true); // Always show button as manual/automatic install trigger
+  const [showInstructionModal, setShowInstructionModal] = useState(false);
+
+  useEffect(() => {
+    // Check if already in standalone mode
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+      setShowInstallBtn(false);
+      return;
+    }
+
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    const handleAppInstalled = () => {
+      setShowInstallBtn(false);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`User response to PWA install: ${outcome}`);
+      setDeferredPrompt(null);
+      setShowInstallBtn(false);
+    } else {
+      setShowInstructionModal(true);
+    }
+  };
 
   // Interactive translation data
   const translationData = {
@@ -107,6 +152,16 @@ export default function LandingPage({ onEnterWorkspace }) {
               Access Workspace Desk
               <ArrowRight className="w-4 h-4" />
             </button>
+            {showInstallBtn && (
+              <button
+                onClick={handleInstallClick}
+                className="px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-white flex items-center justify-center gap-2 transition-all active:scale-[0.98] glow-violet border border-violet-500/30"
+                style={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)' }}
+              >
+                <Download className="w-4 h-4" />
+                Install App
+              </button>
+            )}
             <a
               href="#demo"
               className="px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-slate-300 hover:text-white border border-slate-700 hover:border-slate-500 bg-slate-900/40 backdrop-blur-md transition-all active:scale-[0.98] flex items-center justify-center"
@@ -501,6 +556,82 @@ export default function LandingPage({ onEnterWorkspace }) {
           </button>
         </div>
       </footer>
+
+      {/* Manual Installation Instructions Modal */}
+      {showInstructionModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#020617]/85 backdrop-blur-md transition-all duration-300">
+          <div className="bg-[#091021] border border-white/10 rounded-3xl p-6 md:p-8 max-w-lg w-full relative shadow-2xl max-h-[90vh] overflow-y-auto">
+            <button 
+              onClick={() => setShowInstructionModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1.5 rounded-full hover:bg-white/5 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-violet-500/10 text-violet-400 flex items-center justify-center">
+                <Download className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-extrabold text-white">Install HospiSynAI</h3>
+                <p className="text-xs text-slate-400 font-medium">Add HospiSynAI to your device for dynamic standalone utility.</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {/* iOS Section */}
+              <div className="bg-slate-900/40 border border-white/5 p-4 rounded-2xl flex items-start gap-4">
+                <div className="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center flex-shrink-0 text-sm font-black">
+                  
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-white uppercase tracking-wider mb-1">iOS Safari (iPhone/iPad)</h4>
+                  <ol className="list-decimal list-inside text-[11px] text-slate-350 space-y-1.5 leading-relaxed font-semibold">
+                    <li>Tap the <span className="text-teal-400 font-bold">Share</span> button at the bottom of the screen.</li>
+                    <li>Scroll down and select <span className="text-teal-400 font-bold">Add to Home Screen</span>.</li>
+                    <li>Tap <span className="text-teal-400 font-bold">Add</span> in the top-right corner to complete.</li>
+                  </ol>
+                </div>
+              </div>
+
+              {/* Android Section */}
+              <div className="bg-slate-900/40 border border-white/5 p-4 rounded-2xl flex items-start gap-4">
+                <div className="w-8 h-8 rounded-lg bg-violet-500/10 text-violet-400 flex items-center justify-center flex-shrink-0">
+                  <Smartphone className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-white uppercase tracking-wider mb-1">Android (Chrome / Edge)</h4>
+                  <ol className="list-decimal list-inside text-[11px] text-slate-350 space-y-1.5 leading-relaxed font-semibold">
+                    <li>Tap the <span className="text-violet-400 font-bold">Menu</span> button (three vertical dots ⋮) in top right.</li>
+                    <li>Tap <span className="text-violet-400 font-bold">Install app</span> or <span className="text-violet-400 font-bold">Add to Home screen</span>.</li>
+                  </ol>
+                </div>
+              </div>
+
+              {/* Desktop Section */}
+              <div className="bg-slate-900/40 border border-white/5 p-4 rounded-2xl flex items-start gap-4">
+                <div className="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center flex-shrink-0">
+                  <Monitor className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-white uppercase tracking-wider mb-1">Desktop Chrome / Edge / Opera</h4>
+                  <ol className="list-decimal list-inside text-[11px] text-slate-350 space-y-1.5 leading-relaxed font-semibold">
+                    <li>Look at the right side of the address bar and click the <span className="text-teal-400 font-bold">Install Icon</span> (monitor with down arrow).</li>
+                    <li>Alternatively, click the browser settings menu and choose <span className="text-teal-400 font-bold">Install HospiSynAI</span>.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowInstructionModal(false)}
+              className="w-full mt-6 py-3 rounded-2xl text-xs font-black uppercase tracking-wider text-white bg-slate-800 hover:bg-slate-700 transition-colors"
+            >
+              Got It, Thanks!
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

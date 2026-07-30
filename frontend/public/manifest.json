@@ -1,0 +1,25 @@
+{
+  "name": "HospiSynAI - Hospital Management",
+  "short_name": "HospiSynAI",
+  "description": "Hospital Payment, Billing, and Receipt Management System with Role-Based Access Control and AI Diagnostics.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060c18",
+  "theme_color": "#14b8a6",
+  "orientation": "any",
+  "categories": ["medical", "productivity"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
