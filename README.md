@@ -6,6 +6,12 @@
   <a href="https://hospi-syn-ai.vercel.app/" target="_blank">
     <img src="https://img.shields.io/badge/Live%20Demo-Active-emerald?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo">
   </a>
+  <a href="https://github.com/RiyanshiVerma-11/HospiSynAI" target="_blank">
+    <img src="https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub Repo">
+  </a>
+  <a href="PROMPTS.md" target="_blank">
+    <img src="https://img.shields.io/badge/AI%20Usage%20Log-PROMPTS.md-purple?style=for-the-badge&logo=openai&logoColor=white" alt="AI Usage Log">
+  </a>
   <a href="https://hospisynai.onrender.com/docs" target="_blank">
     <img src="https://img.shields.io/badge/API%20Docs-Swagger-blue?style=for-the-badge&logo=swagger&logoColor=white" alt="API Docs">
   </a>
