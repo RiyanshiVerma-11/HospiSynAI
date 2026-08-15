@@ -251,10 +251,14 @@ HospiSynAI/
             ├── DashboardTab.jsx      # KPI charts & revenue statistics
             ├── PatientSearchTab.jsx  # Patient lookup, visits, & AI summary
             ├── BillingTab.jsx        # Invoicing, collections, & refunds
+            ├── DoctorConsoleTab.jsx  # Doctor clinical workspace & AI prescriptions
             ├── CatalogTab.jsx        # Medical services & standard pricing
             ├── SettingsTab.jsx       # Branding & dynamically printed PDF settings
+            ├── ROICalculatorTab.jsx  # ROI & GST compliance financial calculator
+            ├── LandingPage.jsx       # Public-facing product landing page & demo mode
             ├── UsersTab.jsx          # User accounts management (RBAC)
-            └── AuditLogsTab.jsx      # Chronological system activity logger
+            ├── AuditLogsTab.jsx      # Chronological system activity logger
+            └── DemoTour.jsx          # Interactive guided feature tour
 ```
 
 ---
@@ -433,7 +437,7 @@ Verify backend routing logic and clinical/GST billing rules using the automated 
    ```bash
    python -m pytest backend/test_main.py
    ```
-3. Check that all 8 unit tests pass successfully, confirming correctness of password hashing, token validation, duplicate test auditing, room rent GST calculations, and pediatric dosage safety flags.
+3. Check that all 10 unit tests pass successfully, confirming correctness of password hashing, JWT token generation, RBAC security restrictions, duplicate test auditing, room rent & cosmetic surgery GST calculations, missing consultation fee alerts, pediatric dosage safety flags, and AI response schema structures.
 
 ---
 
