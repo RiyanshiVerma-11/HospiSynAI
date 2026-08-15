@@ -413,7 +413,7 @@ async def update_visit_summary(
     # Call AI if requested
     if generate_ai_summary:
         api_key = os.getenv("GROQ_API_KEY")
-        model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+        model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
         if not api_key:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -538,7 +538,7 @@ async def ai_suggest_treatment(
     current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant"]))
 ):
     api_key = os.getenv("GROQ_API_KEY")
-    model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
     if not api_key:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -678,7 +678,7 @@ async def get_service_recommendations(
 
     # 3. Groq API Configuration
     api_key = os.getenv("GROQ_API_KEY")
-    model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
     if not api_key:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -880,7 +880,7 @@ async def check_bill_anomaly(
     )
     
     api_key = os.getenv("GROQ_API_KEY")
-    model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
     
     if not api_key:
         # Fall back completely to local checks if Groq is not configured
@@ -978,7 +978,7 @@ async def get_ai_dashboard_insight(
     current_user: models.User = Depends(auth.RoleChecker(["Admin", "Accountant"]))
 ):
     api_key = os.getenv("GROQ_API_KEY")
-    model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
     if not api_key:
         return schemas.AIInsightResponse(
             insight="AI revenue insights require a GROQ_API_KEY to be configured.",

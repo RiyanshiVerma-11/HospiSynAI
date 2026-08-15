@@ -462,7 +462,7 @@ For deployment and local setup, the project supports a `.env` configuration file
 | `VITE_API_BASE_URL` | API Base URL used by the React client | `http://localhost:5000/api` |
 | `VITE_STATIC_BASE_URL` | Static download Base URL (for PDF receipts) | `http://localhost:5000` |
 | `GROQ_API_KEY` | API Key for Groq Cloud services (required for AI features) | *(None)* |
-| `GROQ_MODEL` | Groq LLM model to use for generating summaries | `llama-3.3-70b-versatile` |
+| `GROQ_MODEL` | Groq LLM model to use for generating summaries | `openai/gpt-oss-120b` |
 
 ### 🚀 Production Deployment Checklist
 

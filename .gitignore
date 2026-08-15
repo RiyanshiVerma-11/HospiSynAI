@@ -29,6 +29,7 @@ backend/venv/
 backend/env/
 backend/receipts/*.pdf
 backend/receipts/REC-*.pdf
+*.db
 
 # React/Vite frontend ignores
 frontend/node_modules/
