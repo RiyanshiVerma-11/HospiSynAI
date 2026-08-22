@@ -252,7 +252,7 @@ class AuditLogResponse(BaseModel):
     user_name: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Dashboard Metrics Schema

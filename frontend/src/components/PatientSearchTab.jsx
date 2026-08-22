@@ -13,7 +13,9 @@ import {
   Save,
   Loader2,
   Copy,
-  Download
+  Download,
+  Globe,
+  Languages
 } from 'lucide-react';
 
 const MEDICINE_DATASTORE = [
@@ -1505,7 +1507,9 @@ export default function PatientSearchTab({
                     const raw = summaryForm.patient_summary;
                     const englishMatch = raw.match(/\[English(?:[^\]]*Summary|\s+Storytelling\s+Summary)\]([\s\S]*?)(?=\[(?:Hindi|Kannada|Tamil|Telugu|Marathi|Bengali|Gujarati|Malayalam|Punjabi|Odia|Urdu|Native|Translation|Language)[^\]]*\]|$)/i);
                     const nativeMatch = raw.match(/\[(?:Hindi|Kannada|Tamil|Telugu|Marathi|Bengali|Gujarati|Malayalam|Punjabi|Odia|Urdu|Native|Translation|Language)[^\]]*\]([\s\S]*?)$/i);
-                    
+                    const nativeLangHeaderMatch = raw.match(/\[(Hindi|Kannada|Tamil|Telugu|Marathi|Bengali|Gujarati|Malayalam|Punjabi|Odia|Urdu)(?:\s+Summary|\s+Storytelling)[^\]]*\]/i);
+                    const actualNativeLang = nativeLangHeaderMatch ? nativeLangHeaderMatch[1] : selectedLanguage;
+
                     const englishText = englishMatch ? englishMatch[1].trim() : '';
                     const nativeText = nativeMatch ? nativeMatch[1].trim() : '';
                     
@@ -1571,7 +1575,7 @@ export default function PatientSearchTab({
                                     : 'bg-white text-slate-650 border-slate-200 hover:bg-slate-50'
                                 }`}
                               >
-                                {selectedLanguage} Summary
+                                {actualNativeLang} Summary
                               </button>
                             )}
                             <button
@@ -1589,8 +1593,9 @@ export default function PatientSearchTab({
                             </button>
                           </div>
                           
-                          <div className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200">
-                            <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">Target Language:</span>
+                          <div className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200 shadow-2xs">
+                            <Globe className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                            <span className="text-[9px] text-slate-500 font-extrabold uppercase tracking-wider">Handout Language:</span>
                             <select
                               value={selectedLanguage}
                               onChange={(e) => {
@@ -1661,8 +1666,8 @@ export default function PatientSearchTab({
                             <div className="grid grid-cols-2 gap-2">
                               {slotConfig.map(slot => {
                                 const val = activeSections[slot.key];
-                                const displayLabel = isNative && NATIVE_LABELS[selectedLanguage]?.[slot.key]
-                                  ? NATIVE_LABELS[selectedLanguage][slot.key]
+                                const displayLabel = isNative && NATIVE_LABELS[actualNativeLang]?.[slot.key]
+                                  ? NATIVE_LABELS[actualNativeLang][slot.key]
                                   : slot.label;
                                   
                                 return val ? (

@@ -14,11 +14,11 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 devanagari_registered = False
 
-def wrap_devanagari(text: str, font_name: str = "Devanagari") -> str:
+def wrap_devanagari(text: str, font_name: str = "Devanagari-Regular") -> str:
     if not devanagari_registered or not text:
         return text
-    # Match sequences of Devanagari characters: range \u0900-\u097f
-    pattern = re.compile(r'([\u0900-\u097F]+(?:[ \t\r\n\xa0\u200d\u200c]*[\u0900-\u097F]+)*)')
+    # Match sequences of Devanagari/Gujarati/Bengali/Tamil/Telugu/Kannada/Malayalam characters (\u0900-\u0D7F)
+    pattern = re.compile(r'([\u0900-\u0D7F]+(?:[ \t\r\n\xa0\u200d\u200c]*[\u0900-\u0D7F]+)*)')
     return pattern.sub(f'<font name="{font_name}">\\1</font>', text)
 
 def Paragraph(text, style, *args, **kwargs):
@@ -27,19 +27,21 @@ def Paragraph(text, style, *args, **kwargs):
     wrapped_text = wrap_devanagari(text)
     return RLParagraph(wrapped_text, style, *args, **kwargs)
 font_bold_path = None
-
-# Try to find and register a Devanagari-supporting font
 font_reg_path = None
+is_ttc = False
 
 if os.name == 'nt':  # Windows
     # Common Windows Hindi fonts
     possible_paths = [
+        "C:\\Windows\\Fonts\\Nirmala.ttc",
         "C:\\Windows\\Fonts\\Nirmala.ttf",
         "C:\\Windows\\Fonts\\mangal.ttf"
     ]
     for p in possible_paths:
         if os.path.exists(p):
             font_reg_path = p
+            if p.endswith('.ttc'):
+                is_ttc = True
             break
             
     possible_bold_paths = [
@@ -72,12 +74,20 @@ else:  # Linux (Docker)
 
 try:
     if font_reg_path:
-        pdfmetrics.registerFont(TTFont('Devanagari', font_reg_path))
+        if is_ttc:
+            # shapable=True enables proper Unicode/Devanagari shaping (ReportLab 4.x)
+            pdfmetrics.registerFont(TTFont('Devanagari-Regular', font_reg_path, subfontIndex=3, shapable=True))
+            pdfmetrics.registerFont(TTFont('Devanagari-Bold', font_reg_path, subfontIndex=4, shapable=True))
+        else:
+            pdfmetrics.registerFont(TTFont('Devanagari-Regular', font_reg_path, shapable=True))
+            if font_bold_path:
+                pdfmetrics.registerFont(TTFont('Devanagari-Bold', font_bold_path, shapable=True))
+            else:
+                pdfmetrics.registerFont(TTFont('Devanagari-Bold', font_reg_path, shapable=True))
+                
+        pdfmetrics.registerFontFamily('Devanagari', normal='Devanagari-Regular', bold='Devanagari-Bold')
         devanagari_registered = True
-        print(f"Registered Devanagari regular font: {font_reg_path}")
-    if font_bold_path:
-        pdfmetrics.registerFont(TTFont('Devanagari-Bold', font_bold_path))
-        print(f"Registered Devanagari bold font: {font_bold_path}")
+        print(f"Registered Devanagari font family: {font_reg_path}")
 except Exception as e:
     print(f"Warning: Failed to register Devanagari font: {e}")
 
@@ -386,14 +396,14 @@ def generate_prescription_pdf(visit: models.Visit, db: Session, output_path: str
 
     patient = visit.patient
 
-    # Setup document: A4 portrait (595 x 842 points)
+    # Setup document: A4 portrait (595 x 842 points) - compact margins for pristine 1-page fit
     doc = SimpleDocTemplate(
         output_path,
         pagesize=A4,
-        leftMargin=40,
-        rightMargin=40,
-        topMargin=35,
-        bottomMargin=30
+        leftMargin=35,
+        rightMargin=35,
+        topMargin=22,
+        bottomMargin=18
     )
 
     styles = getSampleStyleSheet()
@@ -439,7 +449,7 @@ def generate_prescription_pdf(visit: models.Visit, db: Session, output_path: str
     header_table_data = [
         [left_flowables, right_flowables]
     ]
-    header_table = Table(header_table_data, colWidths=[270, 245])
+    header_table = Table(header_table_data, colWidths=[275, 250])
     header_table.setStyle(TableStyle([
         ('VALIGN', (0,0), (-1,-1), 'TOP'),
         ('LEFTPADDING', (0,0), (-1,-1), 0),
@@ -448,13 +458,13 @@ def generate_prescription_pdf(visit: models.Visit, db: Session, output_path: str
         ('BOTTOMPADDING', (0,0), (-1,-1), 0),
     ]))
     story.append(header_table)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 6))
 
     # Divider bar
-    divider = Drawing(515, 2)
-    divider.add(Line(0, 0, 515, 0, strokeColor=colors.HexColor('#0d9488'), strokeWidth=1.5))
+    divider = Drawing(525, 2)
+    divider.add(Line(0, 0, 525, 0, strokeColor=colors.HexColor('#0d9488'), strokeWidth=1.5))
     story.append(divider)
-    story.append(Spacer(1, 12))
+    story.append(Spacer(1, 8))
 
     # 2. Patient Demographics & Visit Grid
     date_str = visit.visit_date.strftime("%d-%b-%Y %I:%M %p")
@@ -478,19 +488,19 @@ def generate_prescription_pdf(visit: models.Visit, db: Session, output_path: str
             Paragraph(f"<b>Follow-up:</b> {follow_up}", style_normal)
         ]
     ]
-    pat_table = Table(pat_table_data, colWidths=[257, 258])
+    pat_table = Table(pat_table_data, colWidths=[262, 263])
     pat_table.setStyle(TableStyle([
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#f8fafc')),
         ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
         ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#f1f5f9')),
-        ('TOPPADDING', (0,0), (-1,-1), 6),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
         ('LEFTPADDING', (0,0), (-1,-1), 8),
         ('RIGHTPADDING', (0,0), (-1,-1), 8),
     ]))
     story.append(pat_table)
-    story.append(Spacer(1, 15))
+    story.append(Spacer(1, 10))
 
     # 3. Clinical Sections
     clinical_sections = [
@@ -504,28 +514,52 @@ def generate_prescription_pdf(visit: models.Visit, db: Session, output_path: str
     for title, content in clinical_sections:
         if content and content.strip():
             story.append(Paragraph(title.upper(), style_heading))
-            story.append(Spacer(1, 4))
+            story.append(Spacer(1, 2))
             
             # Draw a subtle underline line for headers
-            sect_line = Drawing(515, 1)
-            sect_line.add(Line(0, 0, 515, 0, strokeColor=colors.HexColor('#e2e8f0'), strokeWidth=0.5))
+            sect_line = Drawing(525, 1)
+            sect_line.add(Line(0, 0, 525, 0, strokeColor=colors.HexColor('#e2e8f0'), strokeWidth=0.5))
             story.append(sect_line)
-            story.append(Spacer(1, 5))
+            story.append(Spacer(1, 4))
             
             # Format content with line breaks replaced by paragraphs or simple text block
             content_style = style_bold if title == "Diagnosis" else style_normal
             story.append(Paragraph(content.strip().replace('\n', '<br/>'), content_style))
-            story.append(Spacer(1, 14))
+            story.append(Spacer(1, 8))
 
     # 4. Patient-Friendly Storytelling Daily Routine Card
     if visit.patient_summary and visit.patient_summary.strip():
-        raw_summary = visit.patient_summary.strip()
+        # Helper: escape special chars that break ReportLab XML parsing
+        def _rl_escape(text: str) -> str:
+            # Escape XML special chars, then fix common Unicode symbols Helvetica can't render
+            text = text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            # Replace fancy dashes / apostrophes / quotes with ASCII equivalents
+            text = text.replace('\u2013', '-').replace('\u2014', '-').replace('\u2012', '-')
+            text = text.replace('\u2018', "'").replace('\u2019', "'").replace('\u201c', '"').replace('\u201d', '"')
+            # Replace non-breaking hyphens / soft-hyphens
+            text = text.replace('\u2011', '-').replace('\u00ad', '')
+            # Replace degree sign and Rupee symbol (not in Helvetica)
+            text = text.replace('\u00b0', ' deg').replace('\u20b9', 'Rs.')
+            # Ellipsis
+            text = text.replace('\u2026', '...')
+            # Fraction-like chars
+            text = text.replace('\u2010', '-').replace('\u2015', '-')
+            return text
+        raw_summary = _rl_escape(visit.patient_summary.strip())
 
         # --- Parse structured format ---
         import re as _re
         # Handle both old [English Summary] and new [English Storytelling Summary]
-        eng_match = _re.search(r'\[English(?:[^\]]*Summary|\s+Storytelling\s+Summary)\]([\s\S]*?)(?=\[Hindi|$)', raw_summary, _re.IGNORECASE)
-        hin_match = _re.search(r'\[Hindi\s*Summary[\s\S]*?\]([\s\S]*?)$', raw_summary, _re.IGNORECASE)
+        # Second-language block can be any language: Hindi, Gujarati, Tamil, etc.
+        eng_match = _re.search(
+            r'\[English(?:[^\]]*Summary|\s+Storytelling\s+Summary)\]([\s\S]*?)(?=\[[A-Za-z\u0900-\u097F\u0A00-\u0A7F\u0B80-\u0BFF]+|$)',
+            raw_summary, _re.IGNORECASE
+        )
+        # Match any non-English language section: [Hindi Summary], [Gujarati Summary ...], etc.
+        hin_match = _re.search(
+            r'\[(?!English)[A-Za-z\u0900-\u097F\u0A00-\u0A7F\u0B80-\u0BFF]+(?:[^\]]+)?\]([\s\S]*?)$',
+            raw_summary, _re.IGNORECASE
+        )
         eng_text = eng_match.group(1).strip() if eng_match else ''
         hin_text = hin_match.group(1).strip() if hin_match else ''
         is_structured = bool(eng_text and _re.search(r'(morning|night):', eng_text, _re.IGNORECASE))
@@ -539,8 +573,10 @@ def generate_prescription_pdf(visit: models.Visit, db: Session, output_path: str
         ai_body_style = ParagraphStyle('AISlotBody', parent=style_normal, fontSize=8.5,
                                        leading=12, textColor=colors.HexColor('#475569'))
         ai_hi_label = ParagraphStyle('AIHiLbl', parent=style_bold, fontSize=8,
+                                     fontName=bold_font if not devanagari_registered else 'Devanagari-Bold',
                                      textColor=colors.HexColor('#64748b'))
         ai_hi_body = ParagraphStyle('AIHiBody', parent=style_normal, fontSize=8,
+                                    fontName=normal_font if not devanagari_registered else 'Devanagari-Regular',
                                     leading=11.5, textColor=colors.HexColor('#374151'))
 
         if is_structured:
@@ -563,13 +599,29 @@ def generate_prescription_pdf(visit: models.Visit, db: Session, output_path: str
             en_night     = _slot(eng_text, 'Night', ai_body_style)
             en_watch     = _slot(eng_text, 'Watch Out For', ai_body_style)
 
-            hi_greeting  = _greeting(hin_text, ['\u0938\u0941\u092c\u0939', '\u0926\u094b\u092a\u0939\u0930', '\u0930\u093e\u0924', 'Subah', 'Dopahar', 'Raat', 'Dhyan Rakhein'])
-            hi_subah     = _slot(hin_text, '\u0938\u0941\u092c\u0939', ai_hi_body) or _slot(hin_text, 'Subah', ai_hi_body)
-            hi_dopahar   = _slot(hin_text, '\u0926\u094b\u092a\u0939\u0930', ai_hi_body) or _slot(hin_text, 'Dopahar', ai_hi_body)
-            hi_raat      = _slot(hin_text, '\u0930\u093e\u0924', ai_hi_body) or _slot(hin_text, 'Raat', ai_hi_body)
-            hi_dhyan     = _slot(hin_text, '\u0907\u0928 \u092c\u093e\u0924\u094b\u0902 \u0915\u093e \u0927\u094d\u092f\u093e\u0928 \u0930\u0916\u0947\u0902', ai_hi_body) or _slot(hin_text, 'Dhyan Rakhein', ai_hi_body)
+            hi_greeting  = _greeting(hin_text, [
+                # Hindi
+                '\u0938\u0941\u092c\u0939', '\u0926\u094b\u092a\u0939\u0930', '\u0930\u093e\u0924',
+                # Gujarati
+                '\u0ab8\u0ab5\u0abe\u0ab0', '\u0aac\u0aaa\u0acb\u0ab0',
+                # English fallback (used in parenthetical annotation style)
+                'Subah', 'Dopahar', 'Raat', 'Dhyan Rakhein', 'Morning', 'Afternoon', 'Night', 'Watch Out For'
+            ])
+            # Hindi slots
+            hi_subah   = (_slot(hin_text, '\u0938\u0941\u092c\u0939', ai_hi_body) or
+                          _slot(hin_text, 'Subah', ai_hi_body) or
+                          _slot(hin_text, 'Morning', ai_hi_body))
+            hi_dopahar = (_slot(hin_text, '\u0926\u094b\u092a\u0939\u0930', ai_hi_body) or
+                          _slot(hin_text, 'Dopahar', ai_hi_body) or
+                          _slot(hin_text, 'Afternoon', ai_hi_body))
+            hi_raat    = (_slot(hin_text, '\u0930\u093e\u0924', ai_hi_body) or
+                          _slot(hin_text, 'Raat', ai_hi_body) or
+                          _slot(hin_text, 'Night', ai_hi_body))
+            hi_dhyan   = (_slot(hin_text, '\u0907\u0928 \u092c\u093e\u0924\u094b\u0902 \u0915\u093e \u0927\u094d\u092f\u093e\u0928 \u0930\u0916\u0947\u0902', ai_hi_body) or
+                          _slot(hin_text, 'Dhyan Rakhein', ai_hi_body) or
+                          _slot(hin_text, 'Watch Out For', ai_hi_body))
 
-            ai_card_content = [Paragraph('<b>PATIENT DAILY ROUTINE — AI GENERATED</b>', ai_title_style)]
+            ai_card_content = [Paragraph('<b>PATIENT DAILY ROUTINE - AI GENERATED</b>', ai_title_style)]
 
             if en_greeting:
                 ai_card_content.append(Paragraph(f'<i>{en_greeting}</i>', ai_body_style))
@@ -590,43 +642,60 @@ def generate_prescription_pdf(visit: models.Visit, db: Session, output_path: str
                     ])
 
             if slot_rows:
-                slot_table = Table(slot_rows, colWidths=[95, 368])
+                slot_table = Table(slot_rows, colWidths=[100, 410])
                 slot_table.setStyle(TableStyle([
                     ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                    ('TOPPADDING', (0, 0), (-1, -1), 4),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                    ('TOPPADDING', (0, 0), (-1, -1), 3),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
                     ('LEFTPADDING', (0, 0), (-1, -1), 2),
                     ('RIGHTPADDING', (0, 0), (-1, -1), 2),
                     ('LINEBELOW', (0, 0), (-1, -2), 0.3, colors.HexColor('#e2e8f0')),
                 ]))
                 ai_card_content.append(slot_table)
 
-            # Hindi Section
+            # Secondary language section (Hindi, Gujarati, etc.)
             if hin_text:
-                ai_card_content.append(Spacer(1, 6))
-                ai_card_content.append(Paragraph(wrap_devanagari('<b>हिंदी सारांश</b>'), ai_hi_label))
+                ai_card_content.append(Spacer(1, 4))
+                # Detect which language label to show
+                lang_label_match = _re.search(
+                    r'\[(?!English)([A-Za-z\u0900-\u097F\u0A00-\u0A7F\u0B80-\u0BFF]+)(?:[^\]]+)?\]',
+                    raw_summary, _re.IGNORECASE
+                )
+                lang_label = lang_label_match.group(1) if lang_label_match else 'Local Language'
+                ai_card_content.append(RLParagraph(f'<b>{lang_label} Summary</b>', ai_hi_label))
                 if hi_greeting:
-                    ai_card_content.append(Paragraph(wrap_devanagari(hi_greeting), ai_hi_body))
-                    ai_card_content.append(Spacer(1, 3))
+                    ai_card_content.append(RLParagraph(wrap_devanagari(hi_greeting), ai_hi_body))
+                    ai_card_content.append(Spacer(1, 2))
+
+                # Determine slot label text depending on Gujarati vs Hindi
+                if 'gujarati' in lang_label.lower():
+                    slot_label_defs = [
+                        ('સવાર', 'Subah', hi_subah),
+                        ('બપોર', 'Dopahar', hi_dopahar),
+                        ('રાત', 'Raat', hi_raat),
+                        ('ધ્યાન આપો', 'Dhyan Rakhein', hi_dhyan),
+                    ]
+                else:
+                    slot_label_defs = [
+                        ('सुबह', 'Subah', hi_subah),
+                        ('दोपहर', 'Dopahar', hi_dopahar),
+                        ('रात', 'Raat', hi_raat),
+                        ('ध्यान रखें', 'Dhyan Rakhein', hi_dhyan),
+                    ]
 
                 hi_rows = []
-                for label_hi, lbl_key, content_hi in [
-                    ('सुबह', 'Subah', hi_subah),
-                    ('दोपहर', 'Dopahar', hi_dopahar),
-                    ('रात', 'Raat', hi_raat),
-                    ('ध्यान रखें', 'Dhyan Rakhein', hi_dhyan),
-                ]:
+                for label_hi, lbl_key, content_hi in slot_label_defs:
                     if content_hi:
                         hi_rows.append([
-                            Paragraph(wrap_devanagari(f'<b>{label_hi}:</b>'), ai_hi_label),
-                            Paragraph(wrap_devanagari(content_hi), ai_hi_body)
+                            RLParagraph(wrap_devanagari(f'{label_hi}:', font_name='Devanagari-Bold'), ai_hi_label),
+                            RLParagraph(wrap_devanagari(content_hi), ai_hi_body)
                         ])
                 if hi_rows:
-                    hi_table = Table(hi_rows, colWidths=[70, 393])
+                    hi_table = Table(hi_rows, colWidths=[75, 435])
                     hi_table.setStyle(TableStyle([
                         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                        ('TOPPADDING', (0, 0), (-1, -1), 3),
-                        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+                        ('TOPPADDING', (0, 0), (-1, -1), 2),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
                         ('LEFTPADDING', (0, 0), (-1, -1), 2),
                         ('RIGHTPADDING', (0, 0), (-1, -1), 2),
                     ]))
@@ -637,26 +706,26 @@ def generate_prescription_pdf(visit: models.Visit, db: Session, output_path: str
             ai_body_flat = ParagraphStyle('AIBodyFlat', parent=style_normal, fontSize=8.5,
                                           leading=12.5, textColor=colors.HexColor('#334155'))
             ai_card_content = [
-                Paragraph('<b>PATIENT-FRIENDLY SUMMARY (EN + हिंदी)</b>', ai_title_style),
+                Paragraph('<b>PATIENT-FRIENDLY SUMMARY</b>', ai_title_style),
                 Spacer(1, 4),
                 Paragraph(raw_summary.replace('\n', '<br/>'), ai_body_flat)
             ]
 
-        ai_table = Table([[ai_card_content]], colWidths=[515])
+        ai_table = Table([[ai_card_content]], colWidths=[525])
         ai_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f0fdfa')),
-            ('BOX', (0, 0), (-1, -1), 1.5, colors.HexColor('#5eead4')),
-            ('LINEBEFORE', (0, 0), (0, -1), 4, colors.HexColor('#0d9488')),
-            ('TOPPADDING', (0, 0), (-1, -1), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-            ('LEFTPADDING', (0, 0), (-1, -1), 14),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+            ('BOX', (0, 0), (-1, -1), 1.2, colors.HexColor('#5eead4')),
+            ('LINEBEFORE', (0, 0), (0, -1), 3.5, colors.HexColor('#0d9488')),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('LEFTPADDING', (0, 0), (-1, -1), 10),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
         ]))
         story.append(ai_table)
-        story.append(Spacer(1, 18))
+        story.append(Spacer(1, 8))
 
     # 5. Signoff
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 6))
     sig_style = ParagraphStyle('PrescSig', parent=style_normal, fontSize=9, alignment=2)
     sig_label = ParagraphStyle('PrescSigLbl', parent=style_bold, fontSize=9, alignment=2, textColor=colors.HexColor('#4b5563'))
     
@@ -665,11 +734,11 @@ def generate_prescription_pdf(visit: models.Visit, db: Session, output_path: str
         ["", Paragraph("Authorized Signature", sig_label)],
         ["", Paragraph(hosp_name, ParagraphStyle('PrescSigHosp', parent=style_normal, fontSize=8, alignment=2, textColor=colors.HexColor('#9ca3af')))]
     ]
-    sig_table = Table(sig_table_data, colWidths=[335, 180])
+    sig_table = Table(sig_table_data, colWidths=[345, 180])
     sig_table.setStyle(TableStyle([
         ('VALIGN', (0,0), (-1,-1), 'BOTTOM'),
-        ('TOPPADDING', (0,0), (-1,-1), 2),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
+        ('TOPPADDING', (0,0), (-1,-1), 1),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 1),
         ('LEFTPADDING', (0,0), (-1,-1), 0),
         ('RIGHTPADDING', (0,0), (-1,-1), 0),
     ]))

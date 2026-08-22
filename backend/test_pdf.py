@@ -9,13 +9,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import models
 import pdf_generator
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql://postgres:postgrespassword@localhost:5432/hospisyn"
-)
-
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-db = SessionLocal()
+import database
+db = database.SessionLocal()
 
 try:
     # Get first active visit

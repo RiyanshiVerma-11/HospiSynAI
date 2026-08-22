@@ -54,23 +54,24 @@ def on_startup():
     Base.metadata.create_all(bind=engine)
     db = next(get_db())
     try:
-        # Run migration query to ensure visits table has doctor_id and clinical columns, and patients table has abha_id
-        try:
-            from sqlalchemy import text
-            db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS doctor_id INTEGER REFERENCES doctors(id)"))
-            db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS diagnosis VARCHAR"))
-            db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS chief_complaints VARCHAR"))
-            db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS medicines_list VARCHAR"))
-            db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS tests_list VARCHAR"))
-            db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS advice VARCHAR"))
-            db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS follow_up_date VARCHAR"))
-            db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS patient_summary TEXT"))
-            db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'Waiting'"))
-            db.execute(text("ALTER TABLE patients ADD COLUMN IF NOT EXISTS abha_id VARCHAR"))
-            db.commit()
-        except Exception as migrate_err:
-            print("Migration warning (visits/patients columns):", migrate_err)
-            db.rollback()
+        # Run migration query to ensure visits table has doctor_id and clinical columns, and patients table has abha_id (PostgreSQL only)
+        if engine.dialect.name == "postgresql":
+            try:
+                from sqlalchemy import text
+                db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS doctor_id INTEGER REFERENCES doctors(id)"))
+                db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS diagnosis VARCHAR"))
+                db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS chief_complaints VARCHAR"))
+                db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS medicines_list VARCHAR"))
+                db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS tests_list VARCHAR"))
+                db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS advice VARCHAR"))
+                db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS follow_up_date VARCHAR"))
+                db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS patient_summary TEXT"))
+                db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'Waiting'"))
+                db.execute(text("ALTER TABLE patients ADD COLUMN IF NOT EXISTS abha_id VARCHAR"))
+                db.commit()
+            except Exception as migrate_err:
+                print("Migration warning (visits/patients columns):", migrate_err)
+                db.rollback()
 
         # Seed default doctor if table is empty
         if db.query(models.Doctor).count() == 0:
@@ -420,6 +421,106 @@ async def update_visit_summary(
                 detail="Groq API key is not configured. Please set GROQ_API_KEY in your .env file."
             )
         
+        LANGUAGE_CONFIGS = {
+            "Hindi": {
+                "script_name": "Devanagari script (हिंदी)",
+                "morning_label": "सुबह",
+                "afternoon_label": "दोपहर",
+                "night_label": "रात",
+                "warning_label": "इन बातों का ध्यान रखें",
+                "strict_rule": "MUST write ENTIRE translation exclusively in Hindi language using Devanagari script (हिंदी). Absolutely NO Gujarati (નમસ્તે), Marathi, or Punjabi characters!"
+            },
+            "Kannada": {
+                "script_name": "Kannada script (ಕನ್ನಡ)",
+                "morning_label": "ಬೆಳಿಗ್ಗೆ",
+                "afternoon_label": "ಮಧ್ಯಾಹ್ನ",
+                "night_label": "ರಾತ್ರಿ",
+                "warning_label": "ಎಚ್ಚರಿಕೆ",
+                "strict_rule": "MUST write ENTIRE translation exclusively in Kannada language using Kannada script (ಕನ್ನಡ)."
+            },
+            "Tamil": {
+                "script_name": "Tamil script (தமிழ்)",
+                "morning_label": "காலை",
+                "afternoon_label": "மதியம்",
+                "night_label": "இரவு",
+                "warning_label": "எச்சரிக்கை",
+                "strict_rule": "MUST write ENTIRE translation exclusively in Tamil language using Tamil script (தமிழ்)."
+            },
+            "Telugu": {
+                "script_name": "Telugu script (తెలుగు)",
+                "morning_label": "ఉదయం",
+                "afternoon_label": "మధ్యాహ్నం",
+                "night_label": "రాత్రి",
+                "warning_label": "హెచ్చరిక",
+                "strict_rule": "MUST write ENTIRE translation exclusively in Telugu language using Telugu script (తెలుగు)."
+            },
+            "Bengali": {
+                "script_name": "Bengali script (বাংলা)",
+                "morning_label": "সকাল",
+                "afternoon_label": "দুপুর",
+                "night_label": "রাত",
+                "warning_label": "সতর্কতা",
+                "strict_rule": "MUST write ENTIRE translation exclusively in Bengali language using Bengali script (বাংলা)."
+            },
+            "Marathi": {
+                "script_name": "Devanagari script for Marathi (मराठी)",
+                "morning_label": "सकाळ",
+                "afternoon_label": "दुपार",
+                "night_label": "रात्र",
+                "warning_label": "सावधानता",
+                "strict_rule": "MUST write ENTIRE translation exclusively in Marathi language using Devanagari script (मराठी)."
+            },
+            "Gujarati": {
+                "script_name": "Gujarati script (ગુજરાતી)",
+                "morning_label": "સવાર",
+                "afternoon_label": "બપોર",
+                "night_label": "રાત",
+                "warning_label": "ચેતવણી",
+                "strict_rule": "MUST write ENTIRE translation exclusively in Gujarati language using Gujarati script (ગુજરાતી)."
+            },
+            "Malayalam": {
+                "script_name": "Malayalam script (മലയാളം)",
+                "morning_label": "രാവിലെ",
+                "afternoon_label": "ഉച്ചയ്ക്ക്",
+                "night_label": "രാത്രി",
+                "warning_label": "മുന്നറിയിപ്പ്",
+                "strict_rule": "MUST write ENTIRE translation exclusively in Malayalam language using Malayalam script (മലയാളം)."
+            },
+            "Punjabi": {
+                "script_name": "Gurmukhi script (ਪੰਜਾਬੀ)",
+                "morning_label": "ਸਵੇਰ",
+                "afternoon_label": "ਦੁਪਹਿਰ",
+                "night_label": "ਰਾਤ",
+                "warning_label": "ਚੇਤਾਵਨੀ",
+                "strict_rule": "MUST write ENTIRE translation exclusively in Punjabi language using Gurmukhi script (ਪੰਜਾਬੀ)."
+            },
+            "Odia": {
+                "script_name": "Odia script (ଓଡ଼ିଆ)",
+                "morning_label": "ସକାଳ",
+                "afternoon_label": "ମଧ୍ୟାହ୍ନ",
+                "night_label": "ରାତି",
+                "warning_label": "ସତର୍କତା",
+                "strict_rule": "MUST write ENTIRE translation exclusively in Odia language using Odia script (ଓଡ଼ିଆ)."
+            },
+            "Urdu": {
+                "script_name": "Urdu script (اردو)",
+                "morning_label": "صبح",
+                "afternoon_label": "دوپہر",
+                "night_label": "رات",
+                "warning_label": "انتباہ",
+                "strict_rule": "MUST write ENTIRE translation exclusively in Urdu language using Urdu script (اردو)."
+            }
+        }
+
+        lang_cfg = LANGUAGE_CONFIGS.get(target_language, {
+            "script_name": f"{target_language} script",
+            "morning_label": "Morning",
+            "afternoon_label": "Afternoon",
+            "night_label": "Night",
+            "warning_label": "Watch Out For",
+            "strict_rule": f"MUST write ENTIRE translation in {target_language}."
+        })
+
         # Storytelling prompt — structured daily routine narrative with emojis
         prompt = f"""You are a compassionate, senior medical assistant helping Indian hospital patients understand their doctor's consultation. Create a highly visual, easy-to-understand "storytelling" summary of their visit.
 
@@ -438,15 +539,19 @@ Your task:
    - 🌤️ Afternoon: [What to take/do and why, or "Rest well and stay hydrated"]
    - 🌙 Night: [What to take before bed and why]
 3. Urgent Warnings ⚠️: If any complaint or medicine requires immediate attention (e.g. high fever, chest pain), list them clearly.
-4. Translate the entire greeting, routine and warnings into {target_language} using the exact same simple routine layout. Important: To make parsing easy, format the native script labels in {target_language} with their English equivalents in brackets next to them, like:
-   - ☀️ <Native label for Morning> (Morning): [details in {target_language}]
-   - 🌤️ <Native label for Afternoon> (Afternoon): [details in {target_language}]
-   - 🌙 <Native label for Night> (Night): [details in {target_language}]
-   - ⚠️ <Native label for Watch Out For> (Watch Out For): [warnings in {target_language}]
+4. Translate the entire greeting, routine and warnings into {target_language} using the exact native script {lang_cfg['script_name']}.
+
+CRITICAL SCRIPT & ACCURACY RULE:
+{lang_cfg['strict_rule']}
+Format the native script labels with their English equivalents in brackets:
+   - ☀️ {lang_cfg['morning_label']} (Morning): [details in {target_language} ({lang_cfg['script_name']})]
+   - 🌤️ {lang_cfg['afternoon_label']} (Afternoon): [details in {target_language} ({lang_cfg['script_name']})]
+   - 🌙 {lang_cfg['night_label']} (Night): [details in {target_language} ({lang_cfg['script_name']})]
+   - ⚠️ {lang_cfg['warning_label']} (Watch Out For): [warnings in {target_language} ({lang_cfg['script_name']})]
 
 Strict Output Format (follow exactly, do not add extra markdown or headers):
 [English Storytelling Summary]
-<warm greeting>
+<warm greeting in English>
 ☀️ Morning: <details>
 🌤️ Afternoon: <details>
 🌙 Night: <details>
@@ -454,10 +559,10 @@ Strict Output Format (follow exactly, do not add extra markdown or headers):
 
 [{target_language} Summary ({target_language} Summary)]
 <greeting in {target_language}>
-☀️ <Native label for Morning> (Morning): <details in {target_language}>
-🌤️ <Native label for Afternoon> (Afternoon): <details in {target_language}>
-🌙 <Native label for Night> (Night): <details in {target_language}>
-⚠️ <Native label for Watch Out For> (Watch Out For): <warnings or "None">"""
+☀️ {lang_cfg['morning_label']} (Morning): <details in {target_language}>
+🌤️ {lang_cfg['afternoon_label']} (Afternoon): <details in {target_language}>
+🌙 {lang_cfg['night_label']} (Night): <details in {target_language}>
+⚠️ {lang_cfg['warning_label']} (Watch Out For): <warnings or "None">"""
 
         url = "https://api.groq.com/openai/v1/chat/completions"
         groq_headers = {
@@ -601,6 +706,7 @@ JSON schema:
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.1,
         "response_format": {"type": "json_object"},
+        "reasoning_format": "hidden",
         "max_tokens": 800
     }
 
@@ -726,6 +832,7 @@ Return response in clean JSON format only matching this schema:
             {"role": "user", "content": prompt}
         ],
         "response_format": {"type": "json_object"},
+        "reasoning_format": "hidden",
         "temperature": 0.2
     }
 
@@ -930,7 +1037,8 @@ If no issues, return status "clear", empty issues list, and safe_to_proceed: tru
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.05,
         "response_format": {"type": "json_object"},
-        "max_tokens": 400
+        "reasoning_format": "hidden",
+        "max_tokens": 1200
     }
 
     try:
@@ -1051,7 +1159,8 @@ Output ONLY valid JSON, no preamble:
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.3,
         "response_format": {"type": "json_object"},
-        "max_tokens": 300
+        "reasoning_format": "hidden",
+        "max_tokens": 1200
     }
 
     try:
@@ -1650,7 +1759,7 @@ def get_audit_logs(
     output = []
     for log in logs:
         user_name = log.user.username if log.user else "System"
-        o = schemas.AuditLogResponse.from_orm(log)
+        o = schemas.AuditLogResponse.model_validate(log)
         o.user_name = user_name
         output.append(o)
     return output

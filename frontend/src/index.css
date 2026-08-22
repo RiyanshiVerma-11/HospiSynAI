@@ -39,7 +39,10 @@
     --glow-rose: 0 0 20px rgba(251,113,133,0.35);
   }
 
-  html { font-family: 'Inter', system-ui, sans-serif; }
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    scroll-behavior: smooth;
+  }
 
   body {
     @apply bg-slate-50 text-slate-800;
@@ -275,6 +278,58 @@
   transition: background 0.2s;
 }
 ::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.6); }
+
+/* ============================================================
+   HERO & TICKER ANIMATIONS (LANDING REDESIGN)
+   ============================================================ */
+
+/* Floating mockup card */
+@keyframes float-card {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(0.5deg);
+  }
+}
+
+.float-card {
+  animation: float-card 6s ease-in-out infinite;
+}
+
+/* Infinite trust ticker */
+@keyframes ticker-slide {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.trust-ticker {
+  display: flex;
+  width: max-content;
+  animation: ticker-slide 28s linear infinite;
+}
+
+.trust-ticker:hover {
+  animation-play-state: paused;
+}
+
+/* Shimmer borders & glowing features */
+@keyframes shimmer-sweep {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.feature-glow-border {
+  background: radial-gradient(circle at 50% 0%, rgba(20, 184, 166, 0.25), transparent 70%);
+}
 
 /* ============================================================
    PRINT STYLES
