@@ -49,6 +49,7 @@ class PatientResponse(PatientBase):
     patient_id: str
     created_at: datetime
     is_active: bool
+    visits: Optional[List['VisitResponse']] = []
 
     class Config:
         orm_mode = True
@@ -58,6 +59,8 @@ class PatientResponse(PatientBase):
 class DoctorBase(BaseModel):
     name: str
     degree: str
+    consultation_fee: Optional[float] = 500.0
+    consultation_validity_days: Optional[int] = 7
 
 class DoctorCreate(DoctorBase):
     pass
@@ -104,7 +107,8 @@ class VisitResponse(VisitBase):
     visit_date: datetime
     is_active: bool
     doctor: Optional[DoctorResponse] = None
-    patient: Optional[PatientResponse] = None
+    patient: Optional['PatientResponse'] = None
+    bills: Optional[List['BillResponse']] = []
 
     class Config:
         orm_mode = True
@@ -126,6 +130,19 @@ class ServiceResponse(ServiceBase):
 
     class Config:
         orm_mode = True
+
+
+# Prescription → Billing Auto-Draft Schemas
+class PrescriptionMatchedItem(BaseModel):
+    service_id: int
+    service_name: str
+    category: str
+    price: float
+    match_reason: str   # e.g. "Matched 'CBC' → 'Complete Blood Count (CBC)'"
+
+class PrescriptionBillSuggestion(BaseModel):
+    matched_items: List[PrescriptionMatchedItem]
+    unmatched_items: List[str]  # raw prescription tokens that couldn't be mapped
 
 
 # Bill Item Schemas
@@ -273,6 +290,7 @@ class DashboardMetrics(BaseModel):
 # AI Recommendation Schemas
 class RecommendationRequest(BaseModel):
     patient_id: Optional[int] = None
+    visit_id: Optional[int] = None
     age: Optional[int] = None
     gender: Optional[str] = None
     symptoms: str
@@ -328,5 +346,8 @@ class AIInsightResponse(BaseModel):
     action: str
     metric_highlight: str
     sentiment: str  # "positive" | "neutral" | "negative"
+
+PatientResponse.update_forward_refs()
+VisitResponse.update_forward_refs()
 
 

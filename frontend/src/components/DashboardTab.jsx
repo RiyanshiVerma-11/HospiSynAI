@@ -317,6 +317,38 @@ export default function DashboardTab({ metrics, metricsError, API_BASE, fetchRec
   return (
     <div className="flex flex-col gap-4 h-full md:max-h-full overflow-y-auto md:overflow-hidden min-h-0">
 
+      {/* ── QUICK ACTIONS HUB ───────────────────────────────── */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-3 shadow-sm flex items-center justify-between gap-3 flex-wrap flex-shrink-0 animate-slide-up">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold">
+            <Zap className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-xs font-bold text-slate-900 leading-tight">Executive Control Hub</h3>
+            <p className="text-[10px] text-slate-400 font-medium">Quick operational triggers for hospital desk</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => handleExportCSV('all')}
+            disabled={exportLoading === 'all'}
+            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-xl transition-all"
+          >
+            <Download className={`w-3.5 h-3.5 ${exportLoading === 'all' ? 'animate-spin' : ''}`} />
+            Export Audit CSV
+          </button>
+          <button
+            onClick={() => handleExportCSV('today')}
+            disabled={exportLoading === 'today'}
+            className="flex items-center gap-1.5 bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold px-3 py-1.5 rounded-xl border border-teal-200/60 transition-all"
+          >
+            <FileSpreadsheet className={`w-3.5 h-3.5 ${exportLoading === 'today' ? 'animate-spin' : ''}`} />
+            Today's Ledger
+          </button>
+        </div>
+      </div>
+
       {/* ── KPI Cards ───────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-shrink-0">
 

@@ -199,7 +199,7 @@ export default function SettingsTab({
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm md:h-full md:overflow-y-auto flex flex-col justify-between gap-4">
         <div>
           <h3 className="font-bold text-slate-900 text-sm mb-1">Consulting Doctors Directory</h3>
-          <p className="text-slate-500 text-[10px] mb-3">Add, view, edit or remove consulting doctors active in the hospital. These doctors will be available in the visit pop-up selection when registering patient entries.</p>
+          <p className="text-slate-500 text-[10px] mb-3">Add, view, edit or remove consulting doctors active in the hospital. Setting consultation fee & validity days will automatically auto-fill charges or apply free follow-ups for patients.</p>
 
           <div className="overflow-x-auto border border-slate-100 rounded-xl max-h-48 overflow-y-auto compact-scroll flex-shrink-0">
             <table className="min-w-full divide-y divide-slate-100 text-left text-xs">
@@ -207,19 +207,23 @@ export default function SettingsTab({
                 <tr>
                   <th className="px-3 py-2">Doctor Name</th>
                   <th className="px-3 py-2">Qualifications</th>
+                  <th className="px-3 py-2 text-right">Fee</th>
+                  <th className="px-3 py-2 text-right">Validity</th>
                   <th className="px-3 py-2 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white font-medium text-slate-700">
                 {doctors.length === 0 ? (
                   <tr>
-                    <td colSpan="3" className="px-3 py-6 text-center text-slate-400 italic">No doctors configured.</td>
+                    <td colSpan="5" className="px-3 py-6 text-center text-slate-400 italic">No doctors configured.</td>
                   </tr>
                 ) : (
                   doctors.map(doc => (
                     <tr key={doc.id} className="hover:bg-slate-50/50">
                       <td className="px-3 py-2 font-bold text-slate-950">{doc.name}</td>
                       <td className="px-3 py-2 whitespace-pre-line text-slate-500 text-[11px]">{doc.degree}</td>
+                      <td className="px-3 py-2 text-right font-extrabold text-teal-700">₹{(doc.consultation_fee ?? 500).toLocaleString()}</td>
+                      <td className="px-3 py-2 text-right font-bold text-slate-600 text-[11px]">{doc.consultation_validity_days ?? 7} Days</td>
                       <td className="px-3 py-2 text-right space-x-2 whitespace-nowrap">
                         <button
                           type="button"
@@ -268,6 +272,34 @@ export default function SettingsTab({
                     required
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-slate-500 text-[9px] font-bold uppercase tracking-wider mb-1">Consultation Fee (₹)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="50"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:bg-white focus:border-teal-500 font-bold"
+                      placeholder="e.g. 500"
+                      value={editingDoctor.consultation_fee ?? 500}
+                      onChange={(e) => setEditingDoctor({ ...editingDoctor, consultation_fee: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 text-[9px] font-bold uppercase tracking-wider mb-1">Follow-up Validity (Days)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="90"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:bg-white focus:border-teal-500 font-bold"
+                      placeholder="e.g. 7"
+                      value={editingDoctor.consultation_validity_days ?? 7}
+                      onChange={(e) => setEditingDoctor({ ...editingDoctor, consultation_validity_days: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   <button
                     type="submit"
@@ -309,6 +341,34 @@ export default function SettingsTab({
                     onChange={(e) => setNewDoctor({ ...newDoctor, degree: e.target.value })}
                     required
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-slate-500 text-[9px] font-bold uppercase tracking-wider mb-1">Consultation Fee (₹)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="50"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:bg-white focus:border-teal-500 font-bold"
+                      placeholder="e.g. 500"
+                      value={newDoctor.consultation_fee}
+                      onChange={(e) => setNewDoctor({ ...newDoctor, consultation_fee: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 text-[9px] font-bold uppercase tracking-wider mb-1">Follow-up Validity (Days)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="90"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:bg-white focus:border-teal-500 font-bold"
+                      placeholder="e.g. 7"
+                      value={newDoctor.consultation_validity_days}
+                      onChange={(e) => setNewDoctor({ ...newDoctor, consultation_validity_days: e.target.value })}
+                      required
+                    />
+                  </div>
                 </div>
                 <button
                   type="submit"

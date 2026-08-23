@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_, and_
 import pandas as pd
 
@@ -54,30 +54,46 @@ def on_startup():
     Base.metadata.create_all(bind=engine)
     db = next(get_db())
     try:
-        # Run migration query to ensure visits table has doctor_id and clinical columns, and patients table has abha_id (PostgreSQL only)
-        if engine.dialect.name == "postgresql":
-            try:
-                from sqlalchemy import text
-                db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS doctor_id INTEGER REFERENCES doctors(id)"))
-                db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS diagnosis VARCHAR"))
-                db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS chief_complaints VARCHAR"))
-                db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS medicines_list VARCHAR"))
-                db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS tests_list VARCHAR"))
-                db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS advice VARCHAR"))
-                db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS follow_up_date VARCHAR"))
-                db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS patient_summary TEXT"))
-                db.execute(text("ALTER TABLE visits ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'Waiting'"))
-                db.execute(text("ALTER TABLE patients ADD COLUMN IF NOT EXISTS abha_id VARCHAR"))
-                db.commit()
-            except Exception as migrate_err:
-                print("Migration warning (visits/patients columns):", migrate_err)
-                db.rollback()
+        # Run universal migration check to ensure columns exist on existing databases (PostgreSQL & SQLite)
+        try:
+            from sqlalchemy import text, inspect
+            inspector = inspect(engine)
+            
+            def safe_add_column(table_name, column_name, column_type_sql):
+                try:
+                    columns = [c['name'] for c in inspector.get_columns(table_name)]
+                    if column_name not in columns:
+                        if engine.dialect.name == "postgresql":
+                            db.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {column_name} {column_type_sql}"))
+                        else:
+                            db.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type_sql}"))
+                        db.commit()
+                except Exception as migrate_err:
+                    db.rollback()
+                    print(f"Migration notice ({table_name}.{column_name}):", migrate_err)
+
+            safe_add_column("doctors", "consultation_fee", "FLOAT DEFAULT 500.0")
+            safe_add_column("doctors", "consultation_validity_days", "INTEGER DEFAULT 7")
+            safe_add_column("visits", "doctor_id", "INTEGER REFERENCES doctors(id)")
+            safe_add_column("visits", "diagnosis", "VARCHAR")
+            safe_add_column("visits", "chief_complaints", "VARCHAR")
+            safe_add_column("visits", "medicines_list", "VARCHAR")
+            safe_add_column("visits", "tests_list", "VARCHAR")
+            safe_add_column("visits", "advice", "VARCHAR")
+            safe_add_column("visits", "follow_up_date", "VARCHAR")
+            safe_add_column("visits", "patient_summary", "TEXT")
+            safe_add_column("visits", "status", "VARCHAR DEFAULT 'Waiting'")
+            safe_add_column("patients", "abha_id", "VARCHAR")
+        except Exception as e:
+            print("Migration setup warning:", e)
 
         # Seed default doctor if table is empty
         if db.query(models.Doctor).count() == 0:
             default_doctor = models.Doctor(
                 name="Dr. Shweta Grover",
-                degree="MBBS, MD (Pathology), PhD\nPDF (Dermatopathology, Hamburg, Germany)\nConsultant Pathologist"
+                degree="MBBS, MD (Pathology), PhD\nPDF (Dermatopathology, Hamburg, Germany)\nConsultant Pathologist",
+                consultation_fee=500.0,
+                consultation_validity_days=7
             )
             db.add(default_doctor)
             db.commit()
@@ -118,32 +134,86 @@ def on_startup():
                 db.add(db_setting)
         db.commit()
 
-        # 3. Seed Services Catalog
-        if db.query(models.Service).count() == 0:
-            services_to_seed = [
-                ("Doctor Consultation", "General Physician Consultation", 400.0),
-                ("Doctor Consultation", "Specialist Consultation", 800.0),
-                ("OPD Charges", "OPD Registration Fee", 100.0),
-                ("OPD Charges", "Wound Dressing & Bandaging", 150.0),
-                ("IPD Charges", "General Ward Room Rent (Per Day)", 1500.0),
-                ("IPD Charges", "Semi-Private Room Rent (Per Day)", 3000.0),
-                ("ICU Charges", "ICU Bed Charges (Per Day)", 8000.0),
-                ("ICU Charges", "ICU Ventilator Support (Per Day)", 5000.0),
-                ("Laboratory Tests", "Complete Blood Count (CBC)", 350.0),
-                ("Laboratory Tests", "Lipid Profile Panel", 800.0),
-                ("Laboratory Tests", "Blood Glucose (Fasting & PP)", 150.0),
-                ("Radiology/X-Ray/MRI", "Chest X-Ray PA View", 450.0),
-                ("Radiology/X-Ray/MRI", "Ultrasound Abdomen", 1200.0),
-                ("Radiology/X-Ray/MRI", "MRI Brain Scan (Non-Contrast)", 6500.0),
-                ("Pharmacy/Medicines", "Multivitamins & Supps (30 Days)", 350.0),
-                ("Pharmacy/Medicines", "Antibiotics Prescribed Course", 450.0),
-                ("Other Hospital Services", "Ambulance Emergency Transfer", 1500.0),
-                ("Other Hospital Services", "Attendant/Nursing Fee (Per Shift)", 500.0)
-            ]
-            for cat, name, price in services_to_seed:
-                db_serv = models.Service(category=cat, name=name, price=price)
+        # 3. Seed Services Catalog & Essential OPD Medicines
+        services_to_seed = [
+            # Doctor Consultations
+            ("Doctor Consultation", "General Physician Consultation", 400.0),
+            ("Doctor Consultation", "Specialist Consultation", 800.0),
+            ("Doctor Consultation", "Pediatric Consultation", 500.0),
+
+            # OPD Charges
+            ("OPD Charges", "OPD Registration Fee", 100.0),
+            ("OPD Charges", "Wound Dressing & Bandaging", 150.0),
+            ("OPD Charges", "Nebulization Session", 200.0),
+            ("OPD Charges", "ECG Recording", 300.0),
+
+            # IPD & ICU
+            ("IPD Charges", "General Ward Room Rent (Per Day)", 1500.0),
+            ("IPD Charges", "Semi-Private Room Rent (Per Day)", 3000.0),
+            ("ICU Charges", "ICU Bed Charges (Per Day)", 8000.0),
+            ("ICU Charges", "ICU Ventilator Support (Per Day)", 5000.0),
+
+            # Laboratory Tests
+            ("Laboratory Tests", "Complete Blood Count (CBC)", 350.0),
+            ("Laboratory Tests", "Lipid Profile Panel", 800.0),
+            ("Laboratory Tests", "Blood Glucose (Fasting & PP)", 150.0),
+            ("Laboratory Tests", "HbA1c Glycated Hemoglobin", 550.0),
+            ("Laboratory Tests", "Liver Function Test (LFT)", 750.0),
+            ("Laboratory Tests", "Kidney Function Test (KFT)", 700.0),
+            ("Laboratory Tests", "Thyroid Profile (T3 T4 TSH)", 650.0),
+            ("Laboratory Tests", "Urine Routine & Microscopy (RE/ME)", 200.0),
+            ("Laboratory Tests", "Dengue NS1 Antigen & IgM", 900.0),
+            ("Laboratory Tests", "Typhoid Widal Test", 300.0),
+
+            # Radiology
+            ("Radiology/X-Ray/MRI", "Chest X-Ray PA View", 450.0),
+            ("Radiology/X-Ray/MRI", "Ultrasound Abdomen & Pelvis", 1200.0),
+            ("Radiology/X-Ray/MRI", "MRI Brain Scan (Non-Contrast)", 6500.0),
+            ("Radiology/X-Ray/MRI", "CT Scan Chest / HRCT", 3500.0),
+
+            # Pharmacy & Essential OPD Medicines
+            ("Pharmacy/Medicines", "Crocin / Paracetamol Suspension (Pediatric)", 45.0),
+            ("Pharmacy/Medicines", "Dolo 650mg / Crocin Paracetamol Tablets", 35.0),
+            ("Pharmacy/Medicines", "Montek LC / Montek LC Pediatric Tablets", 110.0),
+            ("Pharmacy/Medicines", "Augmentin 625mg / Augmentin DDS Suspension", 210.0),
+            ("Pharmacy/Medicines", "Azithromycin 500mg / Suspension", 120.0),
+            ("Pharmacy/Medicines", "Pantocid 40mg / Pan-D PPI Antacid", 95.0),
+            ("Pharmacy/Medicines", "Cefixime 200mg Antibiotic", 140.0),
+            ("Pharmacy/Medicines", "Cetirizine 10mg Anti-allergy", 30.0),
+            ("Pharmacy/Medicines", "Saline Nasal Drops / Spray", 65.0),
+            ("Pharmacy/Medicines", "ORS Hydration Electrolyte Sachet", 25.0),
+            ("Pharmacy/Medicines", "Cough Syrup (Dextromethorphan / Expectorant)", 85.0),
+            ("Pharmacy/Medicines", "Amoxicillin 500mg Capsules", 90.0),
+            ("Pharmacy/Medicines", "Meftal-Spas / Dicyclomine Tablets (Abdominal Pain)", 45.0),
+            ("Pharmacy/Medicines", "Combiflam (Ibuprofen + Paracetamol)", 40.0),
+            ("Pharmacy/Medicines", "Zerodol-SP / Aceclofenac + Serratiopeptidase", 95.0),
+            ("Pharmacy/Medicines", "Emeset 4mg / Ondansetron (Nausea/Vomiting)", 55.0),
+            ("Pharmacy/Medicines", "Digene / Gelusil Antacid Liquid Gel", 85.0),
+            ("Pharmacy/Medicines", "Sporlac / Probiotic Sachets", 60.0),
+            ("Pharmacy/Medicines", "Allegra 120mg / Fexofenadine Anti-allergy", 125.0),
+            ("Pharmacy/Medicines", "Ofloxacin + Ornidazole (Oflox-OZ) Tablets", 115.0),
+            ("Pharmacy/Medicines", "Norfloxacin 400mg Tablets", 65.0),
+            ("Pharmacy/Medicines", "Betadine Gargle / Antiseptic Mouthwash", 110.0),
+            ("Pharmacy/Medicines", "Volini / Dynapar Pain Relief Gel", 90.0),
+            ("Pharmacy/Medicines", "Multivitamins & Supps (30 Days)", 350.0),
+            ("Pharmacy/Medicines", "Antibiotics Prescribed Course", 450.0),
+            ("Pharmacy/Medicines", "Calcium + Vitamin D3 Tablets", 150.0),
+            ("Pharmacy/Medicines", "Diclofenac / Aceclofenac Pain Relief Tablets", 55.0),
+            ("Pharmacy/Medicines", "Ibuprofen 400mg Tablets", 40.0),
+            ("Pharmacy/Medicines", "Metronidazole 400mg Tablets", 50.0),
+            ("Pharmacy/Medicines", "Colic / Digestive Drops (Pediatric)", 55.0),
+            ("Pharmacy/Medicines", "First-Aid Bandage & Sterile Gauze Kit", 75.0),
+
+            # Other Hospital Services
+            ("Other Hospital Services", "Ambulance Emergency Transfer", 1500.0),
+            ("Other Hospital Services", "Attendant/Nursing Fee (Per Shift)", 500.0)
+        ]
+        for cat, name, price in services_to_seed:
+            existing = db.query(models.Service).filter(models.Service.name == name).first()
+            if not existing:
+                db_serv = models.Service(category=cat, name=name, price=price, is_active=True)
                 db.add(db_serv)
-            db.commit()
+        db.commit()
 
     except Exception as e:
         print("Error during seeding database: ", e)
@@ -278,7 +348,10 @@ def search_patients(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant"]))
 ):
-    q = db.query(models.Patient).filter(models.Patient.is_active == True)
+    q = db.query(models.Patient).options(
+        joinedload(models.Patient.visits).joinedload(models.Visit.bills),
+        joinedload(models.Patient.visits).joinedload(models.Visit.doctor)
+    ).filter(models.Patient.is_active == True)
     
     if query:
         # Check if query matches Receipt ID or Bill ID to trace back
@@ -414,7 +487,7 @@ async def update_visit_summary(
     # Call AI if requested
     if generate_ai_summary:
         api_key = os.getenv("GROQ_API_KEY")
-        model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+        model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
         if not api_key:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -573,15 +646,22 @@ Strict Output Format (follow exactly, do not add extra markdown or headers):
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.25,
-            "max_tokens": 1200
+            "max_tokens": 4096
         }
 
         try:
             async with httpx.AsyncClient(timeout=28.0) as client:
                 response = await client.post(url, headers=groq_headers, json=payload)
-                response.raise_for_status()
+                if response.status_code != 200:
+                    print("GROQ API SUMMARY ERROR RESPONSE:", response.status_code, response.text)
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Failed to communicate with Groq AI API ({response.status_code}): {response.text}"
+                    )
                 result = response.json()
             db_visit.patient_summary = result["choices"][0]["message"]["content"].strip()
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -706,14 +786,18 @@ JSON schema:
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.1,
         "response_format": {"type": "json_object"},
-        "reasoning_format": "hidden",
-        "max_tokens": 800
+        "max_tokens": 4096
     }
 
     try:
         async with httpx.AsyncClient(timeout=28.0) as client:
             response = await client.post(url, headers=groq_headers, json=payload)
-            response.raise_for_status()
+            if response.status_code != 200:
+                print("GROQ API ERROR RESPONSE:", response.status_code, response.text)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to communicate with Groq AI API ({response.status_code}): {response.text}"
+                )
             result = response.json()
         
         content = result["choices"][0]["message"]["content"].strip()
@@ -726,6 +810,8 @@ JSON schema:
             advice=parsed_data.get("advice", ""),
             follow_up_date=parsed_data.get("follow_up_date", "")
         )
+    except HTTPException:
+        raise
     except json.JSONDecodeError as je:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -752,16 +838,151 @@ def get_services(
         q = q.filter(models.Service.category == category)
     return q.order_by(models.Service.category, models.Service.name).all()
 
+
+# ----------------------------------------------------
+# PRESCRIPTION → BILLING AUTO-DRAFT
+# ----------------------------------------------------
+@app.get("/api/visits/{id}/suggested-bill-items", response_model=schemas.PrescriptionBillSuggestion)
+def get_prescription_suggested_items(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant"]))
+):
+    """
+    Smart bridge: Reads a saved visit prescription (tests_list + medicines_list),
+    fuzzy-matches each item against the hospital's active service catalog,
+    and returns matched services (ready to add to bill) + unmatched raw tokens.
+    """
+    visit = db.query(models.Visit).filter(models.Visit.id == id, models.Visit.is_active == True).first()
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+
+    # Fetch active services from the catalog
+    db_services = db.query(models.Service).filter(models.Service.is_active == True).all()
+
+    # Parse all tokens from prescription fields
+    raw_tokens: list[str] = []
+
+    def extract_tokens(text: Optional[str]) -> list[str]:
+        if not text or not text.strip():
+            return []
+        tokens = []
+        ignore_placeholders = {"none", "n/a", "na", "nil", "no tests", "none required", "-", "...", "no test"}
+        for line in text.strip().split("\n"):
+            # Strip numbering like "1. ", "2. ", etc.
+            cleaned = line.strip()
+            cleaned = __import__("re").sub(r"^\d+\.\s*", "", cleaned).strip()
+            if cleaned and cleaned.lower() not in ignore_placeholders:
+                tokens.append(cleaned)
+        return tokens
+
+    tests_tokens = extract_tokens(visit.tests_list)
+    medicines_tokens = extract_tokens(visit.medicines_list)
+    raw_tokens = tests_tokens + medicines_tokens
+
+    if not raw_tokens:
+        return schemas.PrescriptionBillSuggestion(matched_items=[], unmatched_items=[])
+
+    matched_items: list[schemas.PrescriptionMatchedItem] = []
+    unmatched_items: list[str] = []
+    matched_service_ids: set[int] = set()
+
+    def fuzzy_score(token: str, service_name: str) -> float:
+        """
+        Return a similarity score (0.0–1.0) between a prescription token
+        and a service catalog name using multi-strategy keyword overlap.
+        """
+        # Clean token by stripping trailing dosage details after dash/em-dash
+        token_clean = __import__("re").sub(r"\s*[—\-–].*$", "", token).strip()
+        token_lower = token_clean.lower()
+        svc_lower = service_name.lower()
+
+        # 1. Exact substring match (highest priority)
+        if token_lower in svc_lower or svc_lower in token_lower:
+            return 0.95
+
+        # 2. Word-level intersection score
+        token_words = set(__import__("re").findall(r"[a-z0-9]+", token_lower))
+        svc_words = set(__import__("re").findall(r"[a-z0-9]+", svc_lower))
+        
+        # Remove common noise words
+        noise = {"the", "a", "an", "and", "or", "for", "of", "in", "at", "test", "with", "per", "day"}
+        token_words -= noise
+        svc_words -= noise
+
+        if not token_words or not svc_words:
+            return 0.0
+
+        intersection = token_words & svc_words
+        if not intersection:
+            return 0.0
+
+        jaccard = len(intersection) / len(token_words | svc_words)
+        
+        # 3. Boost score for acronym/abbreviation matches (e.g. "CBC" → "Complete Blood Count (CBC)")
+        # Extract acronyms from service name (words in parentheses or all-caps words)
+        svc_acronyms = set(__import__("re").findall(r"\(([A-Z]+)\)", service_name))
+        svc_acronyms.update(w for w in service_name.split() if w.isupper() and len(w) >= 2)
+        
+        token_upper = token.upper().strip()
+        for acronym in svc_acronyms:
+            if token_upper == acronym or token_upper in acronym or acronym in token_upper:
+                return 0.90  # Strong acronym match
+
+        return jaccard
+
+    MATCH_THRESHOLD = 0.20  # minimum score to consider a match
+
+    for token in raw_tokens:
+        if not token.strip():
+            continue
+
+        best_service = None
+        best_score = 0.0
+
+        for svc in db_services:
+            if svc.id in matched_service_ids:
+                continue  # Already matched, skip
+            score = fuzzy_score(token, svc.name)
+            if score > best_score:
+                best_score = score
+                best_service = svc
+
+        if best_service and best_score >= MATCH_THRESHOLD:
+            matched_service_ids.add(best_service.id)
+            matched_items.append(schemas.PrescriptionMatchedItem(
+                service_id=best_service.id,
+                service_name=best_service.name,
+                category=best_service.category,
+                price=best_service.price,
+                match_reason=f"Matched '{token}' → '{best_service.name}'"
+            ))
+        else:
+            unmatched_items.append(token)
+
+    return schemas.PrescriptionBillSuggestion(
+        matched_items=matched_items,
+        unmatched_items=unmatched_items
+    )
+
+
 @app.post("/api/services/recommend", response_model=schemas.RecommendationResponse)
 async def get_service_recommendations(
     req: schemas.RecommendationRequest,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist"]))
 ):
-    # 1. Resolve patient age and gender if patient_id is provided
+    # 1. Resolve patient details and visit prescription status
     age = req.age
     gender = req.gender
-    if req.patient_id:
+    visit = None
+    if req.visit_id:
+        visit = db.query(models.Visit).filter(models.Visit.id == req.visit_id, models.Visit.is_active == True).first()
+        if visit and visit.patient:
+            age = visit.patient.age
+            gender = visit.patient.gender
+
+    if req.patient_id and not visit:
         patient = db.query(models.Patient).filter(models.Patient.id == req.patient_id, models.Patient.is_active == True).first()
         if patient:
             age = patient.age
@@ -777,6 +998,45 @@ async def get_service_recommendations(
     db_services = db.query(models.Service).filter(models.Service.is_active == True).all()
     if not db_services:
         return schemas.RecommendationResponse(recommendations=[], explanation="No active services found in the catalog.")
+
+    # Check if doctor has completed clinical examination / prescription notes
+    has_doctor_prescription = False
+    doc_notes = ""
+    if visit:
+        notes_parts = []
+        if visit.diagnosis:
+            notes_parts.append(f"Doctor Diagnosis: {visit.diagnosis}")
+        if visit.tests_list:
+            notes_parts.append(f"Doctor Prescribed Tests: {visit.tests_list}")
+        if visit.medicines_list:
+            notes_parts.append(f"Doctor Prescribed Medicines: {visit.medicines_list}")
+        if notes_parts:
+            has_doctor_prescription = True
+            doc_notes = "\n".join(notes_parts)
+
+    # ⚠️ CLINICAL WORKFLOW SAFETY GUARD:
+    # If the visit is logged but doctor HAS NOT written prescription/tests yet, DO NOT suggest diagnostic lab or radiology tests!
+    if visit and not has_doctor_prescription:
+        doc_consult_services = [
+            s for s in db_services 
+            if "consultation" in s.category.lower() or "consult" in s.name.lower() or "opd" in s.name.lower()
+        ]
+        if not doc_consult_services:
+            doc_consult_services = db_services[:1]
+
+        recs = []
+        for s in doc_consult_services[:1]:
+            recs.append(schemas.RecommendationItem(
+                service_id=s.id,
+                service_name=s.name,
+                category=s.category,
+                price=s.price,
+                reason="Standard OPD Doctor Consultation Fee. Diagnostic lab & radiology tests require prior doctor consultation & prescription order."
+            ))
+        return schemas.RecommendationResponse(
+            recommendations=recs,
+            explanation="⚠️ Doctor consultation is pending for this visit. In compliance with medical protocol, diagnostic lab & radiology tests can only be billed after doctor completes consultation & prescription notes."
+        )
         
     # Format catalog for Groq prompt
     catalog_list = [f"- {s.name} (Category: {s.category}, Price: INR {s.price:.2f})" for s in db_services]
@@ -791,30 +1051,31 @@ async def get_service_recommendations(
             detail="Groq API key is not configured in the server environment variables."
         )
 
-    # 4. Construct prompt
+    # 4. Construct prompt with Doctor Clinical Notes if available
+    prescription_context = f"\nDoctor Prescribed Clinical Notes:\n{doc_notes}\n" if doc_notes else ""
     prompt = f"""You are an experienced clinical desk assistant for an Indian diagnostic center and OPD clinic.
-Your job is to recommend the most relevant services or tests from our catalog based on the patient's demographics and symptoms.
+Your job is to recommend the most relevant services or tests from our catalog matching the doctor's prescription and patient symptoms.
 
 Patient Details:
 - Age: {age}
 - Gender: {gender}
 - Chief Complaints / Symptoms: {req.symptoms}
-
+{prescription_context}
 Available Hospital Services Catalog:
 {catalog_str}
 
 CRITICAL RULES:
 1. ONLY recommend services that exist EXACTLY in the provided catalog. Do NOT suggest tests, consultation types, or procedures that are not in the list above.
-2. Suggest up to 5 services. If fewer than 5 are relevant, only suggest those.
-3. Every recommendation must map EXACTLY to the service name in the catalog (case-sensitive).
-4. If no specific diagnostic test in the catalog is relevant, recommend the most appropriate general or specialist consultation from the catalog.
+2. Prioritize services matching the doctor's prescribed tests and diagnosis.
+3. Suggest up to 5 services. If fewer than 5 are relevant, only suggest those.
+4. Every recommendation must map EXACTLY to the service name in the catalog (case-sensitive).
 
 Return response in clean JSON format only matching this schema:
 {{
   "recommended_services": [
     {{
       "service_name": "Exact Name from Catalog",
-      "reason": "Clear clinical justification tailored to the symptoms, age, and gender."
+      "reason": "Clear clinical justification tailored to the doctor's prescription and patient symptoms."
     }}
   ],
   "explanation": "Short 1-2 line clinical summary of the recommendations."
@@ -832,7 +1093,6 @@ Return response in clean JSON format only matching this schema:
             {"role": "user", "content": prompt}
         ],
         "response_format": {"type": "json_object"},
-        "reasoning_format": "hidden",
         "temperature": 0.2
     }
 
@@ -1672,7 +1932,9 @@ def create_doctor(
 ):
     db_doctor = models.Doctor(
         name=doctor_in.name,
-        degree=doctor_in.degree
+        degree=doctor_in.degree,
+        consultation_fee=doctor_in.consultation_fee if doctor_in.consultation_fee is not None else 500.0,
+        consultation_validity_days=doctor_in.consultation_validity_days if doctor_in.consultation_validity_days is not None else 7
     )
     db.add(db_doctor)
     db.commit()
@@ -1693,6 +1955,10 @@ def update_doctor(
         raise HTTPException(status_code=404, detail="Doctor not found")
     db_doctor.name = doctor_in.name
     db_doctor.degree = doctor_in.degree
+    if doctor_in.consultation_fee is not None:
+        db_doctor.consultation_fee = doctor_in.consultation_fee
+    if doctor_in.consultation_validity_days is not None:
+        db_doctor.consultation_validity_days = doctor_in.consultation_validity_days
     db.commit()
     db.refresh(db_doctor)
     

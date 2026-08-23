@@ -102,14 +102,13 @@ export default function DemoTour({ API_BASE, onSeedSuccess, setActiveTab, setSel
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="flex items-center gap-2 bg-[#090d1a] border border-teal-500/30 text-white rounded-2xl px-4 py-3 shadow-2xl hover:bg-slate-900 active:scale-95 transition-all group animate-bounce-subtle"
-          style={{ boxShadow: '0 10px 30px -10px rgba(20, 184, 166, 0.4)' }}
+          className="flex items-center gap-2 bg-slate-900/40 backdrop-blur-md border border-slate-700/40 text-slate-300 opacity-60 hover:opacity-100 hover:bg-[#090d1a] hover:border-teal-500/50 hover:text-white rounded-2xl px-3.5 py-2.5 shadow-lg hover:shadow-2xl active:scale-95 transition-all group cursor-pointer"
         >
           <div className="relative">
-            <Sparkles className="w-4 h-4 text-teal-400 animate-pulse" />
+            <Sparkles className="w-3.5 h-3.5 text-teal-400 opacity-80 group-hover:opacity-100 group-hover:animate-pulse" />
             <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-teal-400 rounded-full animate-ping" />
           </div>
-          <span className="text-xs font-bold uppercase tracking-wider">SIPS Evaluation Tour</span>
+          <span className="text-[11px] font-bold uppercase tracking-wider">SIPS Evaluation Tour</span>
         </button>
       )}
 

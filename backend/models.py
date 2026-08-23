@@ -45,6 +45,8 @@ class Doctor(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True, nullable=False)
     degree = Column(Text, nullable=False)
+    consultation_fee = Column(Float, default=500.0, nullable=True)
+    consultation_validity_days = Column(Integer, default=7, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 

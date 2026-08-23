@@ -15,7 +15,11 @@ import {
   Copy,
   Download,
   Globe,
-  Languages
+  Languages,
+  Receipt,
+  Stethoscope,
+  AlertCircle,
+  CheckCircle2
 } from 'lucide-react';
 
 const MEDICINE_DATASTORE = [
@@ -120,7 +124,8 @@ export default function PatientSearchTab({
   userRole,
   searchQuery,
   setSearchQuery,
-  patients,
+  patients = [],
+  unpaidBills = [],
   selectedPatient,
   patientHistory,
   newPatient,
@@ -142,7 +147,12 @@ export default function PatientSearchTab({
   setAiExplanation,
   aiRecommenderVisitId,
   setAiRecommenderVisitId,
-  
+  // Prescription → Billing Auto-fill
+  prescAutoFillLoading,
+  prescUnmatchedItems,
+  prescAutoFillVisitId,
+  fetchPrescriptionSuggestedItems,
+
   fetchPatients,
   handleSelectPatient,
   handleSoftDeletePatient,
@@ -230,6 +240,79 @@ export default function PatientSearchTab({
   const [showStoryModal, setShowStoryModal] = React.useState(false);
   const [storyVisit, setStoryVisit] = React.useState(null);
   const [summaryTab, setSummaryTab] = React.useState('clinical'); // 'clinical' | 'story'
+
+  const checkFollowUpStatus = (currentVisit) => {
+    if (!currentVisit || !currentVisit.doctor) return { isFollowUp: false, daysDiff: null, validityDays: 7 };
+    const docId = currentVisit.doctor.id;
+    const validityDays = currentVisit.doctor.consultation_validity_days ?? 7;
+    const currDate = new Date(currentVisit.visit_date);
+
+    // Find previous visits with the same doctor for this patient
+    const previousVisits = (selectedPatient?.visits || []).filter(v => 
+      v.id !== currentVisit.id && 
+      v.doctor && 
+      v.doctor.id === docId &&
+      new Date(v.visit_date) < currDate
+    );
+
+    if (previousVisits.length === 0) {
+      return { isFollowUp: false, daysDiff: null, validityDays };
+    }
+
+    // Sort to find the most recent previous visit
+    previousVisits.sort((a, b) => new Date(b.visit_date) - new Date(a.visit_date));
+    const lastVisitDate = new Date(previousVisits[0].visit_date);
+    const diffMs = currDate.getTime() - lastVisitDate.getTime();
+    const daysDiff = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+
+    if (daysDiff <= validityDays) {
+      return { isFollowUp: true, daysDiff, validityDays, lastVisitDate: previousVisits[0].visit_date };
+    }
+
+    return { isFollowUp: false, daysDiff, validityDays, lastVisitDate: previousVisits[0].visit_date };
+  };
+
+  const handleAddDoctorFeeItem = (currentVisit) => {
+    const doctor = typeof currentVisit === 'object' && currentVisit?.doctor ? currentVisit.doctor : currentVisit;
+    if (!doctor) return;
+
+    const { isFollowUp, daysDiff, validityDays } = typeof currentVisit === 'object' && currentVisit?.visit_date ? checkFollowUpStatus(currentVisit) : { isFollowUp: false };
+    
+    let docFee = doctor.consultation_fee ?? 500;
+    let docServiceName = `Doctor Consultation (${doctor.name})`;
+    let isFree = false;
+
+    if (isFollowUp) {
+      docFee = 0;
+      docServiceName = `Doctor Consultation - FREE Follow-Up (${doctor.name})`;
+      isFree = true;
+    }
+
+    const matchedSvc = availableServices.find(s => s.category === 'Doctor Consultation') || availableServices[0];
+    const serviceId = matchedSvc ? matchedSvc.id : 1;
+    
+    if (billItems.some(bi => bi.service_name.includes(doctor.name) || (bi.service_id === serviceId && bi.amount === docFee))) {
+      showToast(`Doctor Consultation fee for ${doctor.name} is already in the bill.`, "warning");
+      return;
+    }
+    
+    setBillItems(prev => [
+      {
+        service_id: serviceId,
+        service_name: docServiceName,
+        amount: docFee,
+        fromDoctorConfig: true,
+        isFollowUp: isFree
+      },
+      ...prev
+    ]);
+
+    if (isFree) {
+      showToast(`⚡ FREE Follow-up Applied! (Previous visit ${daysDiff} days ago, limit: ${validityDays} days)`);
+    } else {
+      showToast(`⚡ Auto-filled Doctor Fee (₹${docFee}) for ${doctor.name}!`);
+    }
+  };
 
   const runAnomalyCheck = async (visit) => {
     if (billItems.length === 0) {
@@ -528,30 +611,107 @@ export default function PatientSearchTab({
           </div>
 
           {/* Patients Search Results list */}
-          <div className="mt-4 space-y-2 md:flex-1 md:overflow-y-auto pr-1 min-h-0 compact-scroll">
-            {patients.map((pat) => (
-              <div
-                key={pat.id}
-                onClick={() => handleSelectPatient(pat.id)}
-                className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
-                  selectedPatient?.id === pat.id
-                    ? 'border-teal-500 bg-teal-50/20 shadow-sm'
-                    : 'border-slate-100 hover:border-slate-350 hover:bg-slate-50/50'
-                }`}
-              >
-                <div className="space-y-0.5">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="font-bold text-slate-900 text-xs">{pat.name}</span>
-                    <span className="text-[9px] font-extrabold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded uppercase">{pat.gender}</span>
-                    <span className="text-slate-400 text-[10px]">{pat.age} Yrs</span>
+          <div className="mt-4 space-y-2.5 md:flex-1 md:overflow-y-auto pr-1 min-h-0 compact-scroll">
+            {patients.map((pat) => {
+              const isSelected = selectedPatient?.id === pat.id;
+              const visitsList = (isSelected && selectedPatient?.visits?.length > 0) ? selectedPatient.visits : (pat.visits || []);
+              const hasVisits = visitsList.length > 0;
+              const hasRx = visitsList.some(v => v.medicines_list || v.tests_list || v.diagnosis || v.patient_summary);
+              
+              const allBills = isSelected ? (patientHistory || []) : visitsList.flatMap(v => (v && v.bills) || []);
+              const safeUnpaidBills = Array.isArray(unpaidBills) ? unpaidBills : [];
+              const unpaidFromVisits = allBills.find(b => b && (b.balance_amount > 0 || b.payment_status === 'Pending' || b.payment_status === 'Partial Paid'));
+              const unpaidFromGlobal = safeUnpaidBills.find(b => b && (
+                (b.patient_id_str && b.patient_id_str === pat.patient_id) ||
+                (b.patient_id && b.patient_id === pat.id) ||
+                visitsList.some(v => v && v.id === b.visit_id)
+              ));
+              const activeUnpaidBill = unpaidFromVisits || (allBills.length === 0 ? unpaidFromGlobal : undefined);
+
+              return (
+                <div
+                  key={pat.id}
+                  onClick={() => handleSelectPatient(pat.id)}
+                  className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between gap-2 ${
+                    isSelected
+                      ? 'border-teal-500 bg-teal-50/20 shadow-sm'
+                      : 'border-slate-150 hover:border-teal-300 hover:bg-slate-50/50 bg-white'
+                  }`}
+                >
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-bold text-slate-900 text-xs truncate">{pat.name}</span>
+                        <span className="text-[9px] font-extrabold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded uppercase">{pat.gender}</span>
+                        <span className="text-slate-400 text-[10px]">{pat.age} Yrs</span>
+                      </div>
+                      <p className="text-slate-400 text-[10px] font-semibold">Mobile: {pat.mobile_number} | ID: {pat.patient_id}</p>
+                    </div>
+                    <div className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border shadow-sm transition-all flex-shrink-0 ${
+                      isSelected
+                        ? 'bg-teal-600 text-white border-teal-600'
+                        : 'bg-white text-teal-700 border-slate-200 hover:border-teal-300'
+                    }`}>
+                      {isSelected ? 'Active' : 'Select'}
+                    </div>
                   </div>
-                  <p className="text-slate-400 text-[10px] font-semibold">Mobile: {pat.mobile_number} | ID: {pat.patient_id}</p>
+
+                  {/* Instant Status Badges for Receptionist */}
+                  <div className="flex items-center gap-1.5 flex-wrap pt-1.5 border-t border-slate-100 text-[9px] font-bold">
+                    {/* Visit Status */}
+                    {hasVisits ? (
+                      <span className="bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded flex items-center gap-1" title={`${visitsList.length} Visit(s) logged`}>
+                        <Stethoscope className="w-2.5 h-2.5" />
+                        <span>{visitsList.length} Visit{visitsList.length > 1 ? 's' : ''}</span>
+                      </span>
+                    ) : (
+                      <span className="bg-slate-100 text-slate-500 border border-slate-200 px-1.5 py-0.5 rounded" title="No visits recorded yet">
+                        No Visit
+                      </span>
+                    )}
+
+                    {/* Prescription Status */}
+                    {hasRx ? (
+                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded flex items-center gap-1" title="Prescription & notes recorded by doctor">
+                        <FileText className="w-2.5 h-2.5" />
+                        <span>Rx Done</span>
+                      </span>
+                    ) : (
+                      <span className="bg-slate-100 text-slate-400 border border-slate-200 px-1.5 py-0.5 rounded">
+                        No Rx
+                      </span>
+                    )}
+
+                    {/* Bill / Invoice Status */}
+                    {(() => {
+                      if (activeUnpaidBill) {
+                        const bal = activeUnpaidBill.balance_amount ?? activeUnpaidBill.grand_total;
+                        return (
+                          <span className="bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.5 rounded font-extrabold flex items-center gap-1" title={`Unpaid Invoice ${activeUnpaidBill.bill_id}: ₹${bal}`}>
+                            <AlertCircle className="w-2.5 h-2.5" />
+                            <span>Unpaid: ₹{bal.toLocaleString()}</span>
+                          </span>
+                        );
+                      }
+                      if (allBills.length > 0) {
+                        return (
+                          <span className="bg-teal-50 text-teal-700 border border-teal-200 px-1.5 py-0.5 rounded font-bold flex items-center gap-1" title="All invoices paid">
+                            <CheckCircle2 className="w-2.5 h-2.5" />
+                            <span>Bill Paid</span>
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded flex items-center gap-1" title="No invoice generated yet">
+                          <Receipt className="w-2.5 h-2.5" />
+                          <span>Bill Pending</span>
+                        </span>
+                      );
+                    })()}
+                  </div>
                 </div>
-                <div className="text-teal-600 font-bold text-[10px] flex items-center justify-center gap-1 bg-white border border-slate-100 px-2 py-1 rounded-lg shadow-sm self-start sm:self-auto flex-shrink-0">
-                  Select
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {patients.length === 0 && (
               <p className="text-center text-slate-400 text-xs py-4">No matching patient profiles found.</p>
             )}
@@ -746,7 +906,7 @@ export default function PatientSearchTab({
                                     title={`View receipt`}
                                   >
                                     <Printer className="w-3 h-3 text-slate-500" />
-                                    <span className="font-mono text-[9px]">{pay.payment_id.slice(-6)}</span>
+                                    <span className="font-mono text-[9px]">{pay.payment_id.split('-').pop()}</span>
                                   </button>
                                   <button
                                     onClick={() => {
@@ -783,6 +943,61 @@ export default function PatientSearchTab({
                               <div className="flex justify-between items-center pb-1 border-b border-slate-100 flex-wrap gap-2 flex-shrink-0">
                                 <h5 className="font-bold text-slate-800 text-[11px] uppercase tracking-wider">Invoice Builder</h5>
                                 <div className="flex items-center gap-1.5">
+
+                                  {/* ⚡ Auto Doctor Fee button with Follow-up detection */}
+                                  {vis.doctor && (() => {
+                                    const { isFollowUp, daysDiff, validityDays } = checkFollowUpStatus(vis);
+                                    return (
+                                      <div className="flex items-center gap-1.5">
+                                        {isFollowUp ? (
+                                          <span className="text-[9px] font-extrabold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                            FREE FOLLOW-UP ({daysDiff}d ago / {validityDays}d limit)
+                                          </span>
+                                        ) : (
+                                          <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                                            REGULAR ({validityDays}d validity)
+                                          </span>
+                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={() => handleAddDoctorFeeItem(vis)}
+                                          title={isFollowUp ? `Auto-fill FREE Follow-up Fee (₹0)` : `Auto-fill Doctor Consultation Fee (₹${vis.doctor.consultation_fee ?? 500})`}
+                                          className={`text-[10px] font-bold px-2 py-1 rounded transition-all flex items-center gap-1 shadow-sm border ${
+                                            isFollowUp 
+                                              ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold'
+                                              : 'bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border-cyan-200'
+                                          }`}
+                                        >
+                                          <span>⚡ {isFollowUp ? 'Auto FREE Follow-Up Fee (₹0)' : `Auto Doctor Fee (₹${vis.doctor.consultation_fee ?? 500})`}</span>
+                                        </button>
+                                      </div>
+                                    );
+                                  })()}
+
+                                  {/* ⚡ Auto-fill from Prescription button */}
+                                  {(vis.tests_list || vis.medicines_list) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => fetchPrescriptionSuggestedItems(vis.id)}
+                                      disabled={prescAutoFillLoading && prescAutoFillVisitId === vis.id}
+                                      title="Auto-populate bill with tests and services from the saved prescription"
+                                      className={`text-[10px] font-bold px-2 py-1 rounded transition-all flex items-center gap-1 shadow-sm border ${
+                                        prescAutoFillLoading && prescAutoFillVisitId === vis.id
+                                          ? 'bg-slate-100 text-slate-400 cursor-not-allowed border-slate-200'
+                                          : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                                      }`}
+                                    >
+                                      {prescAutoFillLoading && prescAutoFillVisitId === vis.id ? (
+                                        <>
+                                          <span className="animate-spin w-2 h-2 border-t-2 border-emerald-600 rounded-full inline-block"></span>
+                                          Matching...
+                                        </>
+                                      ) : (
+                                        <>⚡ Auto-fill from Rx</>
+                                      )}
+                                    </button>
+                                  )}
+
                                   <button
                                     type="button"
                                     onClick={() => fetchAiRecommendations(vis.id, vis.reason)}
@@ -914,10 +1129,30 @@ export default function PatientSearchTab({
                               {billItems.length > 0 && (
                                 <div className="space-y-1.5 pt-2 border-t border-slate-100 flex-shrink-0">
                                   <span className="text-[10px] text-slate-450 font-bold uppercase tracking-wider">Bill Line Items</span>
+
+                                  {/* Unmatched Rx items warning */}
+                                  {prescAutoFillVisitId === vis.id && prescUnmatchedItems && prescUnmatchedItems.length > 0 && (
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 text-[9px] text-amber-800">
+                                      <span className="font-extrabold uppercase tracking-wider">⚠ Not in catalog:</span>{' '}
+                                      <span className="font-semibold">{prescUnmatchedItems.join(', ')}</span>
+                                      <span className="text-amber-600 ml-1">(Add manually or update catalog)</span>
+                                    </div>
+                                  )}
+
                                   <div className="divide-y divide-slate-100 border border-slate-100 rounded-lg overflow-hidden bg-slate-50/30 text-[10px]">
                                     {billItems.map((item, index) => (
                                       <div key={index} className="flex justify-between items-center py-1 px-2.5">
-                                        <span className="font-semibold text-slate-800">{item.service_name}</span>
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                          <span className="font-semibold text-slate-800 truncate">{item.service_name}</span>
+                                          {item.fromPrescription && (
+                                            <span
+                                              title={item.matchReason || 'Auto-filled from prescription'}
+                                              className="flex-shrink-0 bg-teal-100 text-teal-700 border border-teal-200 text-[8px] font-extrabold px-1 py-0.5 rounded uppercase tracking-wider cursor-help"
+                                            >
+                                              Rx
+                                            </span>
+                                          )}
+                                        </div>
                                         <div className="flex items-center gap-2">
                                           <span className="font-extrabold text-slate-950">₹{item.amount.toLocaleString()}</span>
                                           <button
@@ -970,24 +1205,12 @@ export default function PatientSearchTab({
                                           {anomalyResult.status === 'clear' && <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />}
                                           {anomalyResult.status === 'warning' && <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />}
                                           {anomalyResult.status === 'critical' && <span className="w-1 h-1 rounded-full bg-rose-500 animate-pulse" />}
-                                          <span className="uppercase text-[8px] tracking-wider font-extrabold">
-                                            {anomalyResult.status}
-                                          </span>
+                                          <span className="uppercase text-[8px] tracking-wider font-extrabold">{anomalyResult.status}</span>
                                         </div>
                                         <p className="font-bold text-[9px] leading-snug mt-0.5">{anomalyResult.summary}</p>
-                                        {anomalyResult.issues && anomalyResult.issues.length > 0 && (
-                                          <ul className="list-disc pl-3 mt-0.5 space-y-0.5 text-[8px] font-medium">
-                                            {anomalyResult.issues.map((issue, idx) => (
-                                              <li key={idx}>{issue}</li>
-                                            ))}
-                                          </ul>
-                                        )}
                                       </div>
-                                    ) : (
-                                      <p className="text-[8px] text-slate-400 font-medium">Checks duplicate test charges or age discrepancies.</p>
-                                    )}
+                                    ) : null}
                                   </div>
-
                                   {/* Total Summary */}
                                   <div className="flex justify-between items-center pt-1.5 px-1 border-t border-slate-100 text-[11px] flex-shrink-0">
                                     <div>
@@ -1002,9 +1225,11 @@ export default function PatientSearchTab({
                                         }
                                         handleCreateBill(vis.id);
                                       }}
-                                      className="bg-teal-505 hover:bg-teal-605 text-white font-bold text-[10px] px-3 py-1 rounded-lg shadow-sm transition-all"
+                                      style={{ backgroundColor: '#064e3b', color: '#ffffff' }}
+                                      className="hover:bg-[#064e3b] text-white font-extrabold text-xs px-3.5 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
                                     >
-                                      Generate Invoice
+                                       <Receipt className="w-3.5 h-3.5 text-emerald-100" />
+                                       Generate Invoice
                                     </button>
                                   </div>
                                 </div>

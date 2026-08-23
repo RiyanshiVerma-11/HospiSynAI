@@ -74,7 +74,7 @@ export default function UsersTab({
             </div>
 
             <div>
-              <label className="block text-slate-505 text-[10px] font-bold uppercase tracking-wider mb-1">Staff Role Permission</label>
+              <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Staff Role Permission</label>
               <select
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:bg-white focus:border-teal-500 font-bold text-slate-655 cursor-pointer"
                 value={newUserForm.role}
@@ -87,7 +87,7 @@ export default function UsersTab({
             </div>
 
             <div>
-              <label className="block text-slate-505 text-[10px] font-bold uppercase tracking-wider mb-1">Staff Full Name</label>
+              <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Staff Full Name</label>
               <input
                 type="text"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-semibold"

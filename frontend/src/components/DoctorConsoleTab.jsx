@@ -355,31 +355,31 @@ export default function DoctorConsoleTab({
   });
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col lg:flex-row items-slate animate-in fade-in duration-300 h-full md:h-full md:max-h-full md:overflow-hidden min-h-0 text-slate-800 overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-full w-full bg-white text-slate-800 overflow-hidden divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
       
       {/* Intake Waiting Queue Panel (Left) */}
-      <div className="w-full lg:w-[280px] lg:min-w-[280px] border-b lg:border-b-0 lg:border-r border-slate-150 flex flex-col h-full bg-slate-50/20">
-        <div className="p-4 flex flex-col h-full overflow-hidden min-h-[300px] lg:min-h-0">
+      <div className="w-full lg:w-[320px] lg:min-w-[320px] bg-slate-50/60 flex flex-col h-full overflow-hidden">
+        <div className="p-3.5 flex flex-col h-full overflow-hidden min-h-[300px] lg:min-h-0">
           
           <div className="flex justify-between items-center mb-3">
-            <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-1">
-              <Clock className="w-4.5 h-4.5 text-teal-600 animate-pulse" />
+            <h3 className="font-extrabold text-slate-900 text-sm tracking-tight flex items-center gap-2 uppercase">
+              <Clock className="w-4 h-4 text-teal-600 animate-pulse" />
               Intake Queue
             </h3>
             <button 
               onClick={fetchVisits} 
               disabled={visitsLoading}
-              className="text-[10px] text-teal-600 font-bold hover:underline"
+              className="text-xs text-teal-600 font-bold hover:underline"
             >
               Refresh
             </button>
           </div>
 
           <div className="relative mb-3 flex-shrink-0">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-semibold transition-all"
+              className="w-full bg-white border border-slate-250 rounded-lg pl-9 pr-3 py-2 text-sm placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all"
               placeholder="Search Queue..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -387,23 +387,23 @@ export default function DoctorConsoleTab({
           </div>
 
           {/* Status Filter Chips */}
-          <div className="flex flex-wrap gap-1 mb-3 flex-shrink-0">
+          <div className="flex flex-wrap gap-1.5 mb-3 flex-shrink-0">
             {[
-              { id: 'All', label: 'All', count: visits.length, activeClass: 'bg-slate-900 text-white border-slate-900', inactiveClass: 'bg-slate-100 text-slate-650 border-slate-200 hover:bg-slate-200' },
-              { id: 'Waiting', label: 'Waiting', count: visits.filter(v => v.status !== 'Critical' && v.status !== 'Completed' && !v.diagnosis).length, activeClass: 'bg-amber-600 text-white border-amber-600 shadow-sm', inactiveClass: 'bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100/50' },
-              { id: 'Critical', label: 'Critical', count: visits.filter(v => v.status === 'Critical').length, activeClass: 'bg-rose-600 text-white border-rose-600 shadow-sm', inactiveClass: 'bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100/50 animate-pulse' },
-              { id: 'Completed', label: 'Completed', count: visits.filter(v => v.status === 'Completed' || v.diagnosis).length, activeClass: 'bg-emerald-600 text-white border-emerald-600 shadow-sm', inactiveClass: 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100/50' }
+              { id: 'All', label: 'All', count: visits.length, activeClass: 'bg-slate-900 text-white border-slate-900', inactiveClass: 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100' },
+              { id: 'Waiting', label: 'Waiting', count: visits.filter(v => v.status !== 'Critical' && v.status !== 'Completed' && !v.diagnosis).length, activeClass: 'bg-amber-600 text-white border-amber-600 shadow-sm', inactiveClass: 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100/70' },
+              { id: 'Critical', label: 'Critical', count: visits.filter(v => v.status === 'Critical').length, activeClass: 'bg-rose-600 text-white border-rose-600 shadow-sm', inactiveClass: 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100/70 animate-pulse' },
+              { id: 'Completed', label: 'Completed', count: visits.filter(v => v.status === 'Completed' || v.diagnosis).length, activeClass: 'bg-emerald-600 text-white border-emerald-600 shadow-sm', inactiveClass: 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100/70' }
             ].map(chip => (
               <button
                 key={chip.id}
                 type="button"
                 onClick={() => setStatusFilter(chip.id)}
-                className={`text-[9px] px-2 py-0.5 rounded-lg border font-extrabold transition-all flex items-center gap-1 ${
+                className={`text-xs px-2.5 py-1 rounded-lg border font-bold transition-all flex items-center gap-1.5 ${
                   statusFilter === chip.id ? chip.activeClass : chip.inactiveClass
                 }`}
               >
                 <span>{chip.label}</span>
-                <span className={`text-[8px] px-1 rounded-full ${statusFilter === chip.id ? 'bg-white/20 text-white' : 'bg-slate-250/50 text-slate-600'}`}>
+                <span className={`text-xs px-1.5 py-0.2 rounded-full ${statusFilter === chip.id ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-700'}`}>
                   {chip.count}
                 </span>
               </button>
@@ -414,46 +414,46 @@ export default function DoctorConsoleTab({
           <div className="space-y-2 md:flex-1 md:overflow-y-auto pr-1 min-h-0 compact-scroll">
             {visitsLoading ? (
               <div className="py-8 text-center">
-                <Loader2 className="w-5 h-5 animate-spin mx-auto text-teal-600 mb-1" />
-                <span className="text-[10px] text-slate-450 font-semibold">Loading intake queue...</span>
+                <Loader2 className="w-6 h-6 animate-spin mx-auto text-teal-600 mb-2" />
+                <span className="text-xs text-slate-500 font-semibold">Loading intake queue...</span>
               </div>
             ) : (
               filteredQueue.map((vis) => {
                 const hasDiagnosis = !!vis.diagnosis;
                 const getStatusDetails = () => {
                   if (vis.status === 'Critical') {
-                    return { label: 'Critical (Emergency)', style: 'bg-rose-50 text-rose-700 border-rose-100 animate-pulse font-extrabold' };
+                    return { label: 'Critical (Emergency)', style: 'bg-rose-100 text-rose-800 border-rose-200 animate-pulse font-black' };
                   }
                   if (vis.status === 'Completed' || hasDiagnosis) {
-                    return { label: 'Completed', style: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
+                    return { label: 'Completed', style: 'bg-emerald-100 text-emerald-800 border-emerald-200 font-bold' };
                   }
-                  return { label: 'Waiting', style: 'bg-amber-50 text-amber-700 border-amber-100' };
+                  return { label: 'Waiting', style: 'bg-amber-100 text-amber-800 border-amber-200 font-bold' };
                 };
                 const statusInfo = getStatusDetails();
                 return (
                   <div
                     key={vis.id}
                     onClick={() => handleSelectVisit(vis)}
-                    className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col gap-1.5 ${
+                    className={`p-3 rounded-lg border cursor-pointer transition-all flex flex-col gap-1.5 ${
                       selectedVisit?.id === vis.id
-                        ? 'border-teal-500 bg-teal-50/20 shadow-sm'
-                        : 'border-slate-100 hover:border-slate-350 hover:bg-slate-50/50 bg-white'
+                        ? 'border-teal-500 bg-white shadow-sm ring-1 ring-teal-500/30'
+                        : 'border-slate-200/80 hover:border-slate-300 hover:bg-white bg-white/70'
                     }`}
                   >
-                    <div className="flex justify-between items-start">
-                      <span className="text-[9px] font-extrabold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono uppercase">{vis.visit_id.slice(-8)}</span>
-                      <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full border ${statusInfo.style}`}>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-mono uppercase">{vis.visit_id.slice(-8)}</span>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${statusInfo.style}`}>
                         {statusInfo.label}
                       </span>
                     </div>
 
                     <div>
-                      <h4 className="font-bold text-slate-900 text-xs">{vis.patient?.name || 'Unknown Patient'}</h4>
-                      <p className="text-[10px] text-slate-450 mt-0.5 font-semibold">
+                      <h4 className="font-bold text-slate-900 text-sm leading-snug">{vis.patient?.name || 'Unknown Patient'}</h4>
+                      <p className="text-xs text-slate-600 mt-0.5 font-medium">
                         {vis.patient?.age} Yrs • {vis.patient?.gender} • {vis.patient?.mobile_number}
                       </p>
                       {vis.reason && (
-                        <p className="text-[10px] text-slate-500 italic mt-1 font-medium truncate">"{vis.reason}"</p>
+                        <p className="text-xs text-slate-600 italic mt-1 font-medium truncate">"{vis.reason}"</p>
                       )}
                     </div>
                   </div>
@@ -462,7 +462,7 @@ export default function DoctorConsoleTab({
             )}
 
             {!visitsLoading && filteredQueue.length === 0 && (
-              <p className="text-center text-slate-450 text-xs py-8">No patients in the queue.</p>
+              <p className="text-center text-slate-400 text-sm py-8 font-medium">No patients in the queue.</p>
             )}
           </div>
 
@@ -472,24 +472,32 @@ export default function DoctorConsoleTab({
       {/* Workspace Panel (Right) */}
       <div className="flex-1 flex flex-col h-full overflow-hidden bg-white">
         {selectedVisit ? (
-          <div className="p-4 flex flex-col h-full overflow-hidden min-h-[400px] lg:min-h-0 animate-in fade-in duration-150">
+          <div className="p-3 md:p-3.5 flex flex-col h-full overflow-hidden min-h-[400px] lg:min-h-0 animate-in fade-in duration-150">
             
-            {/* Consultation Intake Header */}
-            <div className="flex justify-between items-start pb-3 border-b border-slate-100 flex-shrink-0 flex-wrap gap-2">
+            {/* Consultation Intake Header - Compact SaaS Layout */}
+            <div className="flex justify-between items-center pb-2 border-b border-slate-200 flex-shrink-0 flex-wrap gap-2">
               <div>
-                <span className="text-teal-650 font-bold text-[10px] uppercase tracking-wider font-sans">Active Consultation Workspace</span>
-                <h2 className="text-base font-bold text-slate-900 mt-0.5">{selectedVisit.patient?.name}</h2>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-slate-400 text-xs mt-0.5 font-semibold">
-                  <span>Age: <b>{selectedVisit.patient?.age} Yrs</b></span>
-                  <span>Gender: <b>{selectedVisit.patient?.gender}</b></span>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base md:text-lg font-black text-slate-900">{selectedVisit.patient?.name}</h2>
+                  <span className="text-teal-700 font-extrabold text-[10px] uppercase tracking-wider bg-teal-50 px-2 py-0.5 rounded border border-teal-200">Active Consultation</span>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-slate-600 text-xs mt-0.5 font-medium">
+                  <span>Age: <b className="text-slate-900">{selectedVisit.patient?.age} Yrs</b></span>
+                  <span>•</span>
+                  <span>Gender: <b className="text-slate-900">{selectedVisit.patient?.gender}</b></span>
+                  <span>•</span>
+                  <span>Visit ID: <b className="text-slate-900 font-mono">{selectedVisit.visit_id}</b></span>
                   {selectedVisit.patient?.abha_id && (
-                    <span className="bg-teal-50 border border-teal-100 text-teal-700 px-1.5 py-0.5 rounded text-[10px] font-black">
-                      ABHA Verified: {selectedVisit.patient.abha_id}
-                    </span>
+                    <>
+                      <span>•</span>
+                      <span className="bg-teal-50 text-teal-800 px-1.5 py-0.2 rounded text-[11px] font-bold">
+                        ABHA: {selectedVisit.patient.abha_id}
+                      </span>
+                    </>
                   )}
-                  <span>Visit ID: <b>{selectedVisit.visit_id}</b></span>
-                  <span className="flex items-center gap-1.5 ml-2">
-                    <span className="text-[10px] text-slate-400 font-extrabold uppercase font-sans">Triage:</span>
+                  <span className="flex items-center gap-1 ml-1.5">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase">Triage:</span>
                     <select
                       value={summaryForm.status || 'Waiting'}
                       onChange={async (e) => {
@@ -511,7 +519,7 @@ export default function DoctorConsoleTab({
                           showToast(err.message, 'error');
                         }
                       }}
-                      className={`text-[10px] font-black rounded border px-2 py-0.5 cursor-pointer focus:outline-none transition-all ${
+                      className={`text-[11px] font-bold rounded border px-2 py-0.5 cursor-pointer focus:outline-none transition-all ${
                         summaryForm.status === 'Critical' ? 'bg-rose-50 text-rose-700 border-rose-200 font-bold' :
                         summaryForm.status === 'Completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                         'bg-amber-50 text-amber-700 border-amber-200'
@@ -525,14 +533,14 @@ export default function DoctorConsoleTab({
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <div className="border border-slate-200 rounded-lg p-0.5 bg-slate-50 flex">
+              <div className="flex gap-2 items-center">
+                <div className="border border-slate-200 rounded-md p-0.5 bg-slate-50 flex gap-1">
                   <button
                     onClick={() => setActiveWorkspaceTab('clinical')}
-                    className={`text-[10px] font-bold px-3 py-1 rounded transition-all ${
+                    className={`text-xs font-bold px-2.5 py-1 rounded transition-all ${
                       activeWorkspaceTab === 'clinical'
-                        ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
-                        : 'text-slate-500 hover:text-slate-800'
+                        ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                        : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
                     Clinical Desk
@@ -540,20 +548,20 @@ export default function DoctorConsoleTab({
                   <button
                     onClick={handleTriggerPdfPreview}
                     disabled={pdfLoading}
-                    className={`text-[10px] font-bold px-3 py-1 rounded transition-all flex items-center gap-1 ${
+                    className={`text-xs font-bold px-2.5 py-1 rounded transition-all flex items-center gap-1.5 ${
                       activeWorkspaceTab === 'pdf'
-                        ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
-                        : 'text-slate-500 hover:text-slate-800'
+                        ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                        : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    {pdfLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Printer className="w-3 h-3" />}
+                    {pdfLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Printer className="w-3.5 h-3.5" />}
                     Prescription Preview
                   </button>
                 </div>
 
                 <button
                   onClick={() => setSelectedVisit(null)}
-                  className="text-slate-500 hover:text-slate-800 text-[10px] font-bold bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg transition-colors"
+                  className="text-slate-600 hover:text-slate-900 text-xs font-bold bg-slate-100 border border-slate-200 px-3 py-1 rounded-md transition-colors"
                 >
                   Close Desk
                 </button>
@@ -561,48 +569,48 @@ export default function DoctorConsoleTab({
             </div>
 
             {/* TAB CONTENT */}
-            <div className="flex-1 min-h-0 mt-3">
+            <div className="flex-1 min-h-0 mt-4">
               {activeWorkspaceTab === 'clinical' ? (
                 /* Clinical Workspace Grid */
-                <div className="h-full overflow-y-auto grid grid-cols-1 xl:grid-cols-2 gap-4 pr-1 compact-scroll">
+                <div className="h-full overflow-y-auto flex flex-col xl:flex-row gap-6 pr-1 compact-scroll">
                   
-                  {/* Left Column: Doctor Entry Forms */}
-                  <div className="space-y-4 pr-1 border-r border-slate-100">
-                    <div className="flex justify-between items-center pb-1 border-b border-slate-150">
-                      <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                        <FileText className="w-4 h-4 text-teal-650" />
+                  {/* Left Column: Doctor Entry Forms — 65% width */}
+                  <div className="space-y-4 pr-2 border-r border-slate-200 xl:w-[65%] xl:flex-shrink-0">
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+                      <span className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <FileText className="w-4.5 h-4.5 text-teal-600" />
                         Clinical Records
                       </span>
                       <button
                         type="button"
                         onClick={handleAiSuggestTreatment}
                         disabled={aiPrescribeLoading}
-                        className={`text-[10px] font-bold text-white px-2.5 py-1 rounded-lg shadow-sm transition-all flex items-center gap-1.5 ${
+                        className={`text-xs font-bold text-white px-3.5 py-1.5 rounded-lg shadow-xs transition-all flex items-center gap-1.5 ${
                           aiPrescribeLoading
                             ? 'bg-violet-400 cursor-not-allowed'
-                            : 'bg-gradient-to-r from-violet-600 to-indigo-500 hover:from-violet-700 hover:to-indigo-600'
+                            : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700'
                         }`}
                       >
                         {aiPrescribeLoading ? (
                           <>
-                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <Loader2 className="w-4 h-4 animate-spin" />
                             AI Prescribing...
                           </>
                         ) : (
                           <>
-                            <Brain className="w-3.5 h-3.5 text-violet-100" />
+                            <Brain className="w-4 h-4 text-violet-100" />
                             AI Suggest Treatment
                           </>
                         )}
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1 flex justify-between items-center">
+                        <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5 flex justify-between items-center">
                           <span>Chief Complaints</span>
                         </label>
-                        <div className="flex flex-wrap gap-1 mb-2 max-h-[45px] overflow-y-auto pb-1 compact-scroll">
+                        <div className="flex flex-wrap gap-1 mb-2 max-h-[50px] overflow-y-auto pb-1 compact-scroll">
                           {COMMON_COMPLAINTS.map((tag) => {
                             const isSelected = (summaryForm.chief_complaints || '').includes(tag);
                             return (
@@ -610,10 +618,10 @@ export default function DoctorConsoleTab({
                                 key={tag}
                                 type="button"
                                 onClick={() => handleToggleTag('chief_complaints', tag)}
-                                className={`text-[8px] px-1.5 py-0.5 rounded-full border transition-all font-semibold ${
+                                className={`text-xs px-2.5 py-1 rounded-md border transition-all font-semibold ${
                                   isSelected 
-                                    ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
-                                    : 'bg-slate-50 text-slate-650 border-slate-200 hover:bg-teal-55'
+                                    ? 'bg-teal-600 text-white border-teal-600' 
+                                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-teal-50'
                                 }`}
                               >
                                 {tag}
@@ -622,7 +630,7 @@ export default function DoctorConsoleTab({
                           })}
                         </div>
                         <textarea
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-20 resize-none"
+                          className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all h-20 resize-none"
                           placeholder="Fever, Dry Cough, Throat irritation..."
                           value={summaryForm.chief_complaints}
                           onChange={(e) => setSummaryForm({ ...summaryForm, chief_complaints: e.target.value })}
@@ -630,9 +638,9 @@ export default function DoctorConsoleTab({
                       </div>
 
                       <div>
-                        <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">Diagnosis</label>
+                        <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Diagnosis</label>
                         <textarea
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-28 resize-none"
+                          className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all h-28 resize-none"
                           placeholder="e.g. Upper Respiratory Tract Infection (URTI)"
                           value={summaryForm.diagnosis}
                           onChange={(e) => setSummaryForm({ ...summaryForm, diagnosis: e.target.value })}
@@ -641,38 +649,38 @@ export default function DoctorConsoleTab({
                     </div>
 
                     <div>
-                      <label className="block text-[10px] text-slate-450 font-extrabold uppercase tracking-wider mb-1 flex justify-between items-center">
+                      <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5 flex justify-between items-center">
                         <span>Prescribe Medicines</span>
-                        <span className="text-[9px] text-teal-600 font-bold bg-teal-50 px-1 rounded border border-teal-100">Prescription Builder</span>
+                        <span className="text-xs text-teal-700 font-bold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">Prescription Builder</span>
                       </label>
                       
-                      <div className="bg-slate-50 p-2 rounded-xl border border-slate-200 mb-2 space-y-1.5 shadow-sm text-[10px]">
-                        <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-slate-50/80 p-3 rounded-lg border border-slate-200 mb-2.5 space-y-2.5 text-xs">
+                        <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Timing</span>
-                            <div className="flex gap-1">
+                            <span className="text-xs text-slate-600 font-bold uppercase tracking-wider block mb-1">Timing</span>
+                            <div className="flex gap-1.5">
                               {['After Meals', 'Empty Stomach'].map((t) => (
                                 <button
                                   key={t}
                                   type="button"
                                   onClick={() => setPrescTiming(t)}
-                                  className={`flex-1 text-[8px] py-0.5 rounded font-bold border transition-all ${
+                                  className={`flex-1 text-xs py-1.5 rounded-md font-bold border transition-all ${
                                     prescTiming === t 
-                                      ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
-                                      : 'bg-white text-slate-650 border-slate-200'
+                                      ? 'bg-teal-600 text-white border-teal-600' 
+                                      : 'bg-white text-slate-700 border-slate-300'
                                   }`}
                                 >
-                                  {t === 'After Meals' ? 'Pc (Post Cibum)' : 'Ac (Ante Cibum)'}
+                                  {t === 'After Meals' ? 'Pc (After Meals)' : 'Ac (Empty Stomach)'}
                                 </button>
                               ))}
                             </div>
                           </div>
                           <div>
-                            <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Frequency</span>
+                            <span className="text-xs text-slate-600 font-bold uppercase tracking-wider block mb-1">Frequency</span>
                             <select
                               value={prescFrequency}
                               onChange={(e) => setPrescFrequency(e.target.value)}
-                              className="w-full bg-white border border-slate-200 rounded px-1.5 py-0.5 text-[9px] focus:outline-none focus:border-teal-500 font-bold text-slate-705"
+                              className="w-full bg-white border border-slate-300 rounded-md px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-teal-500"
                             >
                               <option value="Once Daily (OD)">OD (Once Daily)</option>
                               <option value="Twice Daily (BD)">BD (Twice Daily)</option>
@@ -683,13 +691,13 @@ export default function DoctorConsoleTab({
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-2 items-center">
+                        <div className="grid grid-cols-2 gap-3 items-center">
                           <div>
-                            <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Duration</span>
+                            <span className="text-xs text-slate-600 font-bold uppercase tracking-wider block mb-1">Duration</span>
                             <select
                               value={prescDuration}
                               onChange={(e) => setPrescDuration(e.target.value)}
-                              className="w-full bg-white border border-slate-200 rounded px-1.5 py-0.5 text-[9px] focus:outline-none focus:border-teal-500 font-bold text-slate-705"
+                              className="w-full bg-white border border-slate-300 rounded-md px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-teal-500"
                             >
                               <option value="3 Days">3 Days</option>
                               <option value="5 Days">5 Days</option>
@@ -700,7 +708,7 @@ export default function DoctorConsoleTab({
                             </select>
                           </div>
                           <div>
-                            <span className="text-[8px] text-teal-650 font-bold uppercase tracking-wider block mb-0.5">Quick Datastore</span>
+                            <span className="text-xs text-teal-700 font-extrabold uppercase tracking-wider block mb-1">Quick Datastore</span>
                             <select
                               onChange={(e) => {
                                 if (e.target.value) {
@@ -709,9 +717,9 @@ export default function DoctorConsoleTab({
                                   e.target.value = '';
                                 }
                               }}
-                              className="w-full bg-white border border-teal-200 rounded px-1.5 py-0.5 text-[9px] focus:outline-none focus:border-teal-500 font-bold text-teal-800"
+                              className="w-full bg-white border border-teal-300 rounded-md px-2.5 py-1.5 text-xs font-bold text-teal-900 focus:outline-none focus:border-teal-500"
                             >
-                              <option value="">-- Add Med --</option>
+                              <option value="">-- Select Medicine --</option>
                               {MEDICINE_DATASTORE.map((m, idx) => (
                                 <option key={idx} value={m.name}>{m.name}</option>
                               ))}
@@ -724,22 +732,22 @@ export default function DoctorConsoleTab({
                         <input
                           type="text"
                           placeholder="🔍 Search medicine catalog (e.g. Dolo, Pan, Azee...)"
-                          className="w-full bg-teal-50/30 border border-teal-100 rounded-lg px-2.5 py-1.5 text-xs placeholder-teal-600/40 focus:outline-none focus:bg-white focus:border-teal-500 font-semibold transition-all text-slate-800"
+                          className="w-full bg-white border border-teal-200 rounded-lg px-3 py-2 text-sm placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all text-slate-800"
                           value={medicineSearch}
                           onChange={(e) => setMedicineSearch(e.target.value)}
                         />
                         
                         {medicineSuggestions.length > 0 && (
-                          <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto divide-y divide-slate-100 animate-in fade-in slide-in-from-top-1 duration-150">
+                          <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-y-auto divide-y divide-slate-100 animate-in fade-in slide-in-from-top-1 duration-150">
                             {medicineSuggestions.map((med, idx) => (
                               <button
                                 key={idx}
                                 type="button"
                                 onClick={() => handleAddMedicineFromSuggest(med)}
-                                className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-teal-50 hover:text-teal-900 transition-colors font-semibold flex justify-between items-center"
+                                className="w-full text-left px-3 py-2.5 text-sm text-slate-800 hover:bg-teal-50 hover:text-teal-950 transition-colors font-medium flex justify-between items-center"
                               >
                                 <span>{med.name}</span>
-                                <span className="text-[10px] text-teal-600 bg-teal-55 px-1.5 py-0.5 rounded font-normal shrink-0">{med.dosage.split(' for')[0]}</span>
+                                <span className="text-xs text-teal-700 bg-teal-50 px-2 py-0.5 rounded font-bold shrink-0">{med.dosage.split(' for')[0]}</span>
                               </button>
                             ))}
                           </div>
@@ -747,19 +755,19 @@ export default function DoctorConsoleTab({
                       </div>
 
                       <textarea
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-24 resize-none"
+                        className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 font-normal transition-all h-24 resize-none"
                         placeholder="1. Dolo 650mg - Twice Daily (BD) after meals for 3 Days"
                         value={summaryForm.medicines_list}
                         onChange={(e) => setSummaryForm({ ...summaryForm, medicines_list: e.target.value })}
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-[10px] text-slate-450 font-extrabold uppercase tracking-wider mb-1 flex justify-between items-center">
+                        <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5 flex justify-between items-center">
                           <span>Recommend Tests</span>
                         </label>
-                        <div className="flex flex-wrap gap-1 mb-2 max-h-[45px] overflow-y-auto pb-1 compact-scroll">
+                        <div className="flex flex-wrap gap-1 mb-2 max-h-[50px] overflow-y-auto pb-1 compact-scroll">
                           {COMMON_TESTS.map((tag) => {
                             const isSelected = (summaryForm.tests_list || '').toLowerCase().includes(tag.toLowerCase());
                             return (
@@ -767,10 +775,10 @@ export default function DoctorConsoleTab({
                                 key={tag}
                                 type="button"
                                 onClick={() => handleToggleTag('tests_list', tag)}
-                                className={`text-[8px] px-1.5 py-0.5 rounded-full border transition-all font-semibold ${
+                                className={`text-xs px-2.5 py-1 rounded-md border transition-all font-semibold ${
                                   isSelected 
-                                    ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
-                                    : 'bg-slate-50 text-slate-650 border-slate-200 hover:bg-teal-55'
+                                    ? 'bg-teal-600 text-white border-teal-600' 
+                                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-teal-50'
                                 }`}
                               >
                                 {tag.split(' (')[0]}
@@ -779,7 +787,7 @@ export default function DoctorConsoleTab({
                           })}
                         </div>
                         <textarea
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-20 resize-none"
+                          className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 font-normal transition-all h-20 resize-none"
                           placeholder="CBC, Chest X-ray..."
                           value={summaryForm.tests_list}
                           onChange={(e) => setSummaryForm({ ...summaryForm, tests_list: e.target.value })}
@@ -787,10 +795,10 @@ export default function DoctorConsoleTab({
                       </div>
 
                       <div>
-                        <label className="block text-[10px] text-slate-455 font-extrabold uppercase tracking-wider mb-1 flex justify-between items-center">
+                        <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5 flex justify-between items-center">
                           <span>Lifestyle Advice</span>
                         </label>
-                        <div className="flex flex-wrap gap-1 mb-2 max-h-[45px] overflow-y-auto pb-1 compact-scroll">
+                        <div className="flex flex-wrap gap-1 mb-2 max-h-[50px] overflow-y-auto pb-1 compact-scroll">
                           {COMMON_ADVICE.map((tag) => {
                             const isSelected = (summaryForm.advice || '').includes(tag);
                             return (
@@ -798,19 +806,19 @@ export default function DoctorConsoleTab({
                                 key={tag}
                                 type="button"
                                 onClick={() => handleToggleTag('advice', tag)}
-                                className={`text-[8px] px-1.5 py-0.5 rounded-full border transition-all font-semibold ${
+                                className={`text-xs px-2.5 py-1 rounded-md border transition-all font-semibold ${
                                   isSelected 
-                                    ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
-                                    : 'bg-slate-50 text-slate-650 border-slate-200 hover:bg-teal-55'
+                                    ? 'bg-teal-600 text-white border-teal-600' 
+                                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-teal-50'
                                 }`}
                               >
-                                {tag.length > 15 ? `${tag.slice(0, 13)}...` : tag}
+                                {tag.length > 18 ? `${tag.slice(0, 16)}...` : tag}
                               </button>
                             );
                           })}
                         </div>
                         <textarea
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-20 resize-none"
+                          className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 font-normal transition-all h-20 resize-none"
                           placeholder="Drink warm water, take complete bed rest..."
                           value={summaryForm.advice}
                           onChange={(e) => setSummaryForm({ ...summaryForm, advice: e.target.value })}
@@ -818,12 +826,12 @@ export default function DoctorConsoleTab({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
                       <div>
-                        <label className="block text-[10px] text-slate-450 font-extrabold uppercase tracking-wider mb-1">Follow-up Info</label>
+                        <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Follow-up Info</label>
                         <input
                           type="text"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-semibold transition-all"
+                          className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all"
                           placeholder="e.g. Return in 5 days or if fever escalates"
                           value={summaryForm.follow_up_date}
                           onChange={(e) => setSummaryForm({ ...summaryForm, follow_up_date: e.target.value })}
@@ -834,28 +842,28 @@ export default function DoctorConsoleTab({
                           type="button"
                           onClick={handleSaveSummary}
                           disabled={summarySaving}
-                          className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center justify-center gap-1.5 shadow-sm"
+                          className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-xs transition-all"
                         >
-                          {summarySaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                          {summarySaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                           Save Notes
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  {/* Right Column: AI Summary & Multilingual Handout */}
-                  <div className="space-y-4 pr-1 flex flex-col justify-between h-full min-h-[350px]">
+                  {/* Right Column: AI Summary & Multilingual Handout — 35% width */}
+                  <div className="flex-1 space-y-4 pr-1 flex flex-col justify-between min-h-[350px]">
                     <div className="space-y-4">
-                      <div className="flex justify-between items-center pb-1 border-b border-slate-150">
-                        <span className="text-xs font-bold text-slate-850 uppercase tracking-wider flex items-center gap-1.5">
-                          <Sparkles className="w-4 h-4 text-teal-650" />
+                      <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+                        <span className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                          <Sparkles className="w-4.5 h-4.5 text-teal-600" />
                           Bilingual Daily Routine Handout
                         </span>
                         {summaryForm.patient_summary && !summaryGenerating && (
                           <button
                             type="button"
                             onClick={handleGenerateAiSummary}
-                            className="text-[10px] text-teal-650 hover:text-teal-700 font-bold flex items-center gap-1 underline font-sans"
+                            className="text-xs text-teal-700 hover:text-teal-900 font-bold flex items-center gap-1 underline font-sans"
                           >
                             Regenerate
                           </button>
@@ -863,18 +871,17 @@ export default function DoctorConsoleTab({
                       </div>
 
                       {/* Language Selection */}
-                      <div className="bg-slate-50 border border-slate-150 p-3 rounded-xl flex items-center justify-between gap-3 shadow-sm">
+                      <div className="py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between gap-3">
                         <div>
-                          <span className="text-[9px] text-slate-450 font-bold uppercase tracking-wider block">Target Indian Language</span>
-                          <span className="text-[10px] text-slate-500 mt-0.5 block leading-normal font-semibold">Translates storytelling routines dynamically.</span>
+                          <span className="text-xs text-slate-800 font-extrabold uppercase tracking-wider block">Target Indian Language</span>
+                          <span className="text-xs text-slate-500 mt-0.5 block leading-normal font-medium">Translates storytelling routines dynamically.</span>
                         </div>
                         <select
-                          className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none font-bold text-slate-700 cursor-pointer shadow-sm"
+                          className="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-sm font-bold text-slate-800 focus:outline-none focus:border-teal-500 cursor-pointer"
                           value={selectedLanguage}
                           onChange={(e) => {
                             const newLang = e.target.value;
                             setSelectedLanguage(newLang);
-                            // Auto-regenerate immediately if a summary already exists
                             if (summaryForm.patient_summary) {
                               setSummaryGenerating(true);
                               setSummaryError('');
@@ -907,31 +914,31 @@ export default function DoctorConsoleTab({
                       </div>
 
                       {summaryError && (
-                        <div className="bg-rose-50 border border-rose-100 rounded-xl p-3 text-rose-700 text-xs font-semibold leading-relaxed">
+                        <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 text-rose-800 text-sm font-semibold leading-relaxed">
                           Error: {summaryError}
                         </div>
                       )}
 
                       {/* Summary Display Box */}
-                      <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50 min-h-[220px] max-h-[350px] overflow-y-auto compact-scroll font-sans text-xs leading-relaxed space-y-3 shadow-inner">
+                      <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/40 min-h-[240px] max-h-[360px] overflow-y-auto compact-scroll font-sans text-sm md:text-base leading-relaxed space-y-3">
                         {summaryGenerating ? (
                           <div className="h-full flex flex-col items-center justify-center py-12 space-y-2">
                             <Brain className="w-8 h-8 text-teal-600 animate-pulse" />
-                            <div className="flex items-center gap-1">
-                              <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-600" />
-                              <span className="text-[11px] text-slate-450 font-bold uppercase tracking-wider">Generating bilingual instructions...</span>
+                            <div className="flex items-center gap-1.5">
+                              <Loader2 className="w-4 h-4 animate-spin text-slate-600" />
+                              <span className="text-xs text-slate-600 font-bold uppercase tracking-wider">Generating bilingual instructions...</span>
                             </div>
                           </div>
                         ) : (
                           summaryForm.patient_summary ? (
-                            <div className="whitespace-pre-line font-semibold text-slate-750">
+                            <div className="whitespace-pre-line font-medium text-slate-800 text-sm md:text-base leading-relaxed">
                               {summaryForm.patient_summary}
                             </div>
                           ) : (
                             <div className="py-12 text-center text-slate-400 italic space-y-2 font-medium">
-                              <Sparkles className="w-6 h-6 mx-auto text-slate-350" />
-                              <p>Bilingual storytelling prescription summary not compiled yet.</p>
-                              <p className="text-[10px] font-normal not-italic text-slate-400">Click the generate button below to request AI translation.</p>
+                              <Sparkles className="w-8 h-8 mx-auto text-slate-400" />
+                              <p className="text-sm text-slate-600 font-bold">Bilingual storytelling prescription summary not compiled yet.</p>
+                              <p className="text-xs font-normal not-italic text-slate-400">Click the generate button below to request AI translation.</p>
                             </div>
                           )
                         )}
@@ -939,21 +946,21 @@ export default function DoctorConsoleTab({
                     </div>
 
                     {/* Action buttons */}
-                    <div className="flex gap-3 pt-3 border-t border-slate-100">
+                    <div className="flex gap-3 pt-3 border-t border-slate-200">
                       <button
                         type="button"
                         onClick={handleGenerateAiSummary}
                         disabled={summaryGenerating || summarySaving}
-                        className="flex-1 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white font-bold text-xs py-2.5 rounded-xl shadow-md flex items-center justify-center gap-2"
+                        className="flex-1 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-sm py-3 px-4 rounded-lg shadow-sm flex items-center justify-center gap-2 transition-all"
                       >
                         {summaryGenerating ? (
                           <>
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <Loader2 className="w-4 h-4 animate-spin" />
                             Analyzing Clinical Notes...
                           </>
                         ) : (
                           <>
-                            <Sparkles className="w-4 h-4" />
+                            <Sparkles className="w-4.5 h-4.5" />
                             Generate AI Summary ({selectedLanguage})
                           </>
                         )}
@@ -965,7 +972,7 @@ export default function DoctorConsoleTab({
                 </div>
               ) : (
                 /* PDF Previewer IFrame */
-                <div className="h-full flex flex-col bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-inner relative">
+                <div className="h-full flex flex-col bg-slate-50 rounded-lg border border-slate-200 overflow-hidden relative">
                   {pdfPreviewUrl ? (
                     <iframe
                       src={pdfPreviewUrl}
@@ -974,10 +981,10 @@ export default function DoctorConsoleTab({
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center p-12 text-center h-full space-y-3">
-                      <Printer className="w-8 h-8 text-slate-350" />
+                      <Printer className="w-9 h-9 text-slate-400" />
                       <div>
-                        <h4 className="font-extrabold text-slate-800 text-sm">No PDF Preview Active</h4>
-                        <p className="text-[10px] text-slate-450 leading-relaxed max-w-sm mt-1 font-semibold">
+                        <h4 className="font-extrabold text-slate-900 text-base">No PDF Preview Active</h4>
+                        <p className="text-xs md:text-sm text-slate-500 leading-relaxed max-w-sm mt-1 font-semibold">
                           Click compile prescription preview above to generate the PDF receipt.
                         </p>
                       </div>
@@ -990,12 +997,12 @@ export default function DoctorConsoleTab({
           </div>
         ) : (
           /* Empty Workspace Welcome Screen */
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-slate-50/10 h-full">
-            <div className="w-16 h-16 rounded-3xl bg-teal-50 border border-teal-100 flex items-center justify-center mb-4 shadow-sm">
-              <Brain className="w-8 h-8 text-teal-605 animate-pulse" />
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-slate-50/20 h-full">
+            <div className="w-16 h-16 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-center mb-4 shadow-xs">
+              <Brain className="w-8 h-8 text-teal-600 animate-pulse" />
             </div>
-            <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">Doctor's Consultation Console</h3>
-            <p className="text-slate-400 text-xs leading-relaxed max-w-sm mt-2 font-semibold">
+            <h3 className="text-base font-black text-slate-900 uppercase tracking-wider">Doctor's Consultation Console</h3>
+            <p className="text-slate-500 text-xs md:text-sm leading-relaxed max-w-md mt-2 font-semibold">
               Select an active patient check-in from the <strong>Intake Queue</strong> list on the left to write clinical diagnoses, run safety checks, and compile bilingual patient-friendly handout guides.
             </p>
           </div>
@@ -1005,3 +1012,4 @@ export default function DoctorConsoleTab({
     </div>
   );
 }
+

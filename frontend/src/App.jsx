@@ -29,7 +29,10 @@ import {
   Server,
   Check,
   Copy,
-  Brain
+  Brain,
+  PanelLeft,
+  PanelLeftClose,
+  Menu
 } from 'lucide-react';
 import DashboardTab from './components/DashboardTab';
 import PatientSearchTab from './components/PatientSearchTab';
@@ -67,6 +70,25 @@ function App() {
   // Navigation State
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Command Palette State
+  const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
+  const [cmdSearch, setCmdSearch] = useState('');
+
+  // Keyboard shortcut listener (Ctrl + K / Cmd + K)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCmdPaletteOpen(prev => !prev);
+      } else if (e.key === 'Escape') {
+        setCmdPaletteOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Dashboard Stats State
   const [metrics, setMetrics] = useState(null);
@@ -88,7 +110,7 @@ function App() {
   const [newVisitDoctorId, setNewVisitDoctorId] = useState('');
   const [showVisitModal, setShowVisitModal] = useState(false);
   const [doctors, setDoctors] = useState([]);
-  const [newDoctor, setNewDoctor] = useState({ name: '', degree: '' });
+  const [newDoctor, setNewDoctor] = useState({ name: '', degree: '', consultation_fee: 500, consultation_validity_days: 7 });
   const [editingDoctor, setEditingDoctor] = useState(null);
   const [newAdvancePayment, setNewAdvancePayment] = useState({
     amount_paid: '',
@@ -102,7 +124,7 @@ function App() {
   const [editingService, setEditingService] = useState(null);
 
   // Billing State
-  const [billItems, setBillItems] = useState([]); // { service_id, service_name, amount }
+  const [billItems, setBillItems] = useState([]); // { service_id, service_name, amount, fromPrescription? }
   const [availableServices, setAvailableServices] = useState([]);
   const [selectedServiceId, setSelectedServiceId] = useState('');
   const [customItemPrice, setCustomItemPrice] = useState('');
@@ -110,6 +132,11 @@ function App() {
   const [aiRecommendationsLoading, setAiRecommendationsLoading] = useState(false);
   const [aiExplanation, setAiExplanation] = useState('');
   const [aiRecommenderVisitId, setAiRecommenderVisitId] = useState(null);
+
+  // Prescription → Billing Auto-fill State
+  const [prescAutoFillLoading, setPrescAutoFillLoading] = useState(false);
+  const [prescUnmatchedItems, setPrescUnmatchedItems] = useState([]);
+  const [prescAutoFillVisitId, setPrescAutoFillVisitId] = useState(null);
 
 
   // Payment Recording State
@@ -582,7 +609,8 @@ function App() {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({
-          patient_id: selectedPatient.id,
+          patient_id: selectedPatient?.id,
+          visit_id: visitId,
           symptoms: symptoms
         })
       });
@@ -608,6 +636,58 @@ function App() {
     }
     setBillItems([...billItems, { service_id: item.service_id, service_name: item.service_name, amount: item.price }]);
     showToast(`Added ${item.service_name}`);
+  };
+
+  const fetchPrescriptionSuggestedItems = async (visitId) => {
+    setPrescAutoFillLoading(true);
+    setPrescAutoFillVisitId(visitId);
+    setPrescUnmatchedItems([]);
+    try {
+      const res = await fetch(`${API_BASE}/visits/${visitId}/suggested-bill-items`, {
+        headers: getHeaders()
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(getErrorMessage(errData, 'Failed to fetch prescription suggestions'));
+      }
+      const data = await res.json();
+      const { matched_items = [], unmatched_items = [] } = data;
+
+      if (matched_items.length === 0 && unmatched_items.length === 0) {
+        showToast('No prescription items found for this visit. Add clinical notes first.', 'warning');
+        return;
+      }
+
+      // Merge matched items — skip duplicates already in bill
+      let addedCount = 0;
+      setBillItems(prev => {
+        const existingIds = new Set(prev.map(b => b.service_id));
+        const newItems = matched_items
+          .filter(item => !existingIds.has(item.service_id))
+          .map(item => ({
+            service_id: item.service_id,
+            service_name: item.service_name,
+            amount: item.price,
+            fromPrescription: true,  // teal badge flag
+            matchReason: item.match_reason
+          }));
+        addedCount = newItems.length;
+        return [...prev, ...newItems];
+      });
+
+      setPrescUnmatchedItems(unmatched_items);
+
+      if (matched_items.length > 0) {
+        showToast(`⚡ Auto-filled ${matched_items.length} items from prescription!`);
+      }
+      if (unmatched_items.length > 0) {
+        showToast(`${unmatched_items.length} prescription item(s) couldn't be matched to catalog.`, 'warning');
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setPrescAutoFillLoading(false);
+    }
   };
 
   const handleCreateBill = async (visitId) => {
@@ -724,14 +804,20 @@ function App() {
   const handleAddDoctor = async (e) => {
     e.preventDefault();
     try {
+      const payload = {
+        name: newDoctor.name,
+        degree: newDoctor.degree,
+        consultation_fee: parseFloat(newDoctor.consultation_fee) || 500,
+        consultation_validity_days: parseInt(newDoctor.consultation_validity_days) || 7
+      };
       const res = await fetch(`${API_BASE}/doctors`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify(newDoctor)
+        body: JSON.stringify(payload)
       });
       if (!res.ok) throw new Error("Failed to add doctor");
       showToast(`Doctor "${newDoctor.name}" added successfully.`);
-      setNewDoctor({ name: '', degree: '' });
+      setNewDoctor({ name: '', degree: '', consultation_fee: 500, consultation_validity_days: 7 });
       fetchDoctors();
     } catch (err) {
       showToast(err.message, 'error');
@@ -746,7 +832,9 @@ function App() {
         headers: getHeaders(),
         body: JSON.stringify({
           name: editingDoctor.name,
-          degree: editingDoctor.degree
+          degree: editingDoctor.degree,
+          consultation_fee: parseFloat(editingDoctor.consultation_fee) || 500,
+          consultation_validity_days: parseInt(editingDoctor.consultation_validity_days) || 7
         })
       });
       if (!res.ok) throw new Error("Failed to update doctor");
@@ -1153,143 +1241,172 @@ function App() {
       )}
 
       {/* Sidebar Navigation — Premium Version */}
-      <aside className={`fixed inset-y-0 left-0 z-40 w-64 flex flex-col justify-between flex-shrink-0 transition-transform duration-300 transform md:translate-x-0 md:static md:h-screen md:max-h-screen md:w-64 ${
+      <aside className={`fixed inset-y-0 left-0 z-40 w-64 flex flex-col justify-between flex-shrink-0 transition-all duration-300 transform ${
+        sidebarCollapsed ? 'hidden md:hidden' : 'md:static md:translate-x-0 md:h-screen md:max-h-screen md:w-64'
+      } ${
         mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
       }`} style={{background:'#080d1a', borderRight:'1px solid rgba(255,255,255,0.06)'}}>
         <div>
           {/* Logo & Header */}
-          <div className="p-6 flex items-center gap-3" style={{borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center animate-pulse-teal flex-shrink-0" style={{background:'linear-gradient(135deg,#14b8a6,#34d399)'}}>
-              <Activity className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h2 className="text-white font-black text-base tracking-tight">HospiSyn<span className="gradient-text-teal">AI</span></h2>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                  userRole === 'Admin' ? 'bg-amber-500/15 text-amber-400'
-                  : userRole === 'Accountant' ? 'bg-violet-500/15 text-violet-400'
-                  : 'bg-teal-500/15 text-teal-400'
-                }`}>{userRole}</span>
+          <div className="p-6 flex items-center justify-between gap-3" style={{borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center animate-pulse-teal flex-shrink-0" style={{background:'linear-gradient(135deg,#14b8a6,#34d399)'}}>
+                <Activity className="w-5 h-5 text-white" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-white font-black text-base tracking-tight truncate">HospiSyn<span className="gradient-text-teal">AI</span></h2>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                    userRole === 'Admin' ? 'bg-amber-500/15 text-amber-400'
+                    : userRole === 'Accountant' ? 'bg-violet-500/15 text-violet-400'
+                    : 'bg-teal-500/15 text-teal-400'
+                  }`}>{userRole}</span>
+                </div>
               </div>
             </div>
+            {/* Collapse Sidebar button */}
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(true)}
+              className="hidden md:flex text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition-colors flex-shrink-0"
+              title="Hide Sidebar"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
           </div>
 
           {/* Nav Items */}
-          <nav className="p-3 space-y-1">
-            {/* Dashboard — Admin & Accountant */}
-            {userRole !== 'Receptionist' && (
-              <button
-                onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
-                  activeTab === 'dashboard'
-                    ? 'text-white'
-                    : 'text-slate-500 hover:text-slate-300'
-                }`}
-                style={activeTab === 'dashboard' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.2), rgba(20,184,166,0.05))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
-              >
-                <Grid className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'dashboard' ? 'text-teal-400' : ''}`} />
-                Dashboard
-                {activeTab === 'dashboard' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
-              </button>
-            )}
-
-            {/* ROI & Business Model — Admin & Accountant */}
-            {userRole !== 'Receptionist' && (
-              <button
-                onClick={() => { setActiveTab('roi_calculator'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
-                  activeTab === 'roi_calculator'
-                    ? 'text-white'
-                    : 'text-slate-500 hover:text-slate-300'
-                }`}
-                style={activeTab === 'roi_calculator' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.2), rgba(20,184,166,0.05))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
-              >
-                <TrendingUp className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'roi_calculator' ? 'text-teal-400' : ''}`} />
-                ROI & Business Model
-                {activeTab === 'roi_calculator' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
-              </button>
-            )}
-
-            {/* Patient Desk */}
+          <nav className="p-3 space-y-4">
+            {/* SECTION 1: CLINICAL WORKSPACE */}
             {['Admin', 'Receptionist', 'Accountant'].includes(userRole) && (
-              <button
-                onClick={() => { setActiveTab('search_register'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
-                  activeTab === 'search_register'
-                    ? 'text-white'
-                    : 'text-slate-500 hover:text-slate-300'
-                }`}
-                style={activeTab === 'search_register' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.2), rgba(20,184,166,0.05))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
-              >
-                <Search className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'search_register' ? 'text-teal-400' : ''}`} />
-                Patient Search & Desk
-                {/* AI badge */}
-                <span className="ml-auto flex items-center gap-1 bg-violet-500/15 text-violet-400 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                  <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" />AI
-                </span>
-              </button>
-            )}
+              <div>
+                <p className="px-3 pb-1.5 text-slate-500 text-[10px] font-bold uppercase tracking-wider">Clinical Workspace</p>
+                <div className="space-y-1">
+                  {['Admin', 'Receptionist', 'Accountant'].includes(userRole) && (
+                    <button
+                      onClick={() => { setActiveTab('search_register'); setMobileMenuOpen(false); }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
+                        activeTab === 'search_register' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      style={activeTab === 'search_register' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
+                    >
+                      <Search className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'search_register' ? 'text-teal-400' : ''}`} />
+                      Patient Search & Desk
+                      <span className="ml-auto flex items-center gap-1 bg-violet-500/15 text-violet-300 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                        <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" />AI
+                      </span>
+                    </button>
+                  )}
 
-            {/* Doctor's Workspace Desk */}
-            {['Admin', 'Receptionist'].includes(userRole) && (
-              <button
-                onClick={() => { setActiveTab('doctor_console'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
-                  activeTab === 'doctor_console'
-                    ? 'text-white'
-                    : 'text-slate-500 hover:text-slate-300'
-                }`}
-                style={activeTab === 'doctor_console' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.2), rgba(20,184,166,0.05))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
-              >
-                <Brain className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'doctor_console' ? 'text-teal-400' : ''}`} />
-                Doctor's Desk
-                <span className="ml-auto flex items-center gap-1 bg-violet-500/15 text-violet-400 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                  <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" />AI
-                </span>
-              </button>
-            )}
-
-            {/* Billing Queue */}
-            {['Admin', 'Accountant'].includes(userRole) && (
-              <button
-                onClick={() => { setActiveTab('billing_history'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
-                  activeTab === 'billing_history'
-                    ? 'text-white'
-                    : 'text-slate-500 hover:text-slate-300'
-                }`}
-                style={activeTab === 'billing_history' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.2), rgba(20,184,166,0.05))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
-              >
-                <CreditCard className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'billing_history' ? 'text-teal-400' : ''}`} />
-                Billing Queue
-                {activeTab === 'billing_history' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
-              </button>
-            )}
-
-            {/* Admin only */}
-            {userRole === 'Admin' && (
-              <>
-                <div className="pt-3 pb-1 px-3">
-                  <p className="text-slate-600 text-[9px] font-bold uppercase tracking-widest">Administration</p>
+                  {['Admin', 'Receptionist'].includes(userRole) && (
+                    <button
+                      onClick={() => { setActiveTab('doctor_console'); setMobileMenuOpen(false); }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
+                        activeTab === 'doctor_console' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      style={activeTab === 'doctor_console' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
+                    >
+                      <Brain className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'doctor_console' ? 'text-teal-400' : ''}`} />
+                      Doctor's Desk
+                      <span className="ml-auto flex items-center gap-1 bg-violet-500/15 text-violet-300 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                        <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" />AI
+                      </span>
+                    </button>
+                  )}
                 </div>
-                {[['catalog','Services Catalog', FileText],
-                  ['users','Staff Accounts', UserPlus],
-                  ['audit_logs','Audit Logs', History],
-                  ['settings','Hospital Settings', SettingsIcon]
-                ].map(([tab, label, Icon]) => (
-                  <button key={tab}
-                    onClick={() => { setActiveTab(tab); setMobileMenuOpen(false); }}
+              </div>
+            )}
+
+            {/* SECTION 2: FINANCIAL & BILLING */}
+            {['Admin', 'Accountant'].includes(userRole) && (
+              <div>
+                <p className="px-3 pb-1.5 text-slate-500 text-[10px] font-bold uppercase tracking-wider">Financial & Billing</p>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => { setActiveTab('billing_history'); setMobileMenuOpen(false); }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
-                      activeTab === tab ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+                      activeTab === 'billing_history' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
                     }`}
-                    style={activeTab === tab ? {background:'linear-gradient(90deg, rgba(20,184,166,0.2), rgba(20,184,166,0.05))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
+                    style={activeTab === 'billing_history' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
                   >
-                    <Icon className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === tab ? 'text-teal-400' : ''}`} />
-                    {label}
-                    {activeTab === tab && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                    <CreditCard className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'billing_history' ? 'text-teal-400' : ''}`} />
+                    Billing Queue
+                    {activeTab === 'billing_history' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
                   </button>
-                ))}
-              </>
+
+                  {userRole === 'Admin' && (
+                    <button
+                      onClick={() => { setActiveTab('catalog'); setMobileMenuOpen(false); }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
+                        activeTab === 'catalog' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      style={activeTab === 'catalog' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
+                    >
+                      <FileText className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'catalog' ? 'text-teal-400' : ''}`} />
+                      Services Catalog
+                      {activeTab === 'catalog' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* SECTION 3: ANALYTICS & INSIGHTS */}
+            {userRole !== 'Receptionist' && (
+              <div>
+                <p className="px-3 pb-1.5 text-slate-500 text-[10px] font-bold uppercase tracking-wider">Analytics & Performance</p>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
+                      activeTab === 'dashboard' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    style={activeTab === 'dashboard' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
+                  >
+                    <Grid className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'dashboard' ? 'text-teal-400' : ''}`} />
+                    Executive Dashboard
+                    {activeTab === 'dashboard' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                  </button>
+
+                  <button
+                    onClick={() => { setActiveTab('roi_calculator'); setMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
+                      activeTab === 'roi_calculator' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    style={activeTab === 'roi_calculator' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
+                  >
+                    <TrendingUp className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'roi_calculator' ? 'text-teal-400' : ''}`} />
+                    ROI & Business Model
+                    {activeTab === 'roi_calculator' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* SECTION 4: ADMINISTRATION */}
+            {userRole === 'Admin' && (
+              <div>
+                <p className="px-3 pb-1.5 text-slate-500 text-[10px] font-bold uppercase tracking-wider">Administration</p>
+                <div className="space-y-1">
+                  {[
+                    ['users','Staff Accounts', UserPlus],
+                    ['audit_logs','Audit Logs', History],
+                    ['settings','Hospital Settings', SettingsIcon]
+                  ].map(([tab, label, Icon]) => (
+                    <button key={tab}
+                      onClick={() => { setActiveTab(tab); setMobileMenuOpen(false); }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
+                        activeTab === tab ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      style={activeTab === tab ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
+                    >
+                      <Icon className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === tab ? 'text-teal-400' : ''}`} />
+                      {label}
+                      {activeTab === tab && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </nav>
         </div>
@@ -1321,10 +1438,22 @@ function App() {
         {/* HEADER BAR */}
         <header className="sticky top-0 z-30 px-4 md:px-6 py-3 flex items-center justify-between gap-4 backdrop-blur-md flex-shrink-0"
           style={{background:'rgba(240,244,248,0.85)', borderBottom:'1px solid rgba(0,0,0,0.06)'}}>
-          <div>
-            <h1 className="text-lg font-black text-slate-900 tracking-tight leading-tight">
+          <div className="flex items-center gap-3">
+            {/* Toggle Sidebar Button for Desktop */}
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="hidden md:flex items-center justify-center p-2 text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors shadow-2xs"
+              title={sidebarCollapsed ? "Show Sidebar" : "Hide Sidebar"}
+            >
+              {sidebarCollapsed ? <PanelLeft className="w-5 h-5 text-teal-600" /> : <PanelLeftClose className="w-5 h-5 text-slate-500" />}
+            </button>
+
+            <div>
+              <h1 className="text-lg font-black text-slate-900 tracking-tight leading-tight">
               {activeTab === 'dashboard' && 'Dashboard Overview'}
               {activeTab === 'search_register' && 'Patient Desk'}
+              {activeTab === 'doctor_console' && 'Doctor\'s Workspace'}
               {activeTab === 'billing_history' && 'Billing Operations'}
               {activeTab === 'roi_calculator' && 'ROI & Business Model'}
               {activeTab === 'catalog' && 'Services Catalog'}
@@ -1335,6 +1464,7 @@ function App() {
             <p className="text-slate-400 text-[11px] font-medium mt-0.5">
               {activeTab === 'dashboard' && 'Real-time financial summary • AI-powered insights'}
               {activeTab === 'search_register' && 'Search, register patients, log visits, AI clinical assistant'}
+              {activeTab === 'doctor_console' && 'Clinical consultation, prescription builder, multi-lingual summary & AI insights'}
               {activeTab === 'billing_history' && 'Process bills, clear balances, manage advances'}
               {activeTab === 'roi_calculator' && 'Interactive product ROI, GST tax compliance, and SaaS configurations'}
               {activeTab === 'catalog' && 'Edit service names, categories, and pricing'}
@@ -1343,8 +1473,20 @@ function App() {
               {activeTab === 'settings' && 'Hospital branding for receipt PDF rendering'}
             </p>
           </div>
+        </div>
 
           <div className="flex items-center gap-3 flex-shrink-0">
+            {/* Quick Command Palette trigger button */}
+            <button
+              type="button"
+              onClick={() => setCmdPaletteOpen(true)}
+              className="flex items-center gap-2 bg-white border border-slate-250 text-slate-600 hover:text-slate-900 hover:border-slate-350 text-xs font-semibold px-3 py-1.5 rounded-xl shadow-sm transition-all"
+            >
+              <Search className="w-3.5 h-3.5 text-teal-600" />
+              <span className="hidden md:inline">Quick Search...</span>
+              <kbd className="kbd-badge">Ctrl K</kbd>
+            </button>
+
             {/* Live badge */}
             <div className="hidden sm:flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -1356,7 +1498,7 @@ function App() {
         </header>
 
         {/* Page content padding */}
-        <div className="flex-1 overflow-y-auto md:overflow-hidden p-4 md:p-5 min-h-0">
+        <div className="flex-1 overflow-y-auto md:overflow-hidden p-0 min-h-0">
 
         {/* ----------------------------------------------------
             TAB 1: DASHBOARD
@@ -1403,6 +1545,7 @@ function App() {
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             patients={patients}
+            unpaidBills={unpaidBills}
             selectedPatient={selectedPatient}
             patientHistory={patientHistory}
             newPatient={newPatient}
@@ -1424,6 +1567,10 @@ function App() {
             setAiExplanation={setAiExplanation}
             aiRecommenderVisitId={aiRecommenderVisitId}
             setAiRecommenderVisitId={setAiRecommenderVisitId}
+            prescAutoFillLoading={prescAutoFillLoading}
+            prescUnmatchedItems={prescUnmatchedItems}
+            prescAutoFillVisitId={prescAutoFillVisitId}
+            fetchPrescriptionSuggestedItems={fetchPrescriptionSuggestedItems}
             fetchPatients={fetchPatients}
             handleSelectPatient={handleSelectPatient}
             handleSoftDeletePatient={handleSoftDeletePatient}
@@ -1443,6 +1590,7 @@ function App() {
             handleRegisterPatient={handleRegisterPatient}
             handleCreateBill={handleCreateBill}
           />
+
         )}
 
         {/* ----------------------------------------------------
@@ -1770,6 +1918,135 @@ function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ----------------------------------------------------
+          COMMAND PALETTE (CTRL + K)
+          ---------------------------------------------------- */}
+      {cmdPaletteOpen && (
+        <div className="fixed inset-0 command-palette-backdrop z-50 flex items-start justify-center pt-16 md:pt-24 px-4 animate-in fade-in duration-200">
+          <div className="command-palette-box w-full max-w-2xl flex flex-col max-h-[80vh] shadow-2xl animate-in zoom-in-95 duration-200">
+            {/* Search Input Bar */}
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
+              <Search className="w-5 h-5 text-teal-600 flex-shrink-0" />
+              <input
+                type="text"
+                autoFocus
+                placeholder="Search tabs, commands, actions... (e.g. Doctor, Bill, Patient)"
+                className="w-full bg-transparent text-slate-800 text-base font-medium placeholder-slate-400 focus:outline-none"
+                value={cmdSearch}
+                onChange={(e) => setCmdSearch(e.target.value)}
+              />
+              <button
+                onClick={() => setCmdPaletteOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-xs font-bold"
+              >
+                ESC
+              </button>
+            </div>
+
+            {/* Command List Results */}
+            <div className="p-3 overflow-y-auto space-y-4">
+              {/* NAVIGATION COMMANDS */}
+              <div>
+                <p className="px-3 pb-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Navigation & Views</p>
+                <div className="space-y-1">
+                  {[
+                    { id: 'dashboard', label: 'Executive Dashboard Overview', icon: Grid, category: 'Analytics', roles: ['Admin', 'Accountant'] },
+                    { id: 'doctor_console', label: 'Doctor Clinical Workspace & AI Assistant', icon: Brain, category: 'Clinical', roles: ['Admin', 'Receptionist'] },
+                    { id: 'search_register', label: 'Patient Desk & Registration', icon: Search, category: 'Clinical', roles: ['Admin', 'Receptionist', 'Accountant'] },
+                    { id: 'billing_history', label: 'Billing Operations & Settlement Queue', icon: CreditCard, category: 'Financial', roles: ['Admin', 'Accountant'] },
+                    { id: 'catalog', label: 'Services & Diagnostic Test Catalog', icon: FileText, category: 'Financial', roles: ['Admin'] },
+                    { id: 'roi_calculator', label: 'ROI & SaaS Pricing Calculator', icon: TrendingUp, category: 'Analytics', roles: ['Admin', 'Accountant'] },
+                    { id: 'users', label: 'Staff User Accounts & Credentials', icon: UserPlus, category: 'Admin', roles: ['Admin'] },
+                    { id: 'audit_logs', label: 'System Action Audit Trail', icon: History, category: 'Admin', roles: ['Admin'] },
+                    { id: 'settings', label: 'Hospital Settings & PDF Branding', icon: SettingsIcon, category: 'Admin', roles: ['Admin'] },
+                  ]
+                  .filter(item => item.roles.includes(userRole))
+                  .filter(item => item.label.toLowerCase().includes(cmdSearch.toLowerCase()) || item.category.toLowerCase().includes(cmdSearch.toLowerCase()))
+                  .map(item => {
+                    const IconComp = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setActiveTab(item.id);
+                          setCmdPaletteOpen(false);
+                          setCmdSearch('');
+                        }}
+                        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl hover:bg-teal-50 text-slate-700 hover:text-teal-900 transition-all text-left group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-slate-100 group-hover:bg-teal-100 flex items-center justify-center text-slate-500 group-hover:text-teal-600 transition-colors">
+                            <IconComp className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="text-sm font-bold block">{item.label}</span>
+                            <span className="text-[10px] text-slate-400 font-medium">{item.category} Module</span>
+                          </div>
+                        </div>
+                        <span className="text-xs font-semibold text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity">Jump to →</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* QUICK ACTIONS */}
+              <div>
+                <p className="px-3 pb-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Quick Shortcuts</p>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => {
+                      setActiveTab('search_register');
+                      setCmdPaletteOpen(false);
+                      setCmdSearch('');
+                    }}
+                    className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl hover:bg-violet-50 text-slate-700 hover:text-violet-900 transition-all text-left group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center text-violet-600">
+                        <UserPlus className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-bold block">Register New Patient</span>
+                        <span className="text-[10px] text-slate-400 font-medium">Open registration form at Patient Desk</span>
+                      </div>
+                    </div>
+                    <span className="kbd-badge">Shift + P</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('doctor_console');
+                      setCmdPaletteOpen(false);
+                      setCmdSearch('');
+                    }}
+                    className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-emerald-50 text-slate-700 hover:text-emerald-900 transition-all text-left group"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
+                      <Brain className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-bold block">Launch AI Consultation Assistant</span>
+                      <span className="text-[10px] text-slate-400 font-medium">Prescription builder with multi-lingual voice summary</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+              <div className="flex items-center gap-3">
+                <span><kbd className="kbd-badge">↑↓</kbd> Navigate</span>
+                <span><kbd className="kbd-badge">↵</kbd> Select</span>
+                <span><kbd className="kbd-badge">ESC</kbd> Close</span>
+              </div>
+              <span className="font-bold text-slate-500 text-[10px]">HospiSynAI Command Hub</span>
+            </div>
           </div>
         </div>
       )}
