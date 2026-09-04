@@ -233,6 +233,11 @@ export default function PatientSearchTab({
   const [anomalyCheckLoading, setAnomalyCheckLoading] = React.useState(false);
   const [anomalyResult, setAnomalyResult] = React.useState(null);
 
+  // Rate Verification States (NHA / CGHS / Anakin MCP)
+  const [rateVerificationLoading, setRateVerificationLoading] = React.useState(false);
+  const [rateVerificationResult, setRateVerificationResult] = React.useState(null);
+  const [showRateModal, setShowRateModal] = React.useState(false);
+
   const [downloadPrescriptionLoading, setDownloadPrescriptionLoading] = React.useState(false);
   const STATIC_BASE = import.meta.env.VITE_STATIC_BASE_URL || 'http://localhost:5000';
 
@@ -353,6 +358,62 @@ export default function PatientSearchTab({
     } finally {
       setAnomalyCheckLoading(false);
     }
+  };
+
+  const handleVerifyExternalRates = async () => {
+    if (!billItems || billItems.length === 0) {
+      showToast("Add items to the bill before verifying external rates.", "warning");
+      return;
+    }
+    setRateVerificationLoading(true);
+    try {
+      const itemsPayload = billItems.map(item => ({
+        service_name: item.service_name,
+        billed_amount: parseFloat(item.amount)
+      }));
+      const res = await fetch(`${API_BASE}/bills/verify-external-rates`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ items: itemsPayload })
+      });
+      if (!res.ok) throw new Error("External rate verification failed");
+      const data = await res.json();
+      setRateVerificationResult(data);
+      setShowRateModal(true);
+      if (data.overall_status === 'overpriced_detected') {
+        showToast(`Govt NHA Rate Warning: ${data.summary}`, 'warning');
+      } else {
+        showToast("Rate Verification Passed: All items compliant with NHA/CGHS rate caps.", "success");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Rate verification service offline.", "error");
+    } finally {
+      setRateVerificationLoading(false);
+    }
+  };
+
+  const handleAutoResolveInvoice = () => {
+    if (!anomalyResult || !anomalyResult.auto_corrections) return;
+    const { corrected_items, action_summary, savings_amount } = anomalyResult.auto_corrections;
+    
+    const updatedItems = corrected_items.map(ci => ({
+      service_id: null,
+      service_name: ci.service_name,
+      amount: ci.amount
+    }));
+    
+    setBillItems(updatedItems);
+    setAnomalyResult({
+      status: 'clear',
+      issues: [],
+      summary: `✨ AI Auto-Resolved: ${action_summary}`,
+      safe_to_proceed: true,
+      auto_corrections: null
+    });
+    
+    const savingsMsg = savings_amount > 0 ? ` Saved ₹${savings_amount.toFixed(2)}!` : '';
+    showToast(`🎉 AI Agent auto-resolved billing anomalies! ${action_summary}${savingsMsg}`, 'success');
   };
 
   React.useEffect(() => {
@@ -1168,46 +1229,92 @@ export default function PatientSearchTab({
 
                                   {/* AI Billing Auditor */}
                                   <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 space-y-1 flex-shrink-0">
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex items-center justify-between gap-1">
                                       <div className="flex items-center gap-1 text-[10px] font-bold text-slate-700">
                                         <Brain className="w-3.5 h-3.5 text-violet-500 animate-pulse" />
-                                        <span>AI Invoicing Audit</span>
+                                        <span>AI Auditor & NHA Rate Agent</span>
                                       </div>
-                                      <button
-                                        type="button"
-                                        onClick={() => runAnomalyCheck(vis)}
-                                        disabled={anomalyCheckLoading}
-                                        className="bg-violet-50 hover:bg-violet-100 text-violet-750 border border-violet-200 text-[9px] font-bold px-2 py-1 rounded transition-all flex items-center gap-1"
-                                      >
-                                        {anomalyCheckLoading ? (
-                                          <>
-                                            <span className="animate-spin w-2 h-2 border-t-2 border-violet-600 rounded-full inline-block"></span>
-                                            Auditing...
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Search className="w-2.5 h-2.5" />
-                                            Audit
-                                          </>
-                                        )}
-                                      </button>
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={handleVerifyExternalRates}
+                                          disabled={rateVerificationLoading}
+                                          className="bg-blue-50 hover:bg-blue-100 text-blue-750 border border-blue-200 text-[9px] font-bold px-2 py-1 rounded transition-all flex items-center gap-1 cursor-pointer"
+                                        >
+                                          {rateVerificationLoading ? (
+                                            <>
+                                              <span className="animate-spin w-2 h-2 border-t-2 border-blue-600 rounded-full inline-block"></span>
+                                              Verifying...
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Globe className="w-2.5 h-2.5 text-blue-600" />
+                                              NHA Rates
+                                            </>
+                                          )}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => runAnomalyCheck(vis)}
+                                          disabled={anomalyCheckLoading}
+                                          className="bg-violet-50 hover:bg-violet-100 text-violet-750 border border-violet-200 text-[9px] font-bold px-2 py-1 rounded transition-all flex items-center gap-1 cursor-pointer"
+                                        >
+                                          {anomalyCheckLoading ? (
+                                            <>
+                                              <span className="animate-spin w-2 h-2 border-t-2 border-violet-600 rounded-full inline-block"></span>
+                                              Auditing...
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Search className="w-2.5 h-2.5" />
+                                              Audit
+                                            </>
+                                          )}
+                                        </button>
+                                      </div>
                                     </div>
 
                                     {anomalyResult ? (
-                                      <div className={`p-1.5 rounded border text-[9px] ${
+                                      <div className={`p-2 rounded border text-[9px] ${
                                         anomalyResult.status === 'clear'
                                           ? 'bg-emerald-50/50 border-emerald-100 text-emerald-800'
                                           : anomalyResult.status === 'warning'
                                           ? 'bg-amber-50/50 border-amber-200 text-amber-800'
                                           : 'bg-rose-50/50 border-rose-200 text-rose-800'
                                       }`}>
-                                        <div className="flex items-center gap-1 font-bold">
-                                          {anomalyResult.status === 'clear' && <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />}
-                                          {anomalyResult.status === 'warning' && <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />}
-                                          {anomalyResult.status === 'critical' && <span className="w-1 h-1 rounded-full bg-rose-500 animate-pulse" />}
-                                          <span className="uppercase text-[8px] tracking-wider font-extrabold">{anomalyResult.status}</span>
+                                        <div className="flex items-center justify-between font-bold">
+                                          <div className="flex items-center gap-1">
+                                            {anomalyResult.status === 'clear' && <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />}
+                                            {anomalyResult.status === 'warning' && <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />}
+                                            {anomalyResult.status === 'critical' && <span className="w-1 h-1 rounded-full bg-rose-500 animate-pulse" />}
+                                            <span className="uppercase text-[8px] tracking-wider font-extrabold">{anomalyResult.status}</span>
+                                          </div>
+                                          {anomalyResult.auto_corrections && (
+                                            <span className="text-[8px] font-extrabold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
+                                              ✨ AI Auto-Fix Ready
+                                            </span>
+                                          )}
                                         </div>
                                         <p className="font-bold text-[9px] leading-snug mt-0.5">{anomalyResult.summary}</p>
+                                        
+                                        {/* Auto-Resolve Button */}
+                                        {anomalyResult.status !== 'clear' && anomalyResult.auto_corrections && (
+                                          <div className="mt-1.5 pt-1.5 border-t border-amber-200/60 flex items-center justify-between">
+                                            <span className="text-[8px] font-extrabold text-slate-600">
+                                              {anomalyResult.auto_corrections.savings_amount > 0
+                                                ? `Potential Savings: ₹${anomalyResult.auto_corrections.savings_amount.toFixed(2)}`
+                                                : 'Auto-Corrections Available'}
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={handleAutoResolveInvoice}
+                                              className="bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white text-[9px] font-black px-2 py-1 rounded-md shadow transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                                            >
+                                              <Sparkles className="w-2.5 h-2.5" />
+                                              Auto-Resolve Invoice
+                                            </button>
+                                          </div>
+                                        )}
                                       </div>
                                     ) : null}
                                   </div>
@@ -2354,6 +2461,131 @@ export default function PatientSearchTab({
           </div>
         );
       })()}
+
+      {/* NHA / CGHS Rate Verification Modal */}
+      {showRateModal && rateVerificationResult && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-violet-800 text-white p-5 flex justify-between items-center">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="bg-blue-500/30 text-blue-100 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded tracking-widest border border-blue-400/30">
+                    Live Web Reading Agent
+                  </span>
+                  <span className="bg-emerald-400/20 text-emerald-200 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded tracking-widest border border-emerald-400/30">
+                    Anakin MCP Enabled
+                  </span>
+                </div>
+                <h3 className="text-lg font-black tracking-tight mt-1 flex items-center gap-2">
+                  🌐 NHA & CGHS Government Rate Cap Audit
+                </h3>
+                <p className="text-xs text-blue-100/80 mt-0.5">
+                  Real-time benchmark comparison against Indian National Health Authority rate ceilings.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowRateModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold text-sm transition-all"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div className="p-5 max-h-[70vh] overflow-y-auto space-y-4">
+              {/* Overview Stats */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Billed</p>
+                  <p className="text-base font-black text-slate-800 mt-0.5">₹{rateVerificationResult.total_billed.toLocaleString()}</p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Govt NHA Cap Total</p>
+                  <p className="text-base font-black text-emerald-700 mt-0.5">₹{rateVerificationResult.total_benchmark.toLocaleString()}</p>
+                </div>
+                <div className={`border rounded-xl p-3 text-center ${
+                  rateVerificationResult.total_savings_opportunity > 0
+                    ? 'bg-rose-50 border-rose-200 text-rose-800'
+                    : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                }`}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider">Overcharge Variance</p>
+                  <p className="text-base font-black mt-0.5">
+                    {rateVerificationResult.total_savings_opportunity > 0
+                      ? `+₹${rateVerificationResult.total_savings_opportunity.toLocaleString()}`
+                      : 'Compliant'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Summary Banner */}
+              <div className={`p-3 rounded-xl border text-xs font-semibold ${
+                rateVerificationResult.overall_status === 'overpriced_detected'
+                  ? 'bg-amber-50 border-amber-200 text-amber-900'
+                  : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+              }`}>
+                {rateVerificationResult.summary}
+              </div>
+
+              {/* Items Breakdown Table */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
+                    <tr>
+                      <th className="p-3">Billed Item</th>
+                      <th className="p-3">Billed</th>
+                      <th className="p-3">Govt Cap</th>
+                      <th className="p-3">Status / Variance</th>
+                      <th className="p-3">Source</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {rateVerificationResult.results.map((item, i) => (
+                      <tr key={i} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="p-3">
+                          <p className="font-bold text-slate-800">{item.service_name}</p>
+                          <p className="text-[10px] text-slate-400">{item.official_name} • {item.authority}</p>
+                        </td>
+                        <td className="p-3 font-extrabold text-slate-700">₹{item.billed_amount.toFixed(2)}</td>
+                        <td className="p-3 font-extrabold text-emerald-700">₹{item.nha_cghs_rate.toFixed(2)}</td>
+                        <td className="p-3">
+                          {item.status === 'overpriced' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-200">
+                              Overpriced (+₹{item.variance_amount.toFixed(2)})
+                            </span>
+                          ) : item.status === 'subsidized' ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-200">
+                              Subsidized / Low
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              100% Compliant
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-[10px] font-semibold text-slate-500">{item.source}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-slate-50 border-t border-slate-200 p-4 flex justify-between items-center">
+              <span className="text-[11px] font-medium text-slate-500">
+                Powered by NHA PM-JAY & Anakin MCP Scraper Engine
+              </span>
+              <button
+                onClick={() => setShowRateModal(false)}
+                className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all"
+              >
+                Close Audit Report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

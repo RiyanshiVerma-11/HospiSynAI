@@ -358,28 +358,28 @@ export default function DoctorConsoleTab({
     <div className="flex flex-col lg:flex-row h-full w-full bg-white text-slate-800 overflow-hidden divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
       
       {/* Intake Waiting Queue Panel (Left) */}
-      <div className="w-full lg:w-[320px] lg:min-w-[320px] bg-slate-50/60 flex flex-col h-full overflow-hidden">
-        <div className="p-3.5 flex flex-col h-full overflow-hidden min-h-[300px] lg:min-h-0">
+      <div className="w-full lg:w-[250px] lg:min-w-[250px] bg-slate-50/60 flex flex-col h-full overflow-hidden">
+        <div className="p-2.5 flex flex-col h-full overflow-hidden min-h-[300px] lg:min-h-0">
           
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="font-extrabold text-slate-900 text-sm tracking-tight flex items-center gap-2 uppercase">
-              <Clock className="w-4 h-4 text-teal-600 animate-pulse" />
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="font-extrabold text-slate-900 text-xs tracking-tight flex items-center gap-1.5 uppercase">
+              <Clock className="w-3.5 h-3.5 text-teal-600 animate-pulse" />
               Intake Queue
             </h3>
             <button 
               onClick={fetchVisits} 
               disabled={visitsLoading}
-              className="text-xs text-teal-600 font-bold hover:underline"
+              className="text-[11px] text-teal-600 font-bold hover:underline"
             >
               Refresh
             </button>
           </div>
 
-          <div className="relative mb-3 flex-shrink-0">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          <div className="relative mb-2 flex-shrink-0">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
             <input
               type="text"
-              className="w-full bg-white border border-slate-250 rounded-lg pl-9 pr-3 py-2 text-sm placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all"
+              className="w-full bg-white border border-slate-250 rounded-lg pl-8 pr-2.5 py-1.5 text-xs placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all"
               placeholder="Search Queue..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -387,7 +387,7 @@ export default function DoctorConsoleTab({
           </div>
 
           {/* Status Filter Chips */}
-          <div className="flex flex-wrap gap-1.5 mb-3 flex-shrink-0">
+          <div className="flex flex-wrap gap-1 mb-2 flex-shrink-0">
             {[
               { id: 'All', label: 'All', count: visits.length, activeClass: 'bg-slate-900 text-white border-slate-900', inactiveClass: 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100' },
               { id: 'Waiting', label: 'Waiting', count: visits.filter(v => v.status !== 'Critical' && v.status !== 'Completed' && !v.diagnosis).length, activeClass: 'bg-amber-600 text-white border-amber-600 shadow-sm', inactiveClass: 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100/70' },
@@ -398,12 +398,12 @@ export default function DoctorConsoleTab({
                 key={chip.id}
                 type="button"
                 onClick={() => setStatusFilter(chip.id)}
-                className={`text-xs px-2.5 py-1 rounded-lg border font-bold transition-all flex items-center gap-1.5 ${
+                className={`text-[10px] px-2 py-0.5 rounded-md border font-bold transition-all flex items-center gap-1 ${
                   statusFilter === chip.id ? chip.activeClass : chip.inactiveClass
                 }`}
               >
                 <span>{chip.label}</span>
-                <span className={`text-xs px-1.5 py-0.2 rounded-full ${statusFilter === chip.id ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-700'}`}>
+                <span className={`text-[9.5px] px-1 py-0.2 rounded-full ${statusFilter === chip.id ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-700'}`}>
                   {chip.count}
                 </span>
               </button>
@@ -411,18 +411,18 @@ export default function DoctorConsoleTab({
           </div>
 
           {/* Intake queue listings */}
-          <div className="space-y-2 md:flex-1 md:overflow-y-auto pr-1 min-h-0 compact-scroll">
+          <div className="space-y-1.5 md:flex-1 md:overflow-y-auto pr-1 min-h-0 compact-scroll">
             {visitsLoading ? (
               <div className="py-8 text-center">
-                <Loader2 className="w-6 h-6 animate-spin mx-auto text-teal-600 mb-2" />
-                <span className="text-xs text-slate-500 font-semibold">Loading intake queue...</span>
+                <Loader2 className="w-5 h-5 animate-spin mx-auto text-teal-600 mb-1.5" />
+                <span className="text-[11px] text-slate-500 font-semibold">Loading intake queue...</span>
               </div>
             ) : (
               filteredQueue.map((vis) => {
                 const hasDiagnosis = !!vis.diagnosis;
                 const getStatusDetails = () => {
                   if (vis.status === 'Critical') {
-                    return { label: 'Critical (Emergency)', style: 'bg-rose-100 text-rose-800 border-rose-200 animate-pulse font-black' };
+                    return { label: 'Critical', style: 'bg-rose-100 text-rose-800 border-rose-200 animate-pulse font-black' };
                   }
                   if (vis.status === 'Completed' || hasDiagnosis) {
                     return { label: 'Completed', style: 'bg-emerald-100 text-emerald-800 border-emerald-200 font-bold' };
@@ -434,26 +434,26 @@ export default function DoctorConsoleTab({
                   <div
                     key={vis.id}
                     onClick={() => handleSelectVisit(vis)}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all flex flex-col gap-1.5 ${
+                    className={`p-2 rounded-lg border cursor-pointer transition-all flex flex-col gap-1 ${
                       selectedVisit?.id === vis.id
                         ? 'border-teal-500 bg-white shadow-sm ring-1 ring-teal-500/30'
                         : 'border-slate-200/80 hover:border-slate-300 hover:bg-white bg-white/70'
                     }`}
                   >
                     <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-mono uppercase">{vis.visit_id.slice(-8)}</span>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${statusInfo.style}`}>
+                      <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-mono uppercase">{vis.visit_id.slice(-8)}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full border ${statusInfo.style}`}>
                         {statusInfo.label}
                       </span>
                     </div>
 
                     <div>
-                      <h4 className="font-bold text-slate-900 text-sm leading-snug">{vis.patient?.name || 'Unknown Patient'}</h4>
-                      <p className="text-xs text-slate-600 mt-0.5 font-medium">
+                      <h4 className="font-bold text-slate-900 text-xs leading-snug">{vis.patient?.name || 'Unknown Patient'}</h4>
+                      <p className="text-[10.5px] text-slate-500 mt-0.5 font-medium leading-none">
                         {vis.patient?.age} Yrs • {vis.patient?.gender} • {vis.patient?.mobile_number}
                       </p>
                       {vis.reason && (
-                        <p className="text-xs text-slate-600 italic mt-1 font-medium truncate">"{vis.reason}"</p>
+                        <p className="text-[10px] text-slate-400 italic mt-0.5 font-medium truncate">"{vis.reason}"</p>
                       )}
                     </div>
                   </div>
@@ -462,7 +462,7 @@ export default function DoctorConsoleTab({
             )}
 
             {!visitsLoading && filteredQueue.length === 0 && (
-              <p className="text-center text-slate-400 text-sm py-8 font-medium">No patients in the queue.</p>
+              <p className="text-center text-slate-400 text-xs py-8 font-medium">No patients in the queue.</p>
             )}
           </div>
 
@@ -574,18 +574,18 @@ export default function DoctorConsoleTab({
                 /* Clinical Workspace Grid */
                 <div className="h-full overflow-y-auto flex flex-col xl:flex-row gap-6 pr-1 compact-scroll">
                   
-                  {/* Left Column: Doctor Entry Forms — 65% width */}
-                  <div className="space-y-4 pr-2 border-r border-slate-200 xl:w-[65%] xl:flex-shrink-0">
+                    {/* Left Column: Doctor Entry Forms — 65% width */}
+                  <div className="space-y-3.5 pr-2 border-r border-slate-200 xl:w-[65%] xl:flex-shrink-0">
                     <div className="flex justify-between items-center pb-2 border-b border-slate-200">
-                      <span className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                        <FileText className="w-4.5 h-4.5 text-teal-600" />
+                      <span className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <FileText className="w-4 h-4 text-teal-600" />
                         Clinical Records
                       </span>
                       <button
                         type="button"
                         onClick={handleAiSuggestTreatment}
                         disabled={aiPrescribeLoading}
-                        className={`text-xs font-bold text-white px-3.5 py-1.5 rounded-lg shadow-xs transition-all flex items-center gap-1.5 ${
+                        className={`text-[11px] font-bold text-white px-2.5 py-1 rounded-lg shadow-xs transition-all flex items-center gap-1.5 ${
                           aiPrescribeLoading
                             ? 'bg-violet-400 cursor-not-allowed'
                             : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700'
@@ -593,24 +593,24 @@ export default function DoctorConsoleTab({
                       >
                         {aiPrescribeLoading ? (
                           <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
                             AI Prescribing...
                           </>
                         ) : (
                           <>
-                            <Brain className="w-4 h-4 text-violet-100" />
+                            <Brain className="w-3.5 h-3.5 text-violet-100" />
                             AI Suggest Treatment
                           </>
                         )}
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                       <div>
-                        <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5 flex justify-between items-center">
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex justify-between items-center">
                           <span>Chief Complaints</span>
                         </label>
-                        <div className="flex flex-wrap gap-1 mb-2 max-h-[50px] overflow-y-auto pb-1 compact-scroll">
+                        <div className="flex flex-wrap gap-1 mb-1.5 max-h-[46px] overflow-y-auto pb-0.5 compact-scroll">
                           {COMMON_COMPLAINTS.map((tag) => {
                             const isSelected = (summaryForm.chief_complaints || '').includes(tag);
                             return (
@@ -618,7 +618,7 @@ export default function DoctorConsoleTab({
                                 key={tag}
                                 type="button"
                                 onClick={() => handleToggleTag('chief_complaints', tag)}
-                                className={`text-xs px-2.5 py-1 rounded-md border transition-all font-semibold ${
+                                className={`text-[10px] px-2 py-0.5 rounded border transition-all font-semibold ${
                                   isSelected 
                                     ? 'bg-teal-600 text-white border-teal-600' 
                                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-teal-50'
@@ -630,7 +630,7 @@ export default function DoctorConsoleTab({
                           })}
                         </div>
                         <textarea
-                          className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all h-20 resize-none"
+                          className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all h-18 resize-none"
                           placeholder="Fever, Dry Cough, Throat irritation..."
                           value={summaryForm.chief_complaints}
                           onChange={(e) => setSummaryForm({ ...summaryForm, chief_complaints: e.target.value })}
@@ -638,9 +638,9 @@ export default function DoctorConsoleTab({
                       </div>
 
                       <div>
-                        <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Diagnosis</label>
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Diagnosis</label>
                         <textarea
-                          className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all h-28 resize-none"
+                          className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all h-26 resize-none"
                           placeholder="e.g. Upper Respiratory Tract Infection (URTI)"
                           value={summaryForm.diagnosis}
                           onChange={(e) => setSummaryForm({ ...summaryForm, diagnosis: e.target.value })}
@@ -649,25 +649,25 @@ export default function DoctorConsoleTab({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5 flex justify-between items-center">
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex justify-between items-center">
                         <span>Prescribe Medicines</span>
-                        <span className="text-xs text-teal-700 font-bold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">Prescription Builder</span>
+                        <span className="text-[10px] text-teal-700 font-bold bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">Prescription Builder</span>
                       </label>
                       
-                      <div className="bg-slate-50/80 p-3 rounded-lg border border-slate-200 mb-2.5 space-y-2.5 text-xs">
-                        <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-slate-50/80 p-2.5 rounded-lg border border-slate-200 mb-2 space-y-2 text-xs">
+                        <div className="grid grid-cols-2 gap-2.5">
                           <div>
-                            <span className="text-xs text-slate-600 font-bold uppercase tracking-wider block mb-1">Timing</span>
-                            <div className="flex gap-1.5">
+                            <span className="text-[10px] text-slate-600 font-bold uppercase tracking-wider block mb-1">Timing</span>
+                            <div className="flex gap-1">
                               {['After Meals', 'Empty Stomach'].map((t) => (
                                 <button
                                   key={t}
                                   type="button"
                                   onClick={() => setPrescTiming(t)}
-                                  className={`flex-1 text-xs py-1.5 rounded-md font-bold border transition-all ${
+                                  className={`flex-1 text-[10px] py-1 rounded font-bold border transition-all ${
                                     prescTiming === t 
                                       ? 'bg-teal-600 text-white border-teal-600' 
-                                      : 'bg-white text-slate-700 border-slate-300'
+                                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                                   }`}
                                 >
                                   {t === 'After Meals' ? 'Pc (After Meals)' : 'Ac (Empty Stomach)'}
@@ -676,11 +676,11 @@ export default function DoctorConsoleTab({
                             </div>
                           </div>
                           <div>
-                            <span className="text-xs text-slate-600 font-bold uppercase tracking-wider block mb-1">Frequency</span>
+                            <span className="text-[10px] text-slate-600 font-bold uppercase tracking-wider block mb-1">Frequency</span>
                             <select
                               value={prescFrequency}
                               onChange={(e) => setPrescFrequency(e.target.value)}
-                              className="w-full bg-white border border-slate-300 rounded-md px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-teal-500"
+                              className="w-full bg-white border border-slate-300 rounded-md px-2 py-1 text-[11px] font-bold text-slate-800 focus:outline-none focus:border-teal-500"
                             >
                               <option value="Once Daily (OD)">OD (Once Daily)</option>
                               <option value="Twice Daily (BD)">BD (Twice Daily)</option>
@@ -691,13 +691,13 @@ export default function DoctorConsoleTab({
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-3 items-center">
+                        <div className="grid grid-cols-2 gap-2.5 items-center">
                           <div>
-                            <span className="text-xs text-slate-600 font-bold uppercase tracking-wider block mb-1">Duration</span>
+                            <span className="text-[10px] text-slate-600 font-bold uppercase tracking-wider block mb-1">Duration</span>
                             <select
                               value={prescDuration}
                               onChange={(e) => setPrescDuration(e.target.value)}
-                              className="w-full bg-white border border-slate-300 rounded-md px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-teal-500"
+                              className="w-full bg-white border border-slate-300 rounded-md px-2 py-1 text-[11px] font-bold text-slate-800 focus:outline-none focus:border-teal-500"
                             >
                               <option value="3 Days">3 Days</option>
                               <option value="5 Days">5 Days</option>
@@ -708,7 +708,7 @@ export default function DoctorConsoleTab({
                             </select>
                           </div>
                           <div>
-                            <span className="text-xs text-teal-700 font-extrabold uppercase tracking-wider block mb-1">Quick Datastore</span>
+                            <span className="text-[10px] text-teal-700 font-extrabold uppercase tracking-wider block mb-1">Quick Datastore</span>
                             <select
                               onChange={(e) => {
                                 if (e.target.value) {
@@ -717,7 +717,7 @@ export default function DoctorConsoleTab({
                                   e.target.value = '';
                                 }
                               }}
-                              className="w-full bg-white border border-teal-300 rounded-md px-2.5 py-1.5 text-xs font-bold text-teal-900 focus:outline-none focus:border-teal-500"
+                              className="w-full bg-white border border-teal-300 rounded-md px-2 py-1 text-[11px] font-bold text-teal-900 focus:outline-none focus:border-teal-500"
                             >
                               <option value="">-- Select Medicine --</option>
                               {MEDICINE_DATASTORE.map((m, idx) => (
@@ -732,7 +732,7 @@ export default function DoctorConsoleTab({
                         <input
                           type="text"
                           placeholder="🔍 Search medicine catalog (e.g. Dolo, Pan, Azee...)"
-                          className="w-full bg-white border border-teal-200 rounded-lg px-3 py-2 text-sm placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all text-slate-800"
+                          className="w-full bg-white border border-teal-200 rounded-lg px-2.5 py-1.5 text-xs placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all text-slate-800"
                           value={medicineSearch}
                           onChange={(e) => setMedicineSearch(e.target.value)}
                         />
@@ -744,10 +744,10 @@ export default function DoctorConsoleTab({
                                 key={idx}
                                 type="button"
                                 onClick={() => handleAddMedicineFromSuggest(med)}
-                                className="w-full text-left px-3 py-2.5 text-sm text-slate-800 hover:bg-teal-50 hover:text-teal-950 transition-colors font-medium flex justify-between items-center"
+                                className="w-full text-left px-2.5 py-2 text-xs text-slate-800 hover:bg-teal-50 hover:text-teal-950 transition-colors font-medium flex justify-between items-center"
                               >
                                 <span>{med.name}</span>
-                                <span className="text-xs text-teal-700 bg-teal-50 px-2 py-0.5 rounded font-bold shrink-0">{med.dosage.split(' for')[0]}</span>
+                                <span className="text-[10px] text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded font-bold shrink-0">{med.dosage.split(' for')[0]}</span>
                               </button>
                             ))}
                           </div>
@@ -755,19 +755,19 @@ export default function DoctorConsoleTab({
                       </div>
 
                       <textarea
-                        className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 font-normal transition-all h-24 resize-none"
+                        className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 font-normal transition-all h-20 resize-none"
                         placeholder="1. Dolo 650mg - Twice Daily (BD) after meals for 3 Days"
                         value={summaryForm.medicines_list}
                         onChange={(e) => setSummaryForm({ ...summaryForm, medicines_list: e.target.value })}
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                       <div>
-                        <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5 flex justify-between items-center">
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex justify-between items-center">
                           <span>Recommend Tests</span>
                         </label>
-                        <div className="flex flex-wrap gap-1 mb-2 max-h-[50px] overflow-y-auto pb-1 compact-scroll">
+                        <div className="flex flex-wrap gap-1 mb-1.5 max-h-[46px] overflow-y-auto pb-0.5 compact-scroll">
                           {COMMON_TESTS.map((tag) => {
                             const isSelected = (summaryForm.tests_list || '').toLowerCase().includes(tag.toLowerCase());
                             return (
@@ -775,7 +775,7 @@ export default function DoctorConsoleTab({
                                 key={tag}
                                 type="button"
                                 onClick={() => handleToggleTag('tests_list', tag)}
-                                className={`text-xs px-2.5 py-1 rounded-md border transition-all font-semibold ${
+                                className={`text-[10px] px-2 py-0.5 rounded border transition-all font-semibold ${
                                   isSelected 
                                     ? 'bg-teal-600 text-white border-teal-600' 
                                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-teal-50'
@@ -787,7 +787,7 @@ export default function DoctorConsoleTab({
                           })}
                         </div>
                         <textarea
-                          className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 font-normal transition-all h-20 resize-none"
+                          className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 font-normal transition-all h-18 resize-none"
                           placeholder="CBC, Chest X-ray..."
                           value={summaryForm.tests_list}
                           onChange={(e) => setSummaryForm({ ...summaryForm, tests_list: e.target.value })}
@@ -795,10 +795,10 @@ export default function DoctorConsoleTab({
                       </div>
 
                       <div>
-                        <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5 flex justify-between items-center">
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex justify-between items-center">
                           <span>Lifestyle Advice</span>
                         </label>
-                        <div className="flex flex-wrap gap-1 mb-2 max-h-[50px] overflow-y-auto pb-1 compact-scroll">
+                        <div className="flex flex-wrap gap-1 mb-1.5 max-h-[46px] overflow-y-auto pb-0.5 compact-scroll">
                           {COMMON_ADVICE.map((tag) => {
                             const isSelected = (summaryForm.advice || '').includes(tag);
                             return (
@@ -806,7 +806,7 @@ export default function DoctorConsoleTab({
                                 key={tag}
                                 type="button"
                                 onClick={() => handleToggleTag('advice', tag)}
-                                className={`text-xs px-2.5 py-1 rounded-md border transition-all font-semibold ${
+                                className={`text-[10px] px-2 py-0.5 rounded border transition-all font-semibold ${
                                   isSelected 
                                     ? 'bg-teal-600 text-white border-teal-600' 
                                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-teal-50'
@@ -818,7 +818,7 @@ export default function DoctorConsoleTab({
                           })}
                         </div>
                         <textarea
-                          className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 font-normal transition-all h-20 resize-none"
+                          className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 font-normal transition-all h-18 resize-none"
                           placeholder="Drink warm water, take complete bed rest..."
                           value={summaryForm.advice}
                           onChange={(e) => setSummaryForm({ ...summaryForm, advice: e.target.value })}
@@ -826,12 +826,12 @@ export default function DoctorConsoleTab({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-end">
                       <div>
-                        <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Follow-up Info</label>
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Follow-up Info</label>
                         <input
                           type="text"
-                          className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all"
+                          className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all"
                           placeholder="e.g. Return in 5 days or if fever escalates"
                           value={summaryForm.follow_up_date}
                           onChange={(e) => setSummaryForm({ ...summaryForm, follow_up_date: e.target.value })}
@@ -842,9 +842,9 @@ export default function DoctorConsoleTab({
                           type="button"
                           onClick={handleSaveSummary}
                           disabled={summarySaving}
-                          className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-xs transition-all"
+                          className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 shadow-xs transition-all"
                         >
-                          {summarySaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                          {summarySaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                           Save Notes
                         </button>
                       </div>
@@ -852,18 +852,18 @@ export default function DoctorConsoleTab({
                   </div>
 
                   {/* Right Column: AI Summary & Multilingual Handout — 35% width */}
-                  <div className="flex-1 space-y-4 pr-1 flex flex-col justify-between min-h-[350px]">
-                    <div className="space-y-4">
+                  <div className="flex-1 space-y-3 pr-1 flex flex-col justify-between min-h-[350px]">
+                    <div className="space-y-3">
                       <div className="flex justify-between items-center pb-2 border-b border-slate-200">
-                        <span className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                          <Sparkles className="w-4.5 h-4.5 text-teal-600" />
+                        <span className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-teal-600" />
                           Bilingual Daily Routine Handout
                         </span>
                         {summaryForm.patient_summary && !summaryGenerating && (
                           <button
                             type="button"
                             onClick={handleGenerateAiSummary}
-                            className="text-xs text-teal-700 hover:text-teal-900 font-bold flex items-center gap-1 underline font-sans"
+                            className="text-[11px] text-teal-700 hover:text-teal-900 font-bold flex items-center gap-1 underline font-sans"
                           >
                             Regenerate
                           </button>
@@ -871,13 +871,13 @@ export default function DoctorConsoleTab({
                       </div>
 
                       {/* Language Selection */}
-                      <div className="py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between gap-3">
+                      <div className="py-2 px-2.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between gap-2.5">
                         <div>
-                          <span className="text-xs text-slate-800 font-extrabold uppercase tracking-wider block">Target Indian Language</span>
-                          <span className="text-xs text-slate-500 mt-0.5 block leading-normal font-medium">Translates storytelling routines dynamically.</span>
+                          <span className="text-[11px] text-slate-800 font-extrabold uppercase tracking-wider block">Target Indian Language</span>
+                          <span className="text-[10px] text-slate-500 mt-0.5 block leading-normal font-medium">Translates storytelling routines dynamically.</span>
                         </div>
                         <select
-                          className="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-sm font-bold text-slate-800 focus:outline-none focus:border-teal-500 cursor-pointer"
+                          className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:border-teal-500 cursor-pointer"
                           value={selectedLanguage}
                           onChange={(e) => {
                             const newLang = e.target.value;
@@ -914,31 +914,31 @@ export default function DoctorConsoleTab({
                       </div>
 
                       {summaryError && (
-                        <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 text-rose-800 text-sm font-semibold leading-relaxed">
+                        <div className="bg-rose-50 border border-rose-200 rounded-lg p-2.5 text-rose-800 text-xs font-semibold leading-relaxed">
                           Error: {summaryError}
                         </div>
                       )}
 
                       {/* Summary Display Box */}
-                      <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/40 min-h-[240px] max-h-[360px] overflow-y-auto compact-scroll font-sans text-sm md:text-base leading-relaxed space-y-3">
+                      <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/40 min-h-[220px] max-h-[340px] overflow-y-auto compact-scroll font-sans text-xs leading-relaxed space-y-2.5">
                         {summaryGenerating ? (
-                          <div className="h-full flex flex-col items-center justify-center py-12 space-y-2">
-                            <Brain className="w-8 h-8 text-teal-600 animate-pulse" />
+                          <div className="h-full flex flex-col items-center justify-center py-10 space-y-2">
+                            <Brain className="w-7 h-7 text-teal-600 animate-pulse" />
                             <div className="flex items-center gap-1.5">
-                              <Loader2 className="w-4 h-4 animate-spin text-slate-600" />
-                              <span className="text-xs text-slate-600 font-bold uppercase tracking-wider">Generating bilingual instructions...</span>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-600" />
+                              <span className="text-[11px] text-slate-600 font-bold uppercase tracking-wider">Generating bilingual instructions...</span>
                             </div>
                           </div>
                         ) : (
                           summaryForm.patient_summary ? (
-                            <div className="whitespace-pre-line font-medium text-slate-800 text-sm md:text-base leading-relaxed">
+                            <div className="whitespace-pre-line font-medium text-slate-800 text-xs leading-relaxed">
                               {summaryForm.patient_summary}
                             </div>
                           ) : (
-                            <div className="py-12 text-center text-slate-400 italic space-y-2 font-medium">
-                              <Sparkles className="w-8 h-8 mx-auto text-slate-400" />
-                              <p className="text-sm text-slate-600 font-bold">Bilingual storytelling prescription summary not compiled yet.</p>
-                              <p className="text-xs font-normal not-italic text-slate-400">Click the generate button below to request AI translation.</p>
+                            <div className="py-10 text-center text-slate-400 italic space-y-1.5 font-medium">
+                              <Sparkles className="w-7 h-7 mx-auto text-slate-400" />
+                              <p className="text-xs text-slate-600 font-bold">Bilingual storytelling prescription summary not compiled yet.</p>
+                              <p className="text-[11px] font-normal not-italic text-slate-400">Click the generate button below to request AI translation.</p>
                             </div>
                           )
                         )}
@@ -946,21 +946,21 @@ export default function DoctorConsoleTab({
                     </div>
 
                     {/* Action buttons */}
-                    <div className="flex gap-3 pt-3 border-t border-slate-200">
+                    <div className="flex gap-2.5 pt-2.5 border-t border-slate-200">
                       <button
                         type="button"
                         onClick={handleGenerateAiSummary}
                         disabled={summaryGenerating || summarySaving}
-                        className="flex-1 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-sm py-3 px-4 rounded-lg shadow-sm flex items-center justify-center gap-2 transition-all"
+                        className="flex-1 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-xs py-2.5 px-3 rounded-lg shadow-xs flex items-center justify-center gap-1.5 transition-all"
                       >
                         {summaryGenerating ? (
                           <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
                             Analyzing Clinical Notes...
                           </>
                         ) : (
                           <>
-                            <Sparkles className="w-4.5 h-4.5" />
+                            <Sparkles className="w-4 h-4" />
                             Generate AI Summary ({selectedLanguage})
                           </>
                         )}

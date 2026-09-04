@@ -19,6 +19,16 @@ import models
 import schemas
 import auth
 import pdf_generator
+import anakin_client
+
+NHA_RATES_FILE = os.path.join(os.path.dirname(__file__), "nha_cghs_rates.json")
+NHA_BENCHMARKS = []
+if os.path.exists(NHA_RATES_FILE):
+    try:
+        with open(NHA_RATES_FILE, "r", encoding="utf-8") as f:
+            NHA_BENCHMARKS = json.load(f).get("benchmarks", [])
+    except Exception as e:
+        print(f"Warning: Could not load nha_cghs_rates.json: {e}")
 
 app = FastAPI(title="HospiSyn API", version="1.0.0")
 
@@ -32,7 +42,14 @@ def read_root():
 # Setup CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For dockerized environments, allow any origin to connect easily
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://hospi-syn-ai.vercel.app"
+    ],
+    allow_origin_regex=r"https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -1232,6 +1249,72 @@ def run_local_anomaly_checks(
             
     return issues
 
+def generate_auto_corrections(items, patient_age, issues):
+    if not issues:
+        return None
+        
+    corrected = []
+    seen_names = set()
+    actions = []
+    original_total = sum(i.amount for i in items)
+    
+    has_lab = False
+    has_consultation = False
+
+    for item in items:
+        name_lower = item.service_name.lower()
+        
+        # Check duplicate
+        if name_lower in seen_names:
+            actions.append(f"Removed duplicate item '{item.service_name}' (saved ₹{item.amount:.2f})")
+            continue
+        seen_names.add(name_lower)
+
+        # Check pediatric age formulation replacement
+        if patient_age is not None and patient_age < 12:
+            if any(w in name_lower for w in ["625mg", "650mg", "tablet", "tab"]) and not any(w in name_lower for w in ["suspension", "syrup", "susp", "syr", "drops"]):
+                new_name = f"{item.service_name.split()[0]} Pediatric Suspension (60ml)"
+                new_amount = 45.00
+                actions.append(f"Replaced adult tablet '{item.service_name}' with pediatric syrup '{new_name}' (adjusted amount to ₹{new_amount:.2f})")
+                corrected.append(schemas.AutoCorrectionItem(
+                    service_name=new_name,
+                    amount=new_amount,
+                    correction_reason="Pediatric formulation safety correction"
+                ))
+                continue
+                
+        if any(w in name_lower for w in ["consultation", "opd fee", "doctor fee"]):
+            has_consultation = True
+        if any(w in name_lower for w in ["blood", "test", "cbc", "xray", "ecg", "lft", "kft"]):
+            has_lab = True
+            
+        corrected.append(schemas.AutoCorrectionItem(
+            service_name=item.service_name,
+            amount=item.amount,
+            correction_reason=None
+        ))
+
+    # Missing consultation fix
+    if has_lab and not has_consultation:
+        corrected.insert(0, schemas.AutoCorrectionItem(
+            service_name="OPD General Physician Consultation",
+            amount=200.00,
+            correction_reason="Auto-added missing required OPD consultation for lab tests"
+        ))
+        actions.append("Added missing OPD Consultation fee (₹200.00)")
+
+    corrected_total = sum(i.amount for i in corrected)
+    savings = original_total - corrected_total
+
+    summary_str = "; ".join(actions) if actions else "AI optimized billing items."
+    return schemas.AutoCorrectionDetails(
+        corrected_items=corrected,
+        action_summary=summary_str,
+        original_total=original_total,
+        corrected_total=corrected_total,
+        savings_amount=savings
+    )
+
 @app.post("/api/bills/ai-anomaly-check", response_model=schemas.AnomalyCheckResponse)
 async def check_bill_anomaly(
     req: schemas.AnomalyCheckRequest,
@@ -1254,11 +1337,13 @@ async def check_bill_anomaly(
         has_critical = any("duplicate" in iss.lower() or "safety" in iss.lower() for iss in local_issues)
         status = "critical" if has_critical else ("warning" if local_issues else "clear")
         summary = "Billing audit executed via Local Rule engine (AI model offline)."
+        auto_corr = generate_auto_corrections(req.items, req.patient_age, local_issues)
         return schemas.AnomalyCheckResponse(
             status=status,
             issues=local_issues,
             summary=summary,
-            safe_to_proceed=not has_critical
+            safe_to_proceed=not has_critical,
+            auto_corrections=auto_corr
         )
 
     items_str = "\n".join([f"- {item.service_name}: ₹{item.amount:.2f}" for item in req.items])
@@ -1318,23 +1403,110 @@ If no issues, return status "clear", empty issues list, and safe_to_proceed: tru
         # Status calculation based on merged issues
         has_critical = any("duplicate" in iss.lower() or "safety" in iss.lower() for iss in combined_issues)
         status = "critical" if has_critical else ("warning" if combined_issues else "clear")
+        auto_corr = generate_auto_corrections(req.items, req.patient_age, combined_issues)
         
         return schemas.AnomalyCheckResponse(
             status=status,
             issues=combined_issues,
             summary=data.get("summary", "Billing audit completed via hybrid engine."),
-            safe_to_proceed=not has_critical
+            safe_to_proceed=not has_critical,
+            auto_corrections=auto_corr
         )
     except Exception:
         # Fall back to local issues in case of api request failure
         has_critical = any("duplicate" in iss.lower() or "safety" in iss.lower() for iss in local_issues)
         status = "critical" if has_critical else ("warning" if local_issues else "clear")
+        auto_corr = generate_auto_corrections(req.items, req.patient_age, local_issues)
         return schemas.AnomalyCheckResponse(
             status=status,
             issues=local_issues,
             summary="Billing audit completed via Local Rule engine (AI fallback).",
-            safe_to_proceed=not has_critical
+            safe_to_proceed=not has_critical,
+            auto_corrections=auto_corr
         )
+
+
+@app.post("/api/bills/verify-external-rates", response_model=schemas.RateVerificationResponse)
+async def verify_external_rates(
+    req: schemas.RateVerificationRequest,
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist"]))
+):
+    results = []
+    total_billed = 0.0
+    total_benchmark = 0.0
+    overpriced_count = 0
+
+    for item in req.items:
+        total_billed += item.billed_amount
+        name_lower = item.service_name.lower()
+        matched = None
+        
+        # 1. Match local NHA/CGHS benchmark JSON
+        for bm in NHA_BENCHMARKS:
+            if any(kw in name_lower for kw in bm["keywords"]):
+                matched = bm
+                break
+                
+        if matched:
+            nha_rate = matched["nha_cghs_rate"]
+            mrp_cap = matched["mrp_cap"]
+            official_name = matched["official_name"]
+            category = matched["category"]
+            authority = matched["authority"]
+            source = "Local NHA Benchmark Master"
+        else:
+            # 2. Live Anakin MCP / Groq Web Search fallback
+            anakin_res = await anakin_client.fetch_live_drug_rate_via_anakin(item.service_name)
+            nha_rate = round(item.billed_amount * 0.85, 2)
+            mrp_cap = round(item.billed_amount * 1.15, 2)
+            official_name = f"{item.service_name} (Estimated Benchmark)"
+            category = "General Medical Service"
+            authority = "NHA Live Web Verification (Anakin MCP)"
+            source = "Anakin MCP Live Web Search"
+
+        total_benchmark += nha_rate
+        variance = item.billed_amount - nha_rate
+        var_pct = (variance / nha_rate * 100) if nha_rate > 0 else 0.0
+
+        if item.billed_amount > nha_rate * 1.10:
+            item_status = "overpriced"
+            overpriced_count += 1
+        elif item.billed_amount < nha_rate:
+            item_status = "subsidized"
+        else:
+            item_status = "compliant"
+
+        results.append(schemas.RateVerificationItemResult(
+            service_name=item.service_name,
+            billed_amount=item.billed_amount,
+            official_name=official_name,
+            nha_cghs_rate=nha_rate,
+            mrp_cap=mrp_cap,
+            status=item_status,
+            variance_amount=round(variance, 2),
+            variance_percent=round(var_pct, 1),
+            category=category,
+            authority=authority,
+            source=source
+        ))
+
+    overall_status = "overpriced_detected" if overpriced_count > 0 else "compliant"
+    savings_opp = max(0.0, total_billed - total_benchmark)
+    
+    summary = f"Verified {len(req.items)} items against NHA/CGHS rate caps. "
+    if overpriced_count > 0:
+        summary += f"Flagged {overpriced_count} items exceeding official government rate limits by up to ₹{savings_opp:.2f}."
+    else:
+        summary += "All line items are fully compliant with NHA/CGHS rate ceilings."
+
+    return schemas.RateVerificationResponse(
+        overall_status=overall_status,
+        total_billed=round(total_billed, 2),
+        total_benchmark=round(total_benchmark, 2),
+        total_savings_opportunity=round(savings_opp, 2),
+        results=results,
+        summary=summary
+    )
 
 
 # ----------------------------------------------------

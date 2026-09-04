@@ -49,12 +49,12 @@ import LandingPage from './components/LandingPage';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? "http://localhost:5000/api" 
+    ? "/api" 
     : "https://hospisyn-backend.onrender.com/api");
 
 const STATIC_BASE = import.meta.env.VITE_STATIC_BASE_URL || 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? "http://localhost:5000" 
+    ? "" 
     : "https://hospisyn-backend.onrender.com");
 
 function App() {
@@ -1241,22 +1241,22 @@ function App() {
       )}
 
       {/* Sidebar Navigation — Premium Version */}
-      <aside className={`fixed inset-y-0 left-0 z-40 w-64 flex flex-col justify-between flex-shrink-0 transition-all duration-300 transform ${
-        sidebarCollapsed ? 'hidden md:hidden' : 'md:static md:translate-x-0 md:h-screen md:max-h-screen md:w-64'
+      <aside className={`fixed inset-y-0 left-0 z-40 w-56 flex flex-col justify-between flex-shrink-0 transition-all duration-300 transform ${
+        sidebarCollapsed ? 'hidden md:hidden' : 'md:static md:translate-x-0 md:h-screen md:max-h-screen md:w-56'
       } ${
         mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
       }`} style={{background:'#080d1a', borderRight:'1px solid rgba(255,255,255,0.06)'}}>
         <div>
           {/* Logo & Header */}
-          <div className="p-6 flex items-center justify-between gap-3" style={{borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center animate-pulse-teal flex-shrink-0" style={{background:'linear-gradient(135deg,#14b8a6,#34d399)'}}>
-                <Activity className="w-5 h-5 text-white" />
+          <div className="px-4 py-3.5 flex items-center justify-between gap-3" style={{borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center animate-pulse-teal flex-shrink-0" style={{background:'linear-gradient(135deg,#14b8a6,#34d399)'}}>
+                <Activity className="w-4.5 h-4.5 text-white" />
               </div>
               <div className="min-w-0">
-                <h2 className="text-white font-black text-base tracking-tight truncate">HospiSyn<span className="gradient-text-teal">AI</span></h2>
+                <h2 className="text-white font-black text-sm tracking-tight truncate">HospiSyn<span className="gradient-text-teal">AI</span></h2>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                  <span className={`inline-block px-1.5 py-0.2 rounded-full text-[8.5px] font-bold uppercase tracking-wider ${
                     userRole === 'Admin' ? 'bg-amber-500/15 text-amber-400'
                     : userRole === 'Accountant' ? 'bg-violet-500/15 text-violet-400'
                     : 'bg-teal-500/15 text-teal-400'
@@ -1268,7 +1268,7 @@ function App() {
             <button
               type="button"
               onClick={() => setSidebarCollapsed(true)}
-              className="hidden md:flex text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition-colors flex-shrink-0"
+              className="hidden md:flex text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors flex-shrink-0"
               title="Hide Sidebar"
             >
               <PanelLeftClose className="w-4 h-4" />
@@ -1276,23 +1276,23 @@ function App() {
           </div>
 
           {/* Nav Items */}
-          <nav className="p-3 space-y-4">
+          <nav className="px-2.5 py-2 space-y-2">
             {/* SECTION 1: CLINICAL WORKSPACE */}
             {['Admin', 'Receptionist', 'Accountant'].includes(userRole) && (
               <div>
-                <p className="px-3 pb-1.5 text-slate-500 text-[10px] font-bold uppercase tracking-wider">Clinical Workspace</p>
-                <div className="space-y-1">
+                <p className="px-2 pb-1 text-slate-500 text-[9.5px] font-extrabold uppercase tracking-wider">Clinical Workspace</p>
+                <div className="space-y-0.5">
                   {['Admin', 'Receptionist', 'Accountant'].includes(userRole) && (
                     <button
                       onClick={() => { setActiveTab('search_register'); setMobileMenuOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
                         activeTab === 'search_register' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
                       }`}
-                      style={activeTab === 'search_register' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
+                      style={activeTab === 'search_register' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
                     >
-                      <Search className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'search_register' ? 'text-teal-400' : ''}`} />
+                      <Search className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'search_register' ? 'text-teal-400' : ''}`} />
                       Patient Search & Desk
-                      <span className="ml-auto flex items-center gap-1 bg-violet-500/15 text-violet-300 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                      <span className="ml-auto flex items-center gap-1 bg-violet-500/15 text-violet-300 text-[8.5px] font-bold px-1.5 py-0.2 rounded-full">
                         <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" />AI
                       </span>
                     </button>
@@ -1301,14 +1301,14 @@ function App() {
                   {['Admin', 'Receptionist'].includes(userRole) && (
                     <button
                       onClick={() => { setActiveTab('doctor_console'); setMobileMenuOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
                         activeTab === 'doctor_console' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
                       }`}
-                      style={activeTab === 'doctor_console' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
+                      style={activeTab === 'doctor_console' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
                     >
-                      <Brain className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'doctor_console' ? 'text-teal-400' : ''}`} />
+                      <Brain className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'doctor_console' ? 'text-teal-400' : ''}`} />
                       Doctor's Desk
-                      <span className="ml-auto flex items-center gap-1 bg-violet-500/15 text-violet-300 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                      <span className="ml-auto flex items-center gap-1 bg-violet-500/15 text-violet-300 text-[8.5px] font-bold px-1.5 py-0.2 rounded-full">
                         <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" />AI
                       </span>
                     </button>
@@ -1320,16 +1320,16 @@ function App() {
             {/* SECTION 2: FINANCIAL & BILLING */}
             {['Admin', 'Accountant'].includes(userRole) && (
               <div>
-                <p className="px-3 pb-1.5 text-slate-500 text-[10px] font-bold uppercase tracking-wider">Financial & Billing</p>
-                <div className="space-y-1">
+                <p className="px-2 pb-1 text-slate-500 text-[9.5px] font-extrabold uppercase tracking-wider">Financial & Billing</p>
+                <div className="space-y-0.5">
                   <button
                     onClick={() => { setActiveTab('billing_history'); setMobileMenuOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
                       activeTab === 'billing_history' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
                     }`}
-                    style={activeTab === 'billing_history' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
+                    style={activeTab === 'billing_history' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
                   >
-                    <CreditCard className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'billing_history' ? 'text-teal-400' : ''}`} />
+                    <CreditCard className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'billing_history' ? 'text-teal-400' : ''}`} />
                     Billing Queue
                     {activeTab === 'billing_history' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
                   </button>
@@ -1337,12 +1337,12 @@ function App() {
                   {userRole === 'Admin' && (
                     <button
                       onClick={() => { setActiveTab('catalog'); setMobileMenuOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
                         activeTab === 'catalog' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
                       }`}
-                      style={activeTab === 'catalog' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
+                      style={activeTab === 'catalog' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
                     >
-                      <FileText className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'catalog' ? 'text-teal-400' : ''}`} />
+                      <FileText className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'catalog' ? 'text-teal-400' : ''}`} />
                       Services Catalog
                       {activeTab === 'catalog' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
                     </button>
@@ -1354,28 +1354,28 @@ function App() {
             {/* SECTION 3: ANALYTICS & INSIGHTS */}
             {userRole !== 'Receptionist' && (
               <div>
-                <p className="px-3 pb-1.5 text-slate-500 text-[10px] font-bold uppercase tracking-wider">Analytics & Performance</p>
-                <div className="space-y-1">
+                <p className="px-2 pb-1 text-slate-500 text-[9.5px] font-extrabold uppercase tracking-wider">Analytics & Performance</p>
+                <div className="space-y-0.5">
                   <button
                     onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
                       activeTab === 'dashboard' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
                     }`}
-                    style={activeTab === 'dashboard' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
+                    style={activeTab === 'dashboard' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
                   >
-                    <Grid className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'dashboard' ? 'text-teal-400' : ''}`} />
+                    <Grid className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'dashboard' ? 'text-teal-400' : ''}`} />
                     Executive Dashboard
                     {activeTab === 'dashboard' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
                   </button>
 
                   <button
                     onClick={() => { setActiveTab('roi_calculator'); setMobileMenuOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
                       activeTab === 'roi_calculator' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
                     }`}
-                    style={activeTab === 'roi_calculator' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
+                    style={activeTab === 'roi_calculator' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
                   >
-                    <TrendingUp className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'roi_calculator' ? 'text-teal-400' : ''}`} />
+                    <TrendingUp className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'roi_calculator' ? 'text-teal-400' : ''}`} />
                     ROI & Business Model
                     {activeTab === 'roi_calculator' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
                   </button>
@@ -1386,8 +1386,8 @@ function App() {
             {/* SECTION 4: ADMINISTRATION */}
             {userRole === 'Admin' && (
               <div>
-                <p className="px-3 pb-1.5 text-slate-500 text-[10px] font-bold uppercase tracking-wider">Administration</p>
-                <div className="space-y-1">
+                <p className="px-2 pb-1 text-slate-500 text-[9.5px] font-extrabold uppercase tracking-wider">Administration</p>
+                <div className="space-y-0.5">
                   {[
                     ['users','Staff Accounts', UserPlus],
                     ['audit_logs','Audit Logs', History],
@@ -1395,12 +1395,12 @@ function App() {
                   ].map(([tab, label, Icon]) => (
                     <button key={tab}
                       onClick={() => { setActiveTab(tab); setMobileMenuOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group ${
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
                         activeTab === tab ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
                       }`}
-                      style={activeTab === tab ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'9px'} : {}}
+                      style={activeTab === tab ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
                     >
-                      <Icon className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === tab ? 'text-teal-400' : ''}`} />
+                      <Icon className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === tab ? 'text-teal-400' : ''}`} />
                       {label}
                       {activeTab === tab && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
                     </button>
@@ -1412,7 +1412,7 @@ function App() {
         </div>
 
         {/* User Footer Profile */}
-        <div className="p-4" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+        <div className="px-3.5 py-2.5" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center text-teal-300 font-black text-sm" style={{background:'rgba(20,184,166,0.12)'}}>
@@ -1436,21 +1436,21 @@ function App() {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-full md:h-screen md:max-h-screen overflow-y-auto md:overflow-hidden" style={{background:'#f0f4f8'}}>
         {/* HEADER BAR */}
-        <header className="sticky top-0 z-30 px-4 md:px-6 py-3 flex items-center justify-between gap-4 backdrop-blur-md flex-shrink-0"
+        <header className="sticky top-0 z-30 px-3 md:px-5 py-2 flex items-center justify-between gap-3 backdrop-blur-md flex-shrink-0"
           style={{background:'rgba(240,244,248,0.85)', borderBottom:'1px solid rgba(0,0,0,0.06)'}}>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             {/* Toggle Sidebar Button for Desktop */}
             <button
               type="button"
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="hidden md:flex items-center justify-center p-2 text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors shadow-2xs"
+              className="hidden md:flex items-center justify-center p-1.5 text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors shadow-2xs"
               title={sidebarCollapsed ? "Show Sidebar" : "Hide Sidebar"}
             >
-              {sidebarCollapsed ? <PanelLeft className="w-5 h-5 text-teal-600" /> : <PanelLeftClose className="w-5 h-5 text-slate-500" />}
+              {sidebarCollapsed ? <PanelLeft className="w-4 h-4 text-teal-600" /> : <PanelLeftClose className="w-4 h-4 text-slate-500" />}
             </button>
 
-            <div>
-              <h1 className="text-lg font-black text-slate-900 tracking-tight leading-tight">
+            <div className="min-w-0">
+              <h1 className="text-sm font-black text-slate-900 tracking-tight leading-tight truncate">
               {activeTab === 'dashboard' && 'Dashboard Overview'}
               {activeTab === 'search_register' && 'Patient Desk'}
               {activeTab === 'doctor_console' && 'Doctor\'s Workspace'}
@@ -1461,7 +1461,7 @@ function App() {
               {activeTab === 'audit_logs' && 'Audit Trail'}
               {activeTab === 'settings' && 'Hospital Settings'}
             </h1>
-            <p className="text-slate-400 text-[11px] font-medium mt-0.5">
+            <p className="text-slate-400 text-[10px] font-medium leading-none truncate mt-0.5">
               {activeTab === 'dashboard' && 'Real-time financial summary • AI-powered insights'}
               {activeTab === 'search_register' && 'Search, register patients, log visits, AI clinical assistant'}
               {activeTab === 'doctor_console' && 'Clinical consultation, prescription builder, multi-lingual summary & AI insights'}
@@ -1475,22 +1475,22 @@ function App() {
           </div>
         </div>
 
-          <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {/* Quick Command Palette trigger button */}
             <button
               type="button"
               onClick={() => setCmdPaletteOpen(true)}
-              className="flex items-center gap-2 bg-white border border-slate-250 text-slate-600 hover:text-slate-900 hover:border-slate-350 text-xs font-semibold px-3 py-1.5 rounded-xl shadow-sm transition-all"
+              className="flex items-center gap-1.5 bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-teal-400 text-[11px] font-semibold px-2.5 py-1 rounded-lg shadow-2xs transition-all"
             >
-              <Search className="w-3.5 h-3.5 text-teal-600" />
-              <span className="hidden md:inline">Quick Search...</span>
-              <kbd className="kbd-badge">Ctrl K</kbd>
+              <Search className="w-3 h-3 text-teal-600" />
+              <span className="hidden sm:inline">Quick Search...</span>
+              <kbd className="kbd-badge text-[9px] px-1 py-0.2">Ctrl K</kbd>
             </button>
 
             {/* Live badge */}
-            <div className="hidden sm:flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+            <div className="hidden sm:flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1 shadow-2xs">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-slate-500 text-[10px] font-bold">
+              <span className="text-slate-500 text-[9.5px] font-bold">
                 {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
               </span>
             </div>

@@ -44,6 +44,15 @@ class PatientBase(BaseModel):
 class PatientCreate(PatientBase):
     pass
 
+class PatientSimpleResponse(PatientBase):
+    id: int
+    patient_id: str
+    created_at: datetime
+    is_active: bool
+
+    class Config:
+        orm_mode = True
+
 class PatientResponse(PatientBase):
     id: int
     patient_id: str
@@ -107,7 +116,7 @@ class VisitResponse(VisitBase):
     visit_date: datetime
     is_active: bool
     doctor: Optional[DoctorResponse] = None
-    patient: Optional['PatientResponse'] = None
+    patient: Optional[PatientSimpleResponse] = None
     bills: Optional[List['BillResponse']] = []
 
     class Config:
@@ -333,11 +342,55 @@ class AnomalyCheckRequest(BaseModel):
     patient_gender: Optional[str] = None
     diagnosis: Optional[str] = None
 
+class AutoCorrectionItem(BaseModel):
+    service_name: str
+    amount: float
+    correction_reason: Optional[str] = None
+
+class AutoCorrectionDetails(BaseModel):
+    corrected_items: List[AutoCorrectionItem]
+    action_summary: str
+    original_total: float
+    corrected_total: float
+    savings_amount: float
+
 class AnomalyCheckResponse(BaseModel):
     status: str  # "clear" | "warning" | "critical"
     issues: List[str]
     summary: str
     safe_to_proceed: bool
+    auto_corrections: Optional[AutoCorrectionDetails] = None
+
+
+# External Rate Verification Schemas (NHA / CGHS / Anakin MCP Lookup)
+class RateVerificationItemRequest(BaseModel):
+    service_name: str
+    billed_amount: float
+
+class RateVerificationRequest(BaseModel):
+    items: List[RateVerificationItemRequest]
+
+class RateVerificationItemResult(BaseModel):
+    service_name: str
+    billed_amount: float
+    official_name: str
+    nha_cghs_rate: float
+    mrp_cap: float
+    status: str  # "compliant" | "subsidized" | "overpriced"
+    variance_amount: float
+    variance_percent: float
+    category: str
+    authority: str
+    source: str  # "Local NHA Benchmark Master" | "Anakin MCP Live Web Search"
+
+class RateVerificationResponse(BaseModel):
+    overall_status: str  # "compliant" | "overpriced_detected"
+    total_billed: float
+    total_benchmark: float
+    total_savings_opportunity: float
+    results: List[RateVerificationItemResult]
+    summary: str
+
 
 
 # AI Dashboard Insight Schema

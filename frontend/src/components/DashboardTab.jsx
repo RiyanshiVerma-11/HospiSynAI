@@ -121,70 +121,56 @@ function AIInsightCard({ API_BASE }) {
   }[insight?.sentiment] || null;
 
   return (
-    <div className="ai-insight-card animate-pulse-violet p-4 animate-slide-up animate-slide-up-delay-4 md:h-full md:min-h-0 flex flex-col justify-between overflow-hidden">
+    <div className="ai-insight-card animate-pulse-violet p-3 animate-slide-up animate-slide-up-delay-4 md:h-full md:min-h-0 flex flex-col justify-between overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3 relative z-10 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-violet-500/20 flex items-center justify-center">
-            <Brain className="w-4 h-4 text-violet-300" />
-          </div>
-          <div>
-            <p className="text-violet-300 text-[10px] font-bold uppercase tracking-widest">Groq AI · Revenue Analyst</p>
-            <p className="text-white text-xs font-semibold">Smart Business Insight</p>
-          </div>
+      <div className="flex items-center justify-between mb-1.5 relative z-10 flex-shrink-0">
+        <div className="flex items-center gap-1.5 text-violet-200 text-xs font-bold">
+          <Brain className="w-3.5 h-3.5 text-violet-300" />
+          <span>Executive Summary</span>
         </div>
         <button
           onClick={() => fetchInsight(true)}
           disabled={refreshing}
-          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all"
-          title="Refresh AI insight"
+          className="p-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all"
+          title="Refresh summary"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
       {/* Scrollable Content Wrapper */}
-      <div className="flex-1 overflow-y-auto pr-1 relative z-10 compact-scroll min-h-0 my-2">
+      <div className="flex-1 overflow-y-auto pr-1 relative z-10 compact-scroll min-h-0 my-1">
         {loading ? (
-          <div className="flex items-center gap-2 py-4">
+          <div className="flex items-center gap-2 py-3">
             <div className="flex gap-1">
               <span className="thinking-dot w-2 h-2 rounded-full bg-violet-400" />
               <span className="thinking-dot w-2 h-2 rounded-full bg-violet-400" />
               <span className="thinking-dot w-2 h-2 rounded-full bg-violet-400" />
             </div>
-            <span className="text-violet-300 text-xs font-medium">Analyzing revenue data with Groq LLM...</span>
+            <span className="text-violet-300 text-xs font-medium">Analyzing revenue trends...</span>
           </div>
         ) : error ? (
-          <p className="text-slate-400 text-xs py-3">{error}</p>
+          <p className="text-slate-400 text-xs py-2">{error}</p>
         ) : insight ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {/* Metric highlight badge */}
             {insight.metric_highlight && insight.metric_highlight !== '—' && (
-              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 rounded-xl px-3 py-1.5">
+              <div className="inline-flex items-center gap-1.5 bg-white/10 border border-white/10 rounded-lg px-2.5 py-1">
                 {sentimentIcon}
-                <span className={`text-xs font-bold ${sentimentColor}`}>{insight.metric_highlight}</span>
+                <span className={`text-[11px] font-bold ${sentimentColor}`}>{insight.metric_highlight}</span>
               </div>
             )}
             {/* Main insight */}
-            <p className="text-slate-200 text-xs leading-relaxed font-medium bg-slate-900/40 p-3 rounded-xl border border-white/5">{insight.insight}</p>
+            <p className="text-slate-200 text-xs leading-relaxed font-medium bg-slate-900/40 p-2.5 rounded-xl border border-white/5">{insight.insight}</p>
             {/* Recommended action */}
             {insight.action && (
-              <div className="flex items-start gap-2 bg-teal-500/10 border border-teal-500/20 rounded-xl p-3">
-                <CheckCircle2 className="w-4 h-4 text-teal-400 mt-0.5 flex-shrink-0" />
-                <p className="text-teal-300 text-[11px] font-semibold leading-relaxed">{insight.action}</p>
+              <div className="flex items-start gap-1.5 bg-teal-500/10 border border-teal-500/20 rounded-xl p-2.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-teal-400 mt-0.5 flex-shrink-0" />
+                <p className="text-teal-300 text-[10.5px] font-semibold leading-relaxed">{insight.action}</p>
               </div>
             )}
           </div>
         ) : null}
-      </div>
-
-      {/* Powered by badge */}
-      <div className="flex items-center justify-between pt-2 border-t border-white/5 relative z-10 flex-shrink-0">
-        <div className="flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-violet-455 animate-pulse" />
-          <span className="text-slate-400 text-[9px] font-bold uppercase tracking-widest">Powered by Groq · Llama 3.3 70B</span>
-        </div>
-        <span className="text-slate-500 text-[8px] font-bold bg-white/5 rounded px-1.5 py-0.5">Real-time Analysis</span>
       </div>
     </div>
   );
@@ -315,60 +301,61 @@ export default function DashboardTab({ metrics, metricsError, API_BASE, fetchRec
   }
 
   return (
-    <div className="flex flex-col gap-4 h-full md:max-h-full overflow-y-auto md:overflow-hidden min-h-0">
+    <div className="flex flex-col gap-2.5 h-full md:max-h-full overflow-y-auto md:overflow-hidden min-h-0">
 
       {/* ── QUICK ACTIONS HUB ───────────────────────────────── */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-3 shadow-sm flex items-center justify-between gap-3 flex-wrap flex-shrink-0 animate-slide-up">
+      <div className="bg-white border border-slate-200/80 rounded-xl px-3 py-1.5 shadow-2xs flex items-center justify-between gap-2 flex-wrap flex-shrink-0 animate-slide-up">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold">
-            <Zap className="w-4 h-4" />
+          <div className="w-6 h-6 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center font-bold">
+            <Zap className="w-3.5 h-3.5" />
           </div>
-          <div>
-            <h3 className="text-xs font-bold text-slate-900 leading-tight">Executive Control Hub</h3>
-            <p className="text-[10px] text-slate-400 font-medium">Quick operational triggers for hospital desk</p>
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-xs font-bold text-slate-900 leading-none">Executive Control Hub</h3>
+            <span className="hidden sm:inline text-slate-300">•</span>
+            <p className="hidden sm:inline text-[10.5px] text-slate-400 font-medium leading-none">Quick operational triggers for hospital desk</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <button
             onClick={() => handleExportCSV('all')}
             disabled={exportLoading === 'all'}
-            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-xl transition-all"
+            className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all"
           >
-            <Download className={`w-3.5 h-3.5 ${exportLoading === 'all' ? 'animate-spin' : ''}`} />
+            <Download className={`w-3 h-3 ${exportLoading === 'all' ? 'animate-spin' : ''}`} />
             Export Audit CSV
           </button>
           <button
             onClick={() => handleExportCSV('today')}
             disabled={exportLoading === 'today'}
-            className="flex items-center gap-1.5 bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold px-3 py-1.5 rounded-xl border border-teal-200/60 transition-all"
+            className="flex items-center gap-1 bg-teal-50 hover:bg-teal-100 text-teal-700 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-teal-200/60 transition-all"
           >
-            <FileSpreadsheet className={`w-3.5 h-3.5 ${exportLoading === 'today' ? 'animate-spin' : ''}`} />
+            <FileSpreadsheet className={`w-3 h-3 ${exportLoading === 'today' ? 'animate-spin' : ''}`} />
             Today's Ledger
           </button>
         </div>
       </div>
 
       {/* ── KPI Cards ───────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-shrink-0">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 flex-shrink-0">
 
         {/* Patients */}
         <div
           onClick={() => toggleCardHighlight('advance')}
-          className={`premium-card stat-card-teal p-4 cursor-pointer select-none animate-slide-up animate-slide-up-delay-1 ${
+          className={`premium-card stat-card-teal p-2.5 cursor-pointer select-none animate-slide-up animate-slide-up-delay-1 ${
             highlightedCard === 'advance' ? 'ring-2 ring-teal-500/30' : ''
           }`}
         >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Patients Registered</span>
-            <div className={`p-1.5 rounded-lg transition-colors ${highlightedCard === 'advance' ? 'bg-teal-500 text-white' : 'bg-teal-50 text-teal-600'}`}>
-              <Users className="w-3.5 h-3.5" />
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-slate-400 text-[9.5px] font-bold uppercase tracking-wider">Patients Registered</span>
+            <div className={`p-1 rounded-md transition-colors ${highlightedCard === 'advance' ? 'bg-teal-500 text-white' : 'bg-teal-50 text-teal-600'}`}>
+              <Users className="w-3 h-3" />
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 tracking-tight count-reveal">
+          <div className="text-xl font-black text-slate-900 tracking-tight count-reveal">
             {Math.round(animPatients).toLocaleString('en-IN')}
           </div>
-          <div className="text-xs text-slate-400 mt-1 flex items-center gap-1.5 font-medium">
+          <div className="text-[10.5px] text-slate-400 mt-0.5 flex items-center gap-1 font-medium">
             <span className="font-bold text-teal-600">+{metrics.today_patients}</span> new today
           </div>
         </div>
@@ -376,36 +363,36 @@ export default function DashboardTab({ metrics, metricsError, API_BASE, fetchRec
         {/* Revenue */}
         <div
           onClick={() => toggleCardHighlight('revenue')}
-          className={`premium-card stat-card-emerald p-4 cursor-pointer select-none animate-slide-up animate-slide-up-delay-2 ${
+          className={`premium-card stat-card-emerald p-2.5 cursor-pointer select-none animate-slide-up animate-slide-up-delay-2 ${
             highlightedCard === 'revenue' ? 'ring-2 ring-emerald-500/30' : ''
           }`}
         >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Total Revenue</span>
-            <div className={`p-1.5 rounded-lg transition-colors ${highlightedCard === 'revenue' ? 'bg-emerald-500 text-white' : 'bg-emerald-50 text-emerald-600'}`}>
-              <TrendingUp className="w-3.5 h-3.5" />
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-slate-400 text-[9.5px] font-bold uppercase tracking-wider">Total Revenue</span>
+            <div className={`p-1 rounded-md transition-colors ${highlightedCard === 'revenue' ? 'bg-emerald-500 text-white' : 'bg-emerald-50 text-emerald-600'}`}>
+              <TrendingUp className="w-3 h-3" />
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 tracking-tight count-reveal">
+          <div className="text-xl font-black text-slate-900 tracking-tight count-reveal">
             ₹{Math.round(animRevenue).toLocaleString('en-IN')}
           </div>
-          <div className="text-xs text-slate-400 mt-1 flex items-center gap-1.5 font-medium">
-            <span className="font-bold text-emerald-600">₹{Math.round(animToday).toLocaleString('en-IN')}</span> collected today
+          <div className="text-[10.5px] text-slate-400 mt-0.5 flex items-center gap-1 font-medium">
+            <span className="font-bold text-emerald-600">₹{Math.round(animToday).toLocaleString('en-IN')}</span> today
           </div>
         </div>
 
         {/* Dues */}
-        <div className="premium-card stat-card-amber p-4 animate-slide-up animate-slide-up-delay-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Outstanding Dues</span>
-            <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
-              <AlertTriangle className="w-3.5 h-3.5" />
+        <div className="premium-card stat-card-amber p-2.5 animate-slide-up animate-slide-up-delay-3">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-slate-400 text-[9.5px] font-bold uppercase tracking-wider">Outstanding Dues</span>
+            <div className="p-1 rounded-md bg-amber-50 text-amber-600">
+              <AlertTriangle className="w-3 h-3" />
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 tracking-tight count-reveal">
+          <div className="text-xl font-black text-slate-900 tracking-tight count-reveal">
             ₹{Math.round(animDues).toLocaleString('en-IN')}
           </div>
-          <div className="text-[9px] text-rose-500 mt-1.5 font-bold uppercase tracking-wider flex items-center gap-1.5">
+          <div className="text-[9px] text-rose-500 mt-1 font-bold uppercase tracking-wider flex items-center gap-1">
             <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-ping" />
             Collection pending
           </div>
@@ -414,27 +401,27 @@ export default function DashboardTab({ metrics, metricsError, API_BASE, fetchRec
         {/* Collections split */}
         <div
           onClick={() => toggleCardHighlight('refunds')}
-          className={`premium-card stat-card-violet p-4 cursor-pointer select-none animate-slide-up animate-slide-up-delay-4 ${
+          className={`premium-card stat-card-violet p-2.5 cursor-pointer select-none animate-slide-up animate-slide-up-delay-4 ${
             highlightedCard === 'refunds' ? 'ring-2 ring-violet-500/30' : ''
           }`}
         >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Today's Split</span>
-            <div className={`p-1.5 rounded-lg transition-colors ${highlightedCard === 'refunds' ? 'bg-violet-500 text-white' : 'bg-violet-50 text-violet-600'}`}>
-              <CreditCard className="w-3.5 h-3.5" />
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-slate-400 text-[9.5px] font-bold uppercase tracking-wider">Today's Split</span>
+            <div className={`p-1 rounded-md transition-colors ${highlightedCard === 'refunds' ? 'bg-violet-500 text-white' : 'bg-violet-50 text-violet-600'}`}>
+              <CreditCard className="w-3 h-3" />
             </div>
           </div>
-          <div className="space-y-1 text-xs">
+          <div className="space-y-0.5 text-[10.5px]">
             <div className="flex justify-between items-center">
-              <span className="text-slate-400 font-medium">Cash</span>
+              <span className="text-slate-400 font-medium">Cash:</span>
               <span className="font-bold text-slate-800">₹{metrics.cash_collection_today.toLocaleString('en-IN')}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-slate-400 font-medium">Online</span>
+              <span className="text-slate-400 font-medium">Online:</span>
               <span className="font-bold text-slate-800">₹{metrics.online_collection_today.toLocaleString('en-IN')}</span>
             </div>
-            <div className="flex justify-between items-center pt-1 border-t border-slate-100">
-              <span className="font-bold text-slate-400">Refunds</span>
+            <div className="flex justify-between items-center pt-0.5 border-t border-slate-100">
+              <span className="font-bold text-slate-400">Refunds:</span>
               <span className="font-bold text-rose-500">-₹{metrics.refund_amount_today.toLocaleString('en-IN')}</span>
             </div>
           </div>
@@ -445,10 +432,10 @@ export default function DashboardTab({ metrics, metricsError, API_BASE, fetchRec
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:flex-1 md:min-h-0">
 
         {/* Left Column: Charts & Insight (1/3 width) */}
-        <div className="flex flex-col gap-4 md:h-full md:min-h-0 md:overflow-y-auto compact-scroll">
+        <div className="flex flex-col gap-2.5 md:h-full md:min-h-0 md:overflow-y-auto compact-scroll">
           {/* Pie chart */}
-          <div className="premium-card p-4 animate-slide-up flex-shrink-0 flex flex-col justify-between h-[210px] md:h-[220px]">
-            <div className="flex items-center gap-2 mb-2 flex-shrink-0">
+          <div className="premium-card p-2.5 animate-slide-up flex-shrink-0 flex flex-col justify-between h-[165px] md:h-[175px]">
+            <div className="flex items-center gap-1.5 mb-1 flex-shrink-0">
               <PieIcon className="w-3.5 h-3.5 text-teal-500" />
               <h3 className="font-bold text-slate-500 text-[10px] uppercase tracking-widest">Payment Mix</h3>
             </div>
@@ -458,8 +445,8 @@ export default function DashboardTab({ metrics, metricsError, API_BASE, fetchRec
                   <PieChart>
                     <Pie
                       data={methodPieData}
-                      cx="50%" cy="50%"
-                      innerRadius={45} outerRadius={60}
+                      cx="38%" cy="50%"
+                      innerRadius={28} outerRadius={46}
                       paddingAngle={3} dataKey="value"
                     >
                       {methodPieData.map((_, idx) => (
@@ -470,7 +457,14 @@ export default function DashboardTab({ metrics, metricsError, API_BASE, fetchRec
                       formatter={(v) => [`₹${v.toLocaleString('en-IN')}`, 'Revenue']}
                       contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '10px', fontWeight: 600 }}
                     />
-                    <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 700 }} />
+                    <Legend
+                      layout="vertical"
+                      align="right"
+                      verticalAlign="middle"
+                      iconType="circle"
+                      iconSize={7}
+                      wrapperStyle={{ fontSize: '10px', fontWeight: 700, lineHeight: '17px', paddingLeft: '4px' }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
@@ -482,16 +476,16 @@ export default function DashboardTab({ metrics, metricsError, API_BASE, fetchRec
           </div>
 
           {/* AI Insight Card */}
-          <div className="md:flex-1 md:min-h-[260px] flex flex-col">
+          <div className="md:flex-1 md:min-h-[220px] flex flex-col">
             <AIInsightCard API_BASE={API_BASE} />
           </div>
         </div>
 
         {/* Right Column: Bar Chart & Ledger (2/3 width) */}
-        <div className="lg:col-span-2 flex flex-col gap-4 md:h-full md:min-h-0 md:overflow-y-auto compact-scroll">
+        <div className="lg:col-span-2 flex flex-col gap-2.5 md:h-full md:min-h-0 md:overflow-y-auto compact-scroll">
           {/* Bar chart */}
-          <div className="premium-card p-4 flex-shrink-0 flex flex-col h-[210px] md:h-[220px] animate-slide-up animate-slide-up-delay-1">
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-2 flex-shrink-0">
+          <div className="premium-card p-2.5 flex-shrink-0 flex flex-col h-[165px] md:h-[175px] animate-slide-up animate-slide-up-delay-1">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-1 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <BarChart2 className="w-3.5 h-3.5 text-teal-500" />
                 <h3 className="font-bold text-slate-500 text-[10px] uppercase tracking-widest">Method Breakdown</h3>

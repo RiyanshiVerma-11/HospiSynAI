@@ -246,7 +246,7 @@ export default function LandingPage({ onEnterWorkspace }) {
   const [ctaRef, ctaInView] = useInView(0.2);
 
   return (
-    <div className="min-h-screen bg-[#060c18] text-slate-100 relative overflow-hidden font-sans selection:bg-teal-500 selection:text-white">
+    <div className="min-h-screen bg-[#060c18] text-slate-100 relative overflow-x-clip font-sans selection:bg-teal-500 selection:text-white">
 
       {/* --- Animated Ambient Background Glows --- */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
