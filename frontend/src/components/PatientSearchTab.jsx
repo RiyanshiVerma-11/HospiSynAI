@@ -24,7 +24,6 @@ import {
   Mic,
   MicOff,
   Volume2,
-  Activity,
   X,
   Users,
   PanelLeftClose,
@@ -32,7 +31,6 @@ import {
   GripVertical
 } from 'lucide-react';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
-import VoiceVisualizer from './VoiceVisualizer';
 
 const MEDICINE_DATASTORE = [
   // Paracetamol & Pain Relievers
@@ -547,9 +545,7 @@ export default function PatientSearchTab({
   // Auto-open and listen if requested from dashboard
   React.useEffect(() => {
     if (deskVoiceIntakeRequested) {
-      setShowVoiceIntake(true);
-      intakeVoice.resetTranscript();
-      intakeVoice.startListening();
+      startGuidedVoiceIntake();
       if (setDeskVoiceIntakeRequested) setDeskVoiceIntakeRequested(false);
     }
   }, [deskVoiceIntakeRequested]);
@@ -1520,14 +1516,12 @@ export default function PatientSearchTab({
                   type="button"
                   onClick={() => {
                     handleSelectPatient(null);
-                    setShowVoiceIntake(true);
-                    intakeVoice.resetTranscript();
-                    intakeVoice.startListening();
+                    startGuidedVoiceIntake();
                   }}
                   className="bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-95"
                 >
                   <Mic className="w-3.5 h-3.5" />
-                  <span>🎙️ Voice Intake</span>
+                  <span>🎙️ Guided Voice</span>
                 </button>
                 <button
                   type="button"
@@ -2205,29 +2199,6 @@ export default function PatientSearchTab({
                     </>
                   )}
                 </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = !showVoiceIntake;
-                    setShowVoiceIntake(next);
-                    if (next) {
-                      intakeVoice.resetTranscript();
-                      intakeVoice.startListening();
-                    } else {
-                      intakeVoice.stopListening();
-                    }
-                  }}
-                  className={`text-xs font-bold px-3 py-2.5 rounded-xl border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                    showVoiceIntake
-                      ? 'bg-slate-800 text-white border-slate-700 shadow-sm'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
-                  }`}
-                  title="Toggle continuous audio waveform and sample chips"
-                >
-                  <Activity className="w-3.5 h-3.5 text-teal-600" />
-                  <span>Waveform</span>
-                </button>
               </div>
             </div>
 
@@ -2324,7 +2295,7 @@ export default function PatientSearchTab({
             )}
 
             {/* LIVE AUDIO WAVEFORM & TRANSCRIPT PREVIEW PILL */}
-            {!guidedVoiceStep && (intakeVoice.isListening || showVoiceIntake || intakeVoice.fullText || intakeVoice.transcript) && (
+            {!guidedVoiceStep && (intakeVoice.isListening || intakeVoice.fullText || intakeVoice.transcript) && (
               <div className="bg-gradient-to-r from-slate-950 via-teal-950 to-slate-900 border-2 border-teal-500/40 rounded-2xl p-3.5 text-white shadow-xl shadow-teal-950/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 animate-in slide-in-from-top-2 duration-300 ring-4 ring-teal-500/10">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   {/* Live Audio Waveform Animated Bars */}
@@ -2400,71 +2371,6 @@ export default function PatientSearchTab({
                     {voiceIntakeParsing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                     <span>⚡ Auto-Fill Form</span>
                   </button>
-                </div>
-              </div>
-            )}
-
-            {/* Voice Intake Module (Waveform + Live Speech + Guided Sample Prompt) */}
-            {!guidedVoiceStep && showVoiceIntake && (
-              <div className="animate-in fade-in slide-in-from-top-2 duration-200 space-y-2.5">
-                <VoiceVisualizer
-                  isListening={intakeVoice.isListening}
-                  audioLevel={intakeVoice.audioLevel}
-                  transcript={intakeVoice.transcript}
-                  interimTranscript={intakeVoice.interimTranscript}
-                  error={intakeVoice.error}
-                  permissionState={intakeVoice.permissionState}
-                  isSupported={intakeVoice.isSupported}
-                  lang={intakeVoice.lang}
-                  setLang={intakeVoice.setLang}
-                  onRequestPermission={intakeVoice.requestPermission}
-                  onStart={() => intakeVoice.startListening()}
-                  onStop={() => {
-                    intakeVoice.stopListening();
-                    if (intakeVoice.fullText) handleParseVoiceIntake(intakeVoice.fullText);
-                  }}
-                  onReset={() => intakeVoice.resetTranscript()}
-                  onSelectSample={(sampleText) => {
-                    intakeVoice.setTranscript(sampleText);
-                    handleParseVoiceIntake(sampleText);
-                  }}
-                  placeholder="Speak patient details (e.g. Priya Sharma, 32 female, 9876543210, Indirapuram, stomach pain)..."
-                  sampleGuide="[Name] , [Age] [Gender] , [Phone] , [City] , [Symptoms/Reason]"
-                  sampleChips={[
-                    { label: "Priya Sharma (32F, Stomach Pain)", text: "Register Priya Sharma, 32 female, mobile 9876543210, Indirapuram, stomach pain" },
-                    { label: "Ramesh Verma (45M, Fever)", text: "Patient Ramesh Verma, 45 male, mobile 9811223344, Sector 18 Noida, high fever and headache" },
-                    { label: "Sunita Rao (52F, BP Check)", text: "Sunita Rao, 52 female, mobile 9712345678, DLF Phase 3 Gurgaon, routine BP checkup" }
-                  ]}
-                />
-
-                <div className="flex items-center justify-between gap-2 pt-1">
-                  <div className="text-xs text-slate-500 font-medium">
-                    {voiceIntakeParsing ? (
-                      <span className="flex items-center gap-1.5 text-teal-700 font-bold animate-pulse">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        AI extracting fields and filling form...
-                      </span>
-                    ) : intakeVoice.fullText ? (
-                      <span className="text-emerald-700 font-bold flex items-center gap-1">
-                        <CheckCircle2 className="w-4 h-4" />
-                        Transcript captured. Auto-filling or click to re-parse!
-                      </span>
-                    ) : (
-                      <span>Microphone listens in natural Hindi/English. Click Start Listening to speak.</span>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleParseVoiceIntake()}
-                      disabled={voiceIntakeParsing || !intakeVoice.fullText.trim()}
-                      className="bg-teal-600 hover:bg-teal-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
-                    >
-                      {voiceIntakeParsing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                      ⚡ Auto-Fill Form
-                    </button>
-                  </div>
                 </div>
               </div>
             )}
