@@ -1,6 +1,6 @@
 # 🏥 HospiSynAI
 
-### Hospital Payment, Billing, and Patient Consultation Assistant
+### AI-Powered Hospital Management — Billing, OPD Queue, Patient Consultation & Clinical Intelligence
 
 <div align="left">
   <a href="https://hospi-syn-ai.vercel.app/" target="_blank">
@@ -19,9 +19,7 @@
 
 <br/>
 
-HospiSynAI is a production-grade, real-time hospital billing, receptionist desk, payment audit, and patient consultation ecosystem. Designed with SDE-3 guidelines, it features a clean React + Tailwind CSS client, a high-performance Python FastAPI backend, and a robust PostgreSQL relational database layer.
-
-The entire stack is containerized and orchestrates seamlessly with a single command via Docker Compose.
+HospiSynAI is a production-grade, real-time hospital management ecosystem covering OPD queue management, patient registration, clinical consultations, AI-powered prescription generation, billing auditing, payment processing, and revenue analytics. Built with a React + Vite frontend, a high-performance Python FastAPI backend, and a robust SQLite / PostgreSQL relational database — containerized and deployable with a single command.
 
 ---
 
@@ -34,16 +32,17 @@ The entire stack is containerized and orchestrates seamlessly with a single comm
 | 🛡️ **3** | **Pre-Invoice AI Billing Auditor & Compliance Guard** | Before an invoice is created, a hybrid rule engine + LLM scans every line item for duplicate tests, clinically impossible service combinations (e.g., ICU + OPD), age-inappropriate charges, and missing consultation codes — returning a `clear`, `warning`, or `critical` verdict with specific issues listed. |
 | ⚖️ **4** | **NHA & CGHS Price Benchmark Intelligence** | Live pricing comparison against National Health Authority (NHA) & Central Government Health Scheme (CGHS) benchmark rates for OPD consultations, labs, and radiology. Flags overbilling, undercharging, and revenue leakages in real time. |
 | 🌐 **5** | **Live Multilingual Patient Handout in 11 Indian Languages** | The AI converts the doctor's prescription into a patient-friendly storytelling summary (Morning / Afternoon / Night routine + warnings), then auto-translates it into any of 11 Indian languages — Hindi, Kannada, Tamil, Telugu, Bengali, Marathi, Gujarati, Malayalam, Punjabi, Odia, Urdu — the moment a language is selected from the dropdown. No extra click needed. |
-| 🧑‍⚕️ **6** | **4 Specialized Role-Based Workspaces** | Tailored operational desks for **Doctor** (Active queue, consultation notes, voice intake, Rx generator), **Receptionist** (Speed registration, queue assignment, advance collections), **Accountant** (Invoice queue, UPI/cash settlements, refund ledger), and **Admin** (System metrics, catalog pricing, and audit logs). |
-| 💡 **7** | **Interactive Hospital Financial ROI Calculator** | Built-in financial simulation tool modeling annual hospital cost recovery from eliminated billing leakages, automated pre-invoice auditing, prevented test duplications, and reduced doctor administrative burden. |
-| 📊 **8** | **AI Revenue Narrative Dashboard** | Instead of just charts, the dashboard reads today's actual live transaction data and generates a paragraph-level business insight with sentiment (positive / neutral / negative), a specific financial highlight, and an actionable recommendation for the hospital admin. |
-| 🧾 **9** | **AI Test & Service Recommender** | Before billing, the system queries the hospital's own active services catalog and recommends the most relevant OPD tests based on patient age, gender, and symptoms — with clinical reasoning for each suggestion. |
-| 📄 **10** | **ReportLab Dynamic PDF Engine with Devanagari Font Support** | A5 receipts and prescription sheets are generated server-side by ReportLab with native Nirmala Devanagari font rendering. Every branding detail — hospital name, logo, GSTIN, doctor name, contact, address — is editable via the Admin panel and reflects on every new PDF instantly. |
-| 💳 **11** | **Complete Payment Lifecycle & Advance Adjustments** | Supports Cash, UPI, Card, Net Banking, and Wallet. Handles Advance deposits, Partial payments, Full settlements, and Refunds — advance amounts are automatically detected and applied to the matching invoice during checkout. |
-| 🔐 **12** | **Fine-Grained Role-Based Access Control (RBAC)** | Four distinct roles — `Admin`, `Doctor`, `Receptionist`, `Accountant` — each with precisely scoped permissions enforced at every API endpoint via FastAPI's `RoleChecker` dependency injection. |
-| 📋 **13** | **Immutable System Audit Trail** | Every action — logins, patient registrations, billing edits, payments, refunds, settings changes — is automatically logged with the user identity and timestamp. The log is read-only, tamper-evident, and visible only to Admins. |
-| 📤 **14** | **One-Click Data Export** | Transaction ledgers stream directly from the server as Excel (`.xlsx`) or CSV via Pandas — no third-party BI tool needed. |
-| 🚀 **15** | **Zero-Config Docker Deployment & Offline PWA** | The entire stack launches with a single command: `docker-compose up --build`. Also installable as an offline-capable Progressive Web App with Service Workers. |
+| 🧑‍⚕️ **6** | **4 Specialized Role-Based Workspaces** | Tailored operational desks for **Doctor** (active OPD queue with live token counter, ambient voice intake, Rx generator), **Receptionist** (speed registration, OPD token assignment, advance deposit), **Accountant** (invoice queue, UPI/cash settlements, refund ledger, dashboard metrics), and **Admin** (system KPIs, catalog pricing, audit logs, branding). |
+| 🔢 **7** | **Persistent OPD Token System** | Every patient visit gets a unique, persistent OPD token number (e.g., `18-00001`). The Doctor's live queue displays token numbers alongside patient demographics and chief complaints, ordered chronologically so morning/completed patients appear first and waiting patients queue below. |
+| 💡 **8** | **Interactive Hospital Financial ROI Calculator** | Built-in financial simulation tool modeling annual hospital cost recovery from eliminated billing leakages, automated pre-invoice auditing, prevented test duplications, and reduced doctor administrative burden. |
+| 📊 **9** | **AI Revenue Narrative Dashboard** | Instead of just charts, the dashboard reads today's actual live transaction data and generates a paragraph-level business insight with sentiment (positive / neutral / negative), a specific financial highlight, and an actionable recommendation for the hospital admin. |
+| 🧾 **10** | **AI Test & Service Recommender** | Before billing, the system queries the hospital's own active services catalog and recommends the most relevant OPD tests based on patient age, gender, and symptoms — with clinical reasoning for each suggestion. |
+| 📄 **11** | **ReportLab Dynamic PDF Engine with Devanagari Font Support** | A5 receipts and prescription sheets are generated server-side by ReportLab with native Nirmala Devanagari font rendering. Every branding detail — hospital name, logo, GSTIN, doctor name, contact, address — is editable via the Admin panel and reflects on every new PDF instantly. |
+| 💳 **12** | **Complete Payment Lifecycle & Advance Adjustments** | Supports Cash, UPI, Card, Net Banking, and Wallet. Handles Advance deposits, Partial payments, Full settlements, and Refunds — advance amounts are automatically detected and applied to the matching invoice during checkout. |
+| 🔐 **13** | **Fine-Grained Role-Based Access Control (RBAC)** | Four distinct roles — `Admin`, `Doctor`, `Receptionist`, `Accountant` — each with precisely scoped permissions enforced at every API endpoint via FastAPI's `RoleChecker` dependency injection. |
+| 📋 **14** | **Immutable System Audit Trail** | Every action — logins, patient registrations, billing edits, payments, refunds, settings changes — is automatically logged with the user identity and timestamp. The log is read-only, tamper-evident, and visible only to Admins. |
+| 📤 **15** | **One-Click Data Export** | Transaction ledgers stream directly from the server as Excel (`.xlsx`) or CSV via Pandas — no third-party BI tool needed. |
+| 🚀 **16** | **Zero-Config Docker Deployment & Offline PWA** | The entire stack launches with a single command: `docker-compose up --build`. Also installable as an offline-capable Progressive Web App with Service Workers. |
 
 > [!NOTE]
 > All AI outputs (voice clinical parsing, prescription suggestions, billing audit verdicts, patient handouts, revenue insights) are **assistive** — final clinical and financial decisions remain with the attending doctor and accountant respectively.
@@ -55,37 +54,61 @@ The entire stack is containerized and orchestrates seamlessly with a single comm
 - **Reduced Consultation Overhead**: Processes clinical notes into structured handouts in **< 2 seconds** across **11 regional Indian languages**, saving clinicians ~40% of administrative time per patient visit.
 - **Improved Revenue Auditing**: The pre-invoice AI Auditor flags **95%+ of clinical/billing anomalies**, reducing billing leakages and invoice discrepancies before checkout.
 - **Determinism & Compliance**: Enforces **98% prompt compliance** during safety constraints and dosing checks via a custom hybrid rule engine + LLM validator.
+- **Zero Leakage OPD Tracking**: Persistent token numbers ensure every patient visit is traceable from registration to discharge with no missed tokens or queue gaps.
 
 ---
 
 ## 🌟 Key Features
 
 ### 🏢 Core Hospital Workflows
-- **Patient Desk**: Patient profiles registration and search (lookup by Patient ID, Name, Mobile, Receipt ID, or Bill ID).
+- **Patient Registration & Search**: Patient profiles with lookup by Patient ID, Name, Mobile, Receipt ID, or Bill ID. Gender defaults to a required selection (no accidental male defaults).
+- **OPD Token System**: Each visit is assigned a persistent token number at creation time. Token numbers survive page refresh and backend restarts — stored directly in the `visits` table.
 - **Consultation & Visit Logger**: Logs sequential patient visits under a visit index (`Patient ➔ Visit ➔ Invoice`).
-- **Standardized Services Catalog**: Dynamic catalog grouping doctor consultations, OPD, IPD, ICU, labs, radiology, and pharmacy charges with standard base pricing. Editable via the Admin panel.
-- **Invoice Builder (Billing Queue)**: Interactive multi-item billing builder allowing receptionist staff to override standard catalog pricing, group multiple services, auto-fetch and adjust visit-level advance payments, and calculate balances.
+- **Standardized Services Catalog**: Dynamic catalog grouping doctor consultations, OPD, IPD, ICU, labs, radiology, and pharmacy charges with standard base pricing. Fully editable via the Admin panel with category filters.
+- **Invoice Builder (Billing Queue)**: Interactive multi-item billing builder allowing staff to override standard catalog pricing, group multiple services, auto-fetch and adjust visit-level advance payments, and calculate balances.
 
 ```mermaid
 graph TD
     A[Receptionist / Admin] -->|1. Register Patient| B(patient_id PAT-YYYYMMDD-XXXXX)
-    B -->|2. Create Visit| C(visit_id VIS-YYYYMMDD-XXXXX)
+    B -->|2. Create Visit + Token| C(visit_id VIS-YYYYMMDD-XXXXX · token 18-00001)
     C -->|3. Enter Symptoms/Chief Complaints| D{Doctor / AI Assistant Console}
-    D -->|4. AI Prescription Suggester| E[Groq Llama 3.3]
+    D -->|4. AI Prescription Suggester| E[Groq LLM Multi-Model]
     E -->|Generates clinical suggestions| F[Prescription Draft]
-    F -->|5. Customize & Save| G[(PostgreSQL db)]
+    F -->|5. Customize & Save| G[(Database)]
     F -->|6. Generate Handout| H[Vernacular Summarizer]
-    H -->|Translate to Hindi/English| I[Vernacular Handout with emojis]
+    H -->|Translate to 11 Languages| I[Vernacular Handout with emojis]
     I -->|7. PDF Generator| J[ReportLab A5 Printout]
 ```
 
 
+### 🧑‍⚕️ Role-Specific Dashboards (New)
+
+#### Doctor Dashboard
+- **Live OPD Queue**: Real-time sorted list of all today's patients, showing persistent token number, name, age, gender, contact, and chief complaints.
+- **Queue Status Split**: Visual cards for total waiting vs. completed patients — updates in real time.
+- **Token Counter**: Running count of tokens issued today with a chronological queue display (earliest tokens first, completed patients at top).
+- **Quick Actions**: One-click navigation to the Doctor Console for a patient's visit.
+
+#### Receptionist Dashboard
+- **Speed Registration Widget**: Streamlined new patient registration without leaving the dashboard.
+- **Token Assignment Panel**: Instantly view and assign OPD queue tokens to new arrivals.
+- **Advance Deposit**: Collect advance payments from patients during registration without switching tabs.
+- **Today's Registrations**: Live counter of patients registered in the current session.
+
+#### Accountant Dashboard
+- **Invoice Queue Overview**: Live grid of all open/partial invoices with amount due.
+- **Collection Summary**: Today's cash vs. UPI/card/digital split with running totals.
+- **Refund Ledger**: Inline refund processing with automatic invoice balance adjustment and PDF receipt generation.
+- **Report Downloads**: One-click CSV and Excel exports directly from the dashboard.
+
+
 ### 🧠 Advanced AI-Powered Assistant Ecosystem
-- **AI Consultation Summary & Patient Handout**: Converts doctor's raw clinical notes (diagnosis, complaints, medicines, advice, follow-up) into a structured daily-routine narrative with emojis (Morning, Afternoon, Night) in English and dynamically translates to 11 Indian native languages (Hindi, Kannada, Tamil, Telugu, Bengali, Marathi, Gujarati, Malayalam, Punjabi, Odia, Urdu) selected in real time.
-- **AI Clinical Treatment & Prescription Suggester**: Generates clinical recommendations (diagnoses, medicines, diagnostic tests, advice, follow-up schedules) based on patient complaints, age, and gender, following strict Indian clinical prescribing and safety rules (e.g. BD/OD dosing constraints, pediatric vs geriatric modifications, and non-overlapping classes).
+- **AI Consultation Summary & Patient Handout**: Converts doctor's raw clinical notes into a structured daily-routine narrative with emojis (Morning, Afternoon, Night) in English and dynamically translates to 11 Indian native languages selected in real time.
+- **AI Clinical Treatment & Prescription Suggester**: Generates clinical recommendations (diagnoses, medicines, diagnostic tests, advice, follow-up schedules) based on patient complaints, age, and gender, following strict Indian clinical prescribing and safety rules (e.g. BD/OD dosing constraints, pediatric vs geriatric modifications, and non-overlapping drug classes).
 - **AI Service & Diagnostic Test Recommender**: Recommends the most relevant OPD services or tests directly from the hospital's active services catalog based on patient demographics and symptoms, providing clinical justifications.
-- **AI Billing Auditor & Anomaly Checker**: Audits bill items prior to invoice creation to identify financial and clinical anomalies, classifying status as `clear`, `warning`, or `critical` (checks for duplicate tests, clinically unlikely service combinations like ICU + OPD, excessive amounts, missing consultation fees, or age-inappropriate billing).
-- **AI Dashboard Revenue Insights**: Performs real-time server-side analytics on today's transaction ledgers, digital/cash splits, and outstanding dues to produce data-driven business insights, actionable administrative suggestions, highlights, and revenue sentiments (positive, neutral, negative).
+- **AI Billing Auditor & Anomaly Checker**: Audits bill items prior to invoice creation to identify financial and clinical anomalies, classifying status as `clear`, `warning`, or `critical`.
+- **AI Dashboard Revenue Insights**: Performs real-time server-side analytics on today's transaction ledgers, digital/cash splits, and outstanding dues to produce data-driven business insights, actionable administrative suggestions, highlights, and revenue sentiments.
+- **AI Voice-to-Clinical Parser**: Accepts audio input from a patient's ambient speech and processes it through a multi-model Groq pipeline to return structured clinical fields (chief complaints, likely diagnoses, relevant tests) in English.
 
 ```mermaid
 flowchart TD
@@ -100,7 +123,7 @@ flowchart TD
     end
     
     subgraph Semantic AI Auditor
-        C -->|Send payload to Groq API| E1[Groq Llama 3.3 Model]
+        C -->|Send payload to Groq API| E1[Groq Multi-Model LLM]
         E1 -->|Analyze clinical inconsistencies| E2[Validate Symptoms vs Test Appropriateness]
     end
     
@@ -167,9 +190,11 @@ graph LR
 
 ### 📊 Administrative Controls
 - **Advanced KPI Dashboard**: Aggregated counters for total registered patients, today's patient visits, total revenue, outstanding dues, cash/online collection splits, and refund aggregates with interactive charts.
+- **Audit Statistics Panel**: Daily system activity summary — logins, registrations, billing events, settings changes — aggregated from the audit log for operational monitoring.
 - **Pandas Data Exporting**: Direct server-side streaming responses of transaction ledgers to Excel (`.xlsx`) and CSV formats using `pandas` and `openpyxl`.
 - **System Audit Log**: Automatic immutable action logger tracking credentials logins, patient registrations, billing edits, payments, settings shifts, and refunds.
 - **RBAC Security**: Role-Based Access Control enforcing specific views and actions:
+  - **Doctor**: Clinical consultation desk, OPD queue, voice intake, AI prescription generator.
   - **Receptionist**: Registration, visits, deposits, and bill creation.
   - **Accountant**: Billing queues, payment processing, refunds, downloads, and receipts.
   - **Admin**: All views, audit log table, catalog standard pricing, user management, and branding settings.
@@ -207,23 +232,26 @@ HospiSynAI is built as a decoupled, multi-container system that orchestrates a f
 ```mermaid
 graph TD
     subgraph Frontend Container
-        React[React client - Vite] --> Tailwind[Tailwind CSS Styling]
+        React[React 18 - Vite] --> CSS[Vanilla CSS + Glassmorphism]
         React --> Router[App.jsx Router & Tab Navigator]
+        React --> PWA[Service Worker - Offline PWA]
     end
 
     subgraph Backend Container
-        API[FastAPI Backend - Python 3.10] --> Auth[JWT & bcrypt RBAC Guard]
+        API[FastAPI Backend - Python 3.11] --> Auth[JWT & bcrypt RBAC Guard]
         API --> PDF[ReportLab A5 Receipt Engine]
         API --> Excel[Pandas Ledger Streamer]
-        API --> AI[Groq Llama-3.3 Client]
+        API --> AI[Groq Multi-Model LLM Client]
+        API --> NLP[Clinical NLP Engine]
     end
 
-    subgraph Database Container
-        DB[(PostgreSQL 15 DB)]
+    subgraph Database
+        DB[(SQLite / PostgreSQL)]
     end
 
     React -->|HTTP / REST + Bearer JWT| API
     API -->|SQLAlchemy ORM| DB
+    AI -->|openai/gpt-oss-120b · gpt-oss-20b · qwen/qwen3-27b · groq/compound-mini| Groq[Groq Cloud API]
 ```
 
 ### File Structure
@@ -295,6 +323,19 @@ Docker will automatically pull Postgres 15, compile the FastAPI image, pull Reac
 - **FastAPI Documentation (Swagger UI)**: [http://localhost:5000/docs](http://localhost:5000/docs)
 - **PostgreSQL Database**: Exposing port `5432`
 
+### Local Dev (Without Docker)
+```bash
+# Backend
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload --port 5000
+
+# Frontend (separate terminal)
+cd frontend
+npm install
+npm run dev
+```
+
 ---
 
 ## 🔑 Default Accounts (Development Only)
@@ -304,9 +345,9 @@ On first startup, the database is automatically seeded with four accounts repres
 | Username | Password | Role | Panel Permissions |
 | :--- | :--- | :--- | :--- |
 | **admin** | `admin123` | **Admin** | Complete system access. Audit logs, user administration, catalog pricing, NHA rate configurations, and hospital branding. |
-| **doctor** | `doc123` | **Doctor** | Clinical consultation desk, active OPD patient queue, ambient voice intake, AI prescription generator, and diagnostic orders. |
-| **receptionist** | `recep123` | **Receptionist** | Front Desk operations. Patient finder/registration, visit queue allocation, advance deposit collections, and invoice creator. |
-| **accountant** | `acct123` | **Accountant** | Financial desk. Invoice queue payment processing, receipts preview/printing, refund processing, dashboard reports, and CSV/Excel downloads. |
+| **doctor** | `doc123` | **Doctor** | Live OPD queue with token numbers, clinical consultation desk, ambient voice intake, AI prescription generator, and diagnostic orders. |
+| **receptionist** | `recep123` | **Receptionist** | Front Desk operations. Patient finder/registration, visit queue & token assignment, advance deposit collections, and invoice creator. |
+| **accountant** | `acct123` | **Accountant** | Financial desk. Invoice queue payment processing, receipts preview/printing, refund processing, dashboard metrics, and CSV/Excel downloads. |
 
 > [!WARNING]
 > These credentials are seeded for development and evaluation purposes. For production deployments, change these passwords immediately.
@@ -349,24 +390,26 @@ sequenceDiagram
 ```
 
 
-| Feature / Workspace | Admin | Accountant | Receptionist | Implementation Details |
-| :--- | :---: | :---: | :---: | :--- |
-| **User Management** | ✅ | ❌ | ❌ | Restricted by `RoleChecker(["Admin"])` |
-| **Hospital Branding Settings** | ✅ | ❌ | ❌ | Restricted by `RoleChecker(["Admin"])` |
-| **Audit Logs** | ✅ | ❌ | ❌ | Restricted by `RoleChecker(["Admin"])` |
-| **Catalog Price Adjustments** | ✅ | ❌ | ❌ | Restricted by `RoleChecker(["Admin"])` |
-| **Soft Delete Patients/Bills** | ✅ | ❌ | ❌ | Restricted by `RoleChecker(["Admin"])` |
-| **Financial KPI Dashboard** | ✅ | ✅ | ❌ | Restricted by `RoleChecker(["Admin", "Accountant"])` |
-| **Spreadsheet Exports (Excel/CSV)** | ✅ | ✅ | ❌ | Restricted by `RoleChecker(["Admin", "Accountant"])` |
-| **Invoice Settlements & Refunds** | ✅ | ✅ | ❌ | Restricted by `RoleChecker(["Admin", "Accountant"])` |
-| **Patient Registration & Visits** | ✅ | ❌ | ✅ | Restricted by `RoleChecker(["Admin", "Receptionist"])` |
-| **Billing Builder (Bill Queue)** | ✅ | ❌ | ✅ | Restricted by `RoleChecker(["Admin", "Receptionist"])` |
+| Feature / Workspace | Admin | Doctor | Accountant | Receptionist | Implementation Details |
+| :--- | :---: | :---: | :---: | :---: | :--- |
+| **User Management** | ✅ | ❌ | ❌ | ❌ | Restricted by `RoleChecker(["Admin"])` |
+| **Hospital Branding Settings** | ✅ | ❌ | ❌ | ❌ | Restricted by `RoleChecker(["Admin"])` |
+| **Audit Logs** | ✅ | ❌ | ❌ | ❌ | Restricted by `RoleChecker(["Admin"])` |
+| **Catalog Price Adjustments** | ✅ | ❌ | ❌ | ❌ | Restricted by `RoleChecker(["Admin"])` |
+| **Soft Delete Patients/Bills** | ✅ | ❌ | ❌ | ❌ | Restricted by `RoleChecker(["Admin"])` |
+| **Financial KPI Dashboard** | ✅ | ❌ | ✅ | ❌ | Restricted by `RoleChecker(["Admin", "Accountant"])` |
+| **Spreadsheet Exports (Excel/CSV)** | ✅ | ❌ | ✅ | ❌ | Restricted by `RoleChecker(["Admin", "Accountant"])` |
+| **Invoice Settlements & Refunds** | ✅ | ❌ | ✅ | ❌ | Restricted by `RoleChecker(["Admin", "Accountant"])` |
+| **OPD Queue & Clinical Console** | ✅ | ✅ | ❌ | ❌ | Restricted by `RoleChecker(["Admin", "Doctor"])` |
+| **AI Prescription & Voice Intake** | ✅ | ✅ | ❌ | ❌ | Restricted by `RoleChecker(["Admin", "Doctor"])` |
+| **Patient Registration & Visits** | ✅ | ❌ | ❌ | ✅ | Restricted by `RoleChecker(["Admin", "Receptionist"])` |
+| **Billing Builder (Bill Queue)** | ✅ | ❌ | ❌ | ✅ | Restricted by `RoleChecker(["Admin", "Receptionist"])` |
 
 ---
 
 ## 🛠️ Relational Database Schema Design
 
-The PostgreSQL database is fully normalized and handles cascading deletions, soft-delete statuses, dynamic branding parameters, and audit trails.
+The database is fully normalized and handles cascading deletions, soft-delete statuses, dynamic branding parameters, and audit trails. Supports both SQLite (local dev) and PostgreSQL (Docker/production).
 
 ### Entity Relationship Diagram (ERD)
 
@@ -389,18 +432,33 @@ erDiagram
 
 ### Table Schema Definitions
 
-1. `users`: Stores staff authentication credentials (hashed using bcrypt) and role configurations.
+1. `users`: Staff authentication credentials (bcrypt-hashed) and role configurations.
 2. `patients`: Core profile table (`patient_id` matches format `PAT-YYYYMMDD-XXXXX`). Contains `is_active` soft-delete index.
-3. `doctors`: Stores medical practitioners' information (name, qualifications).
-4. `visits`: Index tracking patient entries (`visit_id` formatted `VIS-YYYYMMDD-XXXXX`). Contains symptoms, diagnosis, and prescription details.
+3. `doctors`: Medical practitioners' information (name, qualifications).
+4. `visits`: Patient entries (`visit_id` formatted `VIS-YYYYMMDD-XXXXX`). Contains symptoms, diagnosis, prescription details, and **`token_number`** (persistent OPD queue token).
 5. `services`: Price book representing standard hospital rates (OPD registration, ICU bed rent, MRIs, etc.).
 6. `bills`: Financial invoice records (`bill_id` formatted `BILL-YYYYMMDD-XXXXX`) detailing total billed amounts, applied visit advances, remaining outstanding balances, and payment statuses (`Pending`, `Partial Paid`, `Paid`).
 7. `bill_items`: Individual invoice lines referencing standard service IDs, capturing price snapshot at billing.
-8. `payments`: Logs transactions (`payment_id` formatted `PAY-YYYYMMDD-XXXXX`). Links to visit for advance deposits or bill for invoice payments. Stores method (Cash, UPI, etc.), reference notes, and type.
-9. `receipts`: Connects completed payments to customized template paths and generated PDFs (`receipt_id` formatted `REC-YYYYMMDD-XXXXX`).
+8. `payments`: Transaction logs (`payment_id` formatted `PAY-YYYYMMDD-XXXXX`). Links to visit for advance deposits or bill for invoice payments. Stores method (Cash, UPI, etc.), reference notes, and type.
+9. `receipts`: Connects completed payments to generated PDFs (`receipt_id` formatted `REC-YYYYMMDD-XXXXX`).
 10. `refunds`: Outflow tracking table (`refund_id` formatted `REF-YYYYMMDD-XXXXX`) mapping adjustments back to the original transaction.
 11. `settings`: Key-value configuration dictionary storing logo headers, doctor names, addresses, contacts, and tax info.
 12. `audit_logs`: Chronological log entries mapping actions to user sessions.
+
+---
+
+## 🤖 AI Model Configuration
+
+HospiSynAI uses a **multi-model cascade** via the Groq Cloud API. The system tries models in priority order and falls back automatically if one is unavailable:
+
+| Priority | Model | Use Case |
+| :---: | :--- | :--- |
+| 1 | `openai/gpt-oss-120b` | Primary: prescription suggestions, billing audits, handouts |
+| 2 | `openai/gpt-oss-20b` | Fallback: faster inference, lighter tasks |
+| 3 | `qwen/qwen3-27b` | Fallback: multilingual handout generation |
+| 4 | `groq/compound-mini` | Final fallback: low-latency JSON extraction |
+
+The `GROQ_MODEL` environment variable sets the primary model. The `clinical_nlp.py` engine independently cycles through the same cascade for voice intake parsing.
 
 ---
 
@@ -412,13 +470,23 @@ Follow this standard workflow to verify system capabilities:
 1. Log in to [http://localhost:3000](http://localhost:3000) using `receptionist` / `recep123`.
 2. Navigate to **Patient Search & Desk**.
 3. Fill out the **New Registration** form to register a new patient profile. Check that a unique sequential Patient ID is generated (e.g. `PAT-20260626-00001`).
-4. Select the registered patient. Fill out the **Record Patient Visit** input to start a consultation (e.g., inputting "Fever and Dry Cough" as symptoms). Check that a Visit ID is generated.
+4. Select the registered patient. Fill out the **Record Patient Visit** input to start a consultation (e.g., inputting "Fever and Dry Cough" as symptoms). Check that a Visit ID and **OPD Token Number** are generated.
 5. Click the **Clinical Notes & AI Summary** button on the active visit to open the consultation workspace modal:
    - In the chief complaints field, write or select symptoms (e.g., "Fever and Dry Cough").
-   - Click the **🧠 AI Suggest Treatment** button. The system will leverage Groq LLM to instantly generate standard clinical prescriptions (diagnosis, medicines with dosages, diagnostic tests, advice, follow-up schedule) compliant with clinical dosing rules.
+   - Click the **🧠 AI Suggest Treatment** button. The system will leverage the Groq LLM cascade to instantly generate standard clinical prescriptions (diagnosis, medicines with dosages, diagnostic tests, advice, follow-up schedule) compliant with clinical dosing rules.
    - Review and customize the AI-suggested fields as needed.
    - Click **Generate AI Summary** to trigger the Groq LLM API. Verify that a simplified, bilingual (English + Hindi) explanation is populated showing structured routines.
    - Click **Save Summary** to store it, and **Print Summary** or **Download PDF** to retrieve the ReportLab-generated prescription sheet.
+
+### Step 2: Doctor (OPD Queue)
+1. Log in as `doctor` / `doc123`.
+2. View the **Doctor Dashboard** — verify the live OPD queue showing all today's patients with their persistent token numbers, sorted chronologically (earliest tokens first).
+3. Check the **waiting vs. completed** patient count cards.
+4. Click into the **Doctor Console** for a specific patient:
+   - Click the **🎙️ Voice Intake** button to open the Ambient Voice Intake modal. Speak a chief complaint — watch the real-time waveform visualizer and confirm the AI returns a structured clinical JSON (complaints, likely diagnoses, suggested tests).
+   - Use **🧠 AI Suggest Treatment** for an instant prescription recommendation.
+   - Fill diagnosis, medicines, and advice fields; save the consultation.
+   - Generate the multilingual patient handout and switch between all 11 Indian languages from the dropdown.
 6. In the visit module, record an **Advance Deposit** of `500` via `UPI` (Reference: `TXN987654`).
 7. Build an invoice using the **Multi-Item Bill Creator**:
    - To find appropriate tests for the patient's symptoms, click **✨ AI Test Suggester**. The system queries the active services database catalog and returns recommendations with reasons based on the patient's age, gender, and symptoms.
@@ -427,7 +495,7 @@ Follow this standard workflow to verify system capabilities:
    - Click **Generate Invoice** after verifying the audit.
 8. Check that the system automatically applies the `500` advance payment to the `800` grand total, setting the bill status to `Partial Paid` with a remaining balance of `300`.
 
-### Step 2: Financial Desk (Accountant)
+### Step 3: Financial Desk (Accountant)
 1. Log in as `accountant` / `acct123`.
 2. Verify the **AI Dashboard Revenue Insights** card displayed at the top of the Dashboard. It dynamically parses today's financials (revenue, visits, online/cash splits, outstanding dues) to present an administrative summary, data highlight, actionable recommendation, and sentiment color indicator.
 3. Go to **Billing Queue**. Locate the outstanding invoice generated in the previous step.
@@ -439,20 +507,20 @@ Follow this standard workflow to verify system capabilities:
 7. Issue a refund: Copy the **full Payment ID** (starts with `PAY-`) directly from the Patient Desk (which displays full Payment IDs with a one-click copy button next to receipts), the Receipt modal, or the Billing Workspace's transaction log. Paste it into the **Refund Desk** on the right, input a refund amount (e.g., `100` for test cancellation), and click **Issue Refund Receipt**. Check that the invoice balance returns to `100` and a Refund Receipt is logged.
 8. Run spreadsheet reports by clicking **CSV Report** or **Excel Report** at the top of the dashboard.
 
-### Step 3: Administration (Admin)
+### Step 4: Administration (Admin)
 1. Log in as `admin` / `admin123`.
 2. Go to **Hospital Settings**. Edit the branding fields (e.g. change the Doctor Name or Hospital Logo/Title).
 3. Open any receipt. Check that the printed/displayed PDF headers update dynamically.
 4. Check the **System Audit Trail** tab. Verify that all patient registrations, visit additions, payments, settings modifications, and user logins are logged with their corresponding timestamp and user session.
 
-### Step 4: Automated Testing (Verification)
+### Step 5: Automated Testing (Verification)
 Verify backend routing logic and clinical/GST billing rules using the automated test suite:
 1. Open a terminal in the project root directory.
 2. Run pytest inside the backend environment:
    ```bash
    python -m pytest backend/test_main.py
    ```
-3. Check that all 10 unit tests pass successfully, confirming correctness of password hashing, JWT token generation, RBAC security restrictions, duplicate test auditing, room rent & cosmetic surgery GST calculations, missing consultation fee alerts, pediatric dosage safety flags, and AI response schema structures.
+3. Check that all unit tests pass, confirming correctness of password hashing, JWT token generation, RBAC security restrictions, duplicate test auditing, room rent & cosmetic surgery GST calculations, missing consultation fee alerts, pediatric dosage safety flags, and AI response schema structures.
 
 ---
 
@@ -477,7 +545,7 @@ For deployment and local setup, the project supports a `.env` configuration file
 | `VITE_API_BASE_URL` | API Base URL used by the React client | `http://localhost:5000/api` |
 | `VITE_STATIC_BASE_URL` | Static download Base URL (for PDF receipts) | `http://localhost:5000` |
 | `GROQ_API_KEY` | API Key for Groq Cloud services (required for AI features) | *(None)* |
-| `GROQ_MODEL` | Groq LLM model to use for generating summaries | `openai/gpt-oss-120b` |
+| `GROQ_MODEL` | Primary Groq LLM model | `openai/gpt-oss-120b` |
 
 ### 🚀 Production Deployment Checklist
 
@@ -496,14 +564,17 @@ For deployment and local setup, the project supports a `.env` configuration file
 | Capability | 🏚️ Typical Tier 2 / Tier 3 HMS | 🚀 HospiSynAI |
 | :--- | :---: | :---: |
 | **AI Prescription Suggester** (LLM generates diagnosis + medicines + tests from symptoms) | ❌ Not available | ✅ Built-in, no extra cost |
+| **Persistent OPD Token System** (token numbers survive refresh, ordered queue) | ❌ Manual slip / paper | ✅ Database-backed, auto-assigned |
+| **Role-Specific Dashboards** (Doctor queue, Receptionist desk, Accountant ledger) | ❌ Single generic view | ✅ 4 tailored workspaces |
 | **Pre-Invoice Billing Fraud Auditor** (catches duplicate tests, age errors, clinical mismatches before checkout) | ❌ Not available | ✅ Runs automatically before every invoice |
 | **Patient Handout in Regional Language** (Kannada, Tamil, Telugu, Hindi, Bengali etc.) | ❌ English only or fixed Hindi printout | ✅ 11 live Indian languages, auto-generated by AI |
 | **AI-Driven Dashboard Insights** (narrative analysis of revenue, sentiment, recommendations) | ❌ Static counters / bar charts only | ✅ AI writes a paragraph summary of today's financial health |
 | **AI Test & Service Recommender** (suggests relevant OPD tests from hospital's own catalog) | ❌ Staff manually checks catalog | ✅ AI recommends with clinical reasoning |
+| **Ambient Voice Intake** (patient speaks in Hindi/Hinglish, AI extracts clinical data) | ❌ Not available | ✅ Real-time waveform + Groq multi-model AI |
 | **Customisable PDF Receipts & Prescriptions** | ❌ Fixed vendor template, needs IT support to change | ✅ Admin panel — edit hospital name, logo, GSTIN, doctor in 30 seconds |
 | **Advance → Invoice Auto-Adjustment** | ❌ Manual calculation by staff | ✅ Advance automatically detected and deducted from invoice total |
 | **Refund Processing with Receipt** | ❌ Manual ledger entry | ✅ Structured refund desk, PDF receipt generated automatically |
-| **Role-Based Access Control** (Receptionist / Accountant / Admin scoped separately) | ❌ Single login or basic admin/user split | ✅ Fine-grained per-endpoint enforcement via JWT + FastAPI |
+| **Role-Based Access Control** (Doctor / Receptionist / Accountant / Admin scoped separately) | ❌ Single login or basic admin/user split | ✅ Fine-grained per-endpoint enforcement via JWT + FastAPI |
 | **Immutable Audit Trail** | ❌ Absent or easily editable | ✅ Every action logged with user + timestamp, Admin-only read |
 | **Excel / CSV Export** | ❌ Manual report printing or absent | ✅ One-click server-side streaming export |
 | **Setup & Deployment** | ❌ Vendor installation visit, days of setup | ✅ `docker-compose up --build` — running in under 60 seconds |
@@ -511,5 +582,5 @@ For deployment and local setup, the project supports a `.env` configuration file
 | **Open Source / Auditable** | ❌ Closed black-box software | ✅ Every line of code is open and auditable |
 
 > [!TIP]
-> For a Tier 2 or Tier 3 hospital with 5–50 beds, HospiSynAI replaces the billing counter software, the prescription notepad, and the revenue spreadsheet — all in one system — while adding AI assistance that was previously only available to large corporate hospital chains paying for enterprise HMS subscriptions.
+> For a Tier 2 or Tier 3 hospital with 5–50 beds, HospiSynAI replaces the billing counter software, the OPD token counter, the prescription notepad, and the revenue spreadsheet — all in one system — while adding AI assistance that was previously only available to large corporate hospital chains paying for enterprise HMS subscriptions.
 
