@@ -74,17 +74,24 @@ else:  # Linux (Docker)
 
 try:
     if font_reg_path:
+        def _register_font(name, path, subfontIndex=None):
+            """Try registering with shapable=True (ReportLab 4.1+), fall back silently if unsupported."""
+            kwargs = {}
+            if subfontIndex is not None:
+                kwargs['subfontIndex'] = subfontIndex
+            try:
+                pdfmetrics.registerFont(TTFont(name, path, shapable=True, **kwargs))
+            except TypeError:
+                # ReportLab < 4.1 does not support shapable parameter
+                pdfmetrics.registerFont(TTFont(name, path, **kwargs))
+
         if is_ttc:
-            # shapable=True enables proper Unicode/Devanagari shaping (ReportLab 4.x)
-            pdfmetrics.registerFont(TTFont('Devanagari-Regular', font_reg_path, subfontIndex=3, shapable=True))
-            pdfmetrics.registerFont(TTFont('Devanagari-Bold', font_reg_path, subfontIndex=4, shapable=True))
+            _register_font('Devanagari-Regular', font_reg_path, subfontIndex=3)
+            _register_font('Devanagari-Bold', font_reg_path, subfontIndex=4)
         else:
-            pdfmetrics.registerFont(TTFont('Devanagari-Regular', font_reg_path, shapable=True))
-            if font_bold_path:
-                pdfmetrics.registerFont(TTFont('Devanagari-Bold', font_bold_path, shapable=True))
-            else:
-                pdfmetrics.registerFont(TTFont('Devanagari-Bold', font_reg_path, shapable=True))
-                
+            _register_font('Devanagari-Regular', font_reg_path)
+            _register_font('Devanagari-Bold', font_bold_path or font_reg_path)
+
         pdfmetrics.registerFontFamily('Devanagari', normal='Devanagari-Regular', bold='Devanagari-Bold')
         devanagari_registered = True
         print(f"Registered Devanagari font family: {font_reg_path}")

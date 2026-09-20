@@ -12,6 +12,7 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 from email.utils import formataddr
+from email.header import Header
 from icalendar import Calendar, Event, vText
 import datetime
 import uuid
@@ -49,7 +50,7 @@ def _send_email(
         msg = MIMEMultipart("mixed")
         msg["From"] = formataddr((SMTP_FROM_NAME, SMTP_USER))
         msg["To"] = to_email
-        msg["Subject"] = subject
+        msg["Subject"] = Header(subject, "utf-8")
 
         # HTML body
         msg.attach(MIMEText(html_body, "html", "utf-8"))
@@ -71,11 +72,11 @@ def _send_email(
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.sendmail(SMTP_USER, to_email, msg.as_string())
 
-        print(f"✅ Email sent to {to_email}: {subject}")
+        print(f"[OK] Email sent to {to_email}: {subject}")
         return True
 
     except Exception as e:
-        print(f"❌ Email send failed to {to_email}: {e}")
+        print(f"[FAIL] Email send failed to {to_email}: {e}")
         return False
 
 
@@ -203,9 +204,10 @@ def send_prescription_email(
         except Exception as e:
             print(f"⚠️  Could not generate .ics for follow-up date '{follow_up_date}': {e}")
 
+    doc_display = doctor_name if doctor_name.lower().startswith("dr") else f"Dr. {doctor_name}"
     return _send_email(
         to_email=patient_email,
-        subject=f"Your Prescription from Dr. {doctor_name} — {hospital_name}",
+        subject=f"Your Prescription from {doc_display} | {hospital_name}",
         html_body=html,
         attachments=attachments or None,
     )
@@ -290,7 +292,7 @@ def send_invoice_email(
 
     return _send_email(
         to_email=patient_email,
-        subject=f"Invoice {bill_id} — {hospital_name}",
+        subject=f"Invoice {bill_id} | {hospital_name}",
         html_body=html,
         attachments=attachments or None,
     )
