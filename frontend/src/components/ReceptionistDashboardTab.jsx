@@ -83,16 +83,50 @@ export default function ReceptionistDashboardTab({
     });
   }, [visits, todayStr]);
 
+  // Helper: Mutually exclusive clinical status classification
+  const getVisitStatusInfo = (vis) => {
+    if (!vis) return { statusKey: 'Waiting', label: 'Waiting', badgeColor: 'bg-amber-100 text-amber-800 border-amber-200' };
+    if (vis.status === 'Completed' || (vis.diagnosis && vis.medicines_list)) {
+      return { statusKey: 'Completed', label: 'Done', badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200' };
+    }
+    if (vis.status === 'In Cabin' || vis.status === 'In Consultation' || vis.status === 'Critical' || (vis.status !== 'Completed' && vis.diagnosis)) {
+      return { statusKey: 'In Consultation', label: 'In Cabin', badgeColor: 'bg-rose-100 text-rose-800 border-rose-200 animate-pulse' };
+    }
+    return { statusKey: 'Waiting', label: 'Waiting', badgeColor: 'bg-amber-100 text-amber-800 border-amber-200' };
+  };
+
+  // Stable Token Map: assigns a permanent token number to each visit based on chronological arrival order
+  const tokenMap = useMemo(() => {
+    const sorted = [...visits].sort((a, b) => {
+      const timeDiff = new Date(a.visit_date || 0) - new Date(b.visit_date || 0);
+      if (timeDiff !== 0) return timeDiff;
+      return a.id - b.id;
+    });
+
+    const map = new Map();
+    sorted.forEach((v, index) => {
+      const num = v.token_number || (index + 1);
+      map.set(v.id, num);
+    });
+    return map;
+  }, [visits]);
+
   const waitingQueue = useMemo(() => {
-    return visits.filter(v => (v.status === 'Waiting' || (!v.diagnosis && v.status !== 'Completed')));
+    return visits
+      .filter(v => getVisitStatusInfo(v).statusKey === 'Waiting')
+      .sort((a, b) => new Date(a.visit_date || 0) - new Date(b.visit_date || 0) || a.id - b.id);
   }, [visits]);
 
   const inConsultation = useMemo(() => {
-    return visits.filter(v => v.status === 'Critical' || (v.status !== 'Completed' && v.diagnosis));
+    return visits
+      .filter(v => getVisitStatusInfo(v).statusKey === 'In Consultation')
+      .sort((a, b) => new Date(a.visit_date || 0) - new Date(b.visit_date || 0) || a.id - b.id);
   }, [visits]);
 
   const completedVisits = useMemo(() => {
-    return visits.filter(v => v.status === 'Completed' || (v.diagnosis && v.medicines_list));
+    return visits
+      .filter(v => getVisitStatusInfo(v).statusKey === 'Completed')
+      .sort((a, b) => new Date(b.visit_date || 0) - new Date(a.visit_date || 0) || b.id - a.id);
   }, [visits]);
 
   // 3. Counter Collections calculation (Advance deposits from today's visits / bills)
@@ -109,28 +143,53 @@ export default function ReceptionistDashboardTab({
     return sum;
   }, [visits, unpaidBills]);
 
-  // Filtered queue
+  // Filtered queue with clinical priority sorting:
+  // 1. In Consultation / In Cabin
+  // 2. Waiting in Lobby (FIFO - earliest arrival / lowest token first)
+  // 3. Completed (most recently completed first)
   const filteredQueue = useMemo(() => {
-    return visits.filter(v => {
+    const matched = visits.filter(v => {
       const pName = v.patient?.name || '';
       const pMobile = v.patient?.mobile_number || '';
       const dName = v.doctor?.name || '';
       const visId = v.visit_id || '';
+      const reason = v.reason || '';
+      const tokenNum = tokenMap.get(v.id) || '';
       const matchesSearch = 
+        !searchQuery ||
         pName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         pMobile.includes(searchQuery) ||
         dName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        visId.toLowerCase().includes(searchQuery.toLowerCase());
+        visId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        reason.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        `#${tokenNum}`.includes(searchQuery) ||
+        `${tokenNum}` === searchQuery.trim();
 
       if (!matchesSearch) return false;
 
+      const { statusKey } = getVisitStatusInfo(v);
       if (statusFilter === 'All') return true;
-      if (statusFilter === 'Waiting') return v.status === 'Waiting' || (!v.diagnosis && v.status !== 'Completed');
-      if (statusFilter === 'In Consultation') return v.status !== 'Completed' && v.diagnosis;
-      if (statusFilter === 'Completed') return v.status === 'Completed' || (v.diagnosis && v.medicines_list);
-      return true;
+      return statusKey === statusFilter;
     });
-  }, [visits, searchQuery, statusFilter]);
+
+    return matched.sort((a, b) => {
+      const statusA = getVisitStatusInfo(a).statusKey;
+      const statusB = getVisitStatusInfo(b).statusKey;
+
+      const priorityOrder = { 'In Consultation': 1, 'Waiting': 2, 'Completed': 3 };
+      const pA = priorityOrder[statusA] || 2;
+      const pB = priorityOrder[statusB] || 2;
+
+      if (pA !== pB) return pA - pB;
+
+      if (statusA === 'Waiting' || statusA === 'In Consultation') {
+        // FIFO: earliest check-in first
+        return new Date(a.visit_date || 0) - new Date(b.visit_date || 0) || a.id - b.id;
+      }
+      // Completed: latest completed first
+      return new Date(b.visit_date || 0) - new Date(a.visit_date || 0) || b.id - a.id;
+    });
+  }, [visits, searchQuery, statusFilter, tokenMap]);
 
   return (
     <div className="flex flex-col h-full w-full overflow-y-auto compact-scroll p-2.5 md:p-3.5 pb-14 space-y-2.5 animate-in fade-in duration-150">
@@ -347,10 +406,9 @@ export default function ReceptionistDashboardTab({
 
           {/* Patient Queue Cards List */}
           <div className="space-y-1.5 max-h-[460px] overflow-y-auto compact-scroll pr-0.5">
-            {filteredQueue.map((vis, idx) => {
-              const isWaiting = vis.status === 'Waiting' || (!vis.diagnosis && vis.status !== 'Completed');
-              const isInCabin = vis.status === 'Critical' || (vis.status !== 'Completed' && vis.diagnosis);
-              const isDone = vis.status === 'Completed' || (vis.diagnosis && vis.medicines_list);
+            {filteredQueue.map((vis) => {
+              const statusInfo = getVisitStatusInfo(vis);
+              const tokenNum = tokenMap.get(vis.id) || 1;
 
               return (
                 <div
@@ -361,7 +419,7 @@ export default function ReceptionistDashboardTab({
                     {/* Token Badge */}
                     <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex flex-col items-center justify-center font-bold shrink-0 shadow-2xs">
                       <span className="text-[7.5px] uppercase tracking-tighter opacity-80 leading-none">Token</span>
-                      <span className="text-[11px] leading-tight">#{idx + 1}</span>
+                      <span className="text-[11px] leading-tight">#{tokenNum}</span>
                     </div>
 
                     <div className="space-y-0.5 min-w-0">
@@ -374,21 +432,9 @@ export default function ReceptionistDashboardTab({
                             {vis.patient.age}Y • {vis.patient.gender}
                           </span>
                         )}
-                        {isWaiting && (
-                          <span className="bg-amber-100 text-amber-800 text-[8.5px] font-bold px-1.5 py-0.2 rounded-full border border-amber-200">
-                            Waiting
-                          </span>
-                        )}
-                        {isInCabin && (
-                          <span className="bg-rose-100 text-rose-800 text-[8.5px] font-bold px-1.5 py-0.2 rounded-full border border-rose-200 animate-pulse">
-                            In Cabin
-                          </span>
-                        )}
-                        {isDone && (
-                          <span className="bg-emerald-100 text-emerald-800 text-[8.5px] font-bold px-1.5 py-0.2 rounded-full border border-emerald-200">
-                            Done
-                          </span>
-                        )}
+                        <span className={`text-[8.5px] font-bold px-1.5 py-0.2 rounded-full border ${statusInfo.badgeColor}`}>
+                          {statusInfo.label}
+                        </span>
                       </div>
 
                       <p className="text-[11px] text-slate-500 flex items-center gap-1.5 truncate">

@@ -58,6 +58,7 @@ class Visit(Base):
     visit_id = Column(String, unique=True, index=True, nullable=False) # VIS-YYYYMMDD-XXXXX
     patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False)
     doctor_id = Column(Integer, ForeignKey("doctors.id"), nullable=True)
+    token_number = Column(Integer, nullable=True)
     visit_date = Column(DateTime, default=datetime.datetime.utcnow)
     reason = Column(String, nullable=True)
     diagnosis = Column(String, nullable=True)

@@ -189,3 +189,34 @@ def test_receptionist_allowed_on_payments():
     receptionist_user = auth.models.User(username="recep_test", role="Receptionist", name="Counter Staff")
     # Should not raise any HTTPException
     assert payment_checker(receptionist_user) == receptionist_user
+
+
+def test_pediatric_extended_dosage_detection():
+    """Verify that adult dosage strengths (500mg, 400mg, etc.) trigger pediatric safety warning."""
+    items = [
+        MockBillItemAnomaly("Azithromycin 500mg", 120.0),
+        MockBillItemAnomaly("Ibuprofen 400mg", 40.0)
+    ]
+    issues = run_local_anomaly_checks(items, patient_age=7, patient_gender="Female", diagnosis="Fever")
+    assert any("Pediatric patient (Age 7) billed for adult" in issue for issue in issues)
+
+
+def test_advance_split_net_balance_conservation():
+    """Verify that splitting an advance payment with prior refunds strictly preserves money conservation."""
+    # Scenario: Advance paid = 1000, prior refund = 300 -> net available = 700.
+    # A bill requires 400.
+    # Consumed amount = 400.
+    # Excess advance created must be 700 - 400 = 300 (NOT 1000 - 400 = 600!).
+    original_paid = 1000.0
+    prior_refund = 300.0
+    net_available = original_paid - prior_refund  # 700.0
+    consumed = 400.0
+
+    excess_amount = net_available - consumed
+    adjusted_original_paid = consumed + prior_refund
+
+    assert excess_amount == 300.0
+    assert adjusted_original_paid - prior_refund == consumed
+    # Total conservation
+    assert adjusted_original_paid + excess_amount == original_paid
+

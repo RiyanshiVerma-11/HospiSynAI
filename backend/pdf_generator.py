@@ -17,8 +17,8 @@ devanagari_registered = False
 def wrap_devanagari(text: str, font_name: str = "Devanagari-Regular") -> str:
     if not devanagari_registered or not text:
         return text
-    # Match sequences of Devanagari/Gujarati/Bengali/Tamil/Telugu/Kannada/Malayalam characters (\u0900-\u0D7F)
-    pattern = re.compile(r'([\u0900-\u0D7F]+(?:[ \t\r\n\xa0\u200d\u200c]*[\u0900-\u0D7F]+)*)')
+    # Match sequences of Devanagari characters (\u0900-\u097F) for Hindi/Marathi/Sanskrit
+    pattern = re.compile(r'([\u0900-\u097F]+(?:[ \t\r\n\xa0\u200d\u200c]*[\u0900-\u097F]+)*)')
     return pattern.sub(f'<font name="{font_name}">\\1</font>', text)
 
 def Paragraph(text, style, *args, **kwargs):

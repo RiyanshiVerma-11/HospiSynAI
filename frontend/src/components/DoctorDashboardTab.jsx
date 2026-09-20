@@ -62,46 +62,104 @@ export default function DoctorDashboardTab({
   // Today's date calculations
   const todayStr = new Date().toISOString().split('T')[0];
 
+  // Helper: Mutually exclusive clinical status classification
+  const getVisitStatusInfo = (vis) => {
+    if (!vis) return { statusKey: 'Waiting', label: 'Waiting', badgeColor: 'bg-amber-100 text-amber-800 border-amber-200' };
+    if (vis.status === 'Completed' || (vis.diagnosis && vis.medicines_list)) {
+      return { statusKey: 'Completed', label: 'Done', badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200' };
+    }
+    if (vis.status === 'In Cabin' || vis.status === 'In Consultation' || vis.status === 'Critical' || (vis.status !== 'Completed' && vis.diagnosis)) {
+      return { statusKey: 'In Cabin', label: 'In Cabin', badgeColor: 'bg-rose-100 text-rose-800 border-rose-200 animate-pulse' };
+    }
+    return { statusKey: 'Waiting', label: 'Waiting', badgeColor: 'bg-amber-100 text-amber-800 border-amber-200' };
+  };
+
   // Filter for current doctor or all OPD if doctor on duty
   const doctorVisits = useMemo(() => {
     return visits;
   }, [visits]);
 
+  // Stable Token Map: assigns a permanent token number to each visit based on chronological arrival order
+  const tokenMap = useMemo(() => {
+    const sorted = [...doctorVisits].sort((a, b) => {
+      const timeDiff = new Date(a.visit_date || 0) - new Date(b.visit_date || 0);
+      if (timeDiff !== 0) return timeDiff;
+      return a.id - b.id;
+    });
+
+    const map = new Map();
+    sorted.forEach((v, index) => {
+      const num = v.token_number || (index + 1);
+      map.set(v.id, num);
+    });
+    return map;
+  }, [doctorVisits]);
+
   const waitingQueue = useMemo(() => {
-    return doctorVisits.filter(v => v.status === 'Waiting' || (!v.diagnosis && v.status !== 'Completed'));
+    return doctorVisits
+      .filter(v => getVisitStatusInfo(v).statusKey === 'Waiting')
+      .sort((a, b) => new Date(a.visit_date || 0) - new Date(b.visit_date || 0) || a.id - b.id);
   }, [doctorVisits]);
 
   const inCabin = useMemo(() => {
-    return doctorVisits.filter(v => v.status === 'Critical' || (v.status !== 'Completed' && v.diagnosis));
+    return doctorVisits
+      .filter(v => getVisitStatusInfo(v).statusKey === 'In Cabin')
+      .sort((a, b) => new Date(a.visit_date || 0) - new Date(b.visit_date || 0) || a.id - b.id);
   }, [doctorVisits]);
 
   const completedVisits = useMemo(() => {
-    return doctorVisits.filter(v => v.status === 'Completed' || (v.diagnosis && v.medicines_list));
+    return doctorVisits
+      .filter(v => getVisitStatusInfo(v).statusKey === 'Completed')
+      .sort((a, b) => new Date(b.visit_date || 0) - new Date(a.visit_date || 0) || b.id - a.id);
   }, [doctorVisits]);
 
-  // Filtered queue
+  // Filtered queue with clinical priority sorting:
+  // 1. In Cabin (active consultation)
+  // 2. Waiting in Lobby (FIFO - earliest arrival / lowest token first)
+  // 3. Completed (most recently prescribed first)
   const filteredQueue = useMemo(() => {
-    return doctorVisits.filter(v => {
+    const matched = doctorVisits.filter(v => {
       const pName = v.patient?.name || '';
       const pMobile = v.patient?.mobile_number || '';
       const diag = v.diagnosis || '';
       const reason = v.reason || '';
+      const complaints = v.chief_complaints || '';
+      const tokenNum = tokenMap.get(v.id) || '';
       const matchesSearch = 
         !searchQuery ||
         pName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         pMobile.includes(searchQuery) ||
         diag.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        reason.toLowerCase().includes(searchQuery.toLowerCase());
+        reason.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        complaints.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        `#${tokenNum}`.includes(searchQuery) ||
+        `${tokenNum}` === searchQuery.trim();
 
       if (!matchesSearch) return false;
 
+      const { statusKey } = getVisitStatusInfo(v);
       if (statusFilter === 'All') return true;
-      if (statusFilter === 'Waiting') return v.status === 'Waiting' || (!v.diagnosis && v.status !== 'Completed');
-      if (statusFilter === 'In Cabin') return v.status !== 'Completed' && v.diagnosis;
-      if (statusFilter === 'Completed') return v.status === 'Completed' || (v.diagnosis && v.medicines_list);
-      return true;
+      return statusKey === statusFilter;
     });
-  }, [doctorVisits, searchQuery, statusFilter]);
+
+    return matched.sort((a, b) => {
+      const statusA = getVisitStatusInfo(a).statusKey;
+      const statusB = getVisitStatusInfo(b).statusKey;
+
+      const priorityOrder = { 'In Cabin': 1, 'Waiting': 2, 'Completed': 3 };
+      const pA = priorityOrder[statusA] || 2;
+      const pB = priorityOrder[statusB] || 2;
+
+      if (pA !== pB) return pA - pB;
+
+      if (statusA === 'Waiting' || statusA === 'In Cabin') {
+        // FIFO: earliest check-in first
+        return new Date(a.visit_date || 0) - new Date(b.visit_date || 0) || a.id - b.id;
+      }
+      // Completed: latest completed first
+      return new Date(b.visit_date || 0) - new Date(a.visit_date || 0) || b.id - a.id;
+    });
+  }, [doctorVisits, searchQuery, statusFilter, tokenMap]);
 
   // Jump to consultation
   const handleStartConsult = (vis) => {
@@ -112,12 +170,13 @@ export default function DoctorDashboardTab({
     }
   };
 
-  // Call next patient in queue
+  // Call next patient in queue (FIFO order)
   const handleCallNextPatient = () => {
     if (waitingQueue.length > 0) {
       const nextPat = waitingQueue[0];
       handleStartConsult(nextPat);
-      showToast(`Calling Token #1: ${nextPat.patient?.name || 'Next Patient'} into cabin.`);
+      const tokenNum = tokenMap.get(nextPat.id) || 1;
+      showToast(`Calling Token #${tokenNum}: ${nextPat.patient?.name || 'Next Patient'} into cabin.`);
     } else {
       showToast("Waiting lobby is clear! No pending patients.", "success");
     }
@@ -321,10 +380,10 @@ export default function DoctorDashboardTab({
 
           {/* Patient Queue Cards List */}
           <div className="space-y-1.5 max-h-[460px] overflow-y-auto compact-scroll pr-0.5">
-            {filteredQueue.map((vis, idx) => {
-              const isWaiting = vis.status === 'Waiting' || (!vis.diagnosis && vis.status !== 'Completed');
-              const isInConsult = vis.status === 'Critical' || (vis.status !== 'Completed' && vis.diagnosis);
-              const isDone = vis.status === 'Completed' || (vis.diagnosis && vis.medicines_list);
+            {filteredQueue.map((vis) => {
+              const statusInfo = getVisitStatusInfo(vis);
+              const isDone = statusInfo.statusKey === 'Completed';
+              const tokenNum = tokenMap.get(vis.id) || 1;
 
               return (
                 <div
@@ -335,7 +394,7 @@ export default function DoctorDashboardTab({
                     {/* Token Badge */}
                     <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex flex-col items-center justify-center font-bold shrink-0 shadow-2xs">
                       <span className="text-[7.5px] uppercase tracking-tighter opacity-80 leading-none">Token</span>
-                      <span className="text-[11px] leading-tight">#{idx + 1}</span>
+                      <span className="text-[11px] leading-tight">#{tokenNum}</span>
                     </div>
 
                     <div className="space-y-0.5 min-w-0">
@@ -348,21 +407,9 @@ export default function DoctorDashboardTab({
                             {vis.patient.age}Y • {vis.patient.gender}
                           </span>
                         )}
-                        {isWaiting && (
-                          <span className="bg-amber-100 text-amber-800 text-[8.5px] font-bold px-1.5 py-0.2 rounded-full border border-amber-200">
-                            Waiting
-                          </span>
-                        )}
-                        {isInConsult && (
-                          <span className="bg-rose-100 text-rose-800 text-[8.5px] font-bold px-1.5 py-0.2 rounded-full border border-rose-200 animate-pulse">
-                            In Cabin
-                          </span>
-                        )}
-                        {isDone && (
-                          <span className="bg-emerald-100 text-emerald-800 text-[8.5px] font-bold px-1.5 py-0.2 rounded-full border border-emerald-200">
-                            Done
-                          </span>
-                        )}
+                        <span className={`text-[8.5px] font-bold px-1.5 py-0.2 rounded-full border ${statusInfo.badgeColor}`}>
+                          {statusInfo.label}
+                        </span>
                       </div>
 
                       <p className="text-[11px] text-slate-500 flex items-center gap-1.5 truncate">

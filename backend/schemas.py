@@ -93,6 +93,7 @@ class VisitBase(BaseModel):
     follow_up_date: Optional[str] = None
     patient_summary: Optional[str] = None
     status: Optional[str] = "Waiting"
+    token_number: Optional[int] = None
 
 class VisitSummaryUpdate(BaseModel):
     diagnosis: Optional[str] = None
@@ -113,6 +114,7 @@ class VisitResponse(VisitBase):
     visit_id: str
     patient_id: int
     doctor_id: Optional[int] = None
+    token_number: Optional[int] = None
     visit_date: datetime
     is_active: bool
     doctor: Optional[DoctorResponse] = None
