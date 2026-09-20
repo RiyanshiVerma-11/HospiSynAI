@@ -2488,14 +2488,18 @@ export default function PatientSearchTab({
                             ? 'bg-white border-2 border-rose-400 text-slate-950'
                             : voicePopulatedFields.includes('gender')
                             ? 'bg-teal-50/40 border-2 border-teal-400 text-teal-950 focus:bg-white'
+                            : !newPatient.gender
+                            ? 'bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500 text-slate-400 font-medium'
                             : 'bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500 text-slate-700'
                         }`}
-                        value={newPatient.gender}
+                        value={newPatient.gender || ''}
                         onChange={(e) => setNewPatient({ ...newPatient, gender: e.target.value })}
+                        required
                       >
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
+                        <option value="" disabled className="text-slate-400">Select Gender</option>
+                        <option value="Male" className="text-slate-700 font-bold">Male</option>
+                        <option value="Female" className="text-slate-700 font-bold">Female</option>
+                        <option value="Other" className="text-slate-700 font-bold">Other</option>
                       </select>
                     </div>
                   </div>

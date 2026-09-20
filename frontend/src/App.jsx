@@ -119,7 +119,7 @@ function App() {
   const [newPatient, setNewPatient] = useState({
     name: '',
     age: '',
-    gender: 'Male',
+    gender: '',
     mobile_number: '',
     address: ''
   });
@@ -486,6 +486,10 @@ function App() {
   // ----------------------------------------------------
   const handleRegisterPatient = async (e) => {
     e.preventDefault();
+    if (!newPatient.gender) {
+      showToast("Please select patient gender", "error");
+      return;
+    }
     try {
       const res = await fetch(`${API_BASE}/patients`, {
         method: 'POST',
@@ -495,7 +499,7 @@ function App() {
       if (!res.ok) throw new Error("Failed to register patient");
       const registered = await res.json();
       showToast(`Patient registered successfully: ${registered.name} (${registered.patient_id})`);
-      setNewPatient({ name: '', age: '', gender: 'Male', mobile_number: '', address: '' });
+      setNewPatient({ name: '', age: '', gender: '', mobile_number: '', address: '' });
       fetchPatients();
     } catch (err) {
       showToast(err.message, 'error');
