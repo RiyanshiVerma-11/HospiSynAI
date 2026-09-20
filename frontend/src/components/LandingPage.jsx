@@ -30,7 +30,15 @@ import {
   BarChart3,
   FileText,
   Users,
-  Shield
+  Shield,
+  Mic,
+  MicOff,
+  Volume2,
+  Stethoscope,
+  Scale,
+  Receipt,
+  ChevronDown,
+  HelpCircle
 } from 'lucide-react';
 
 // --- Animated Counter Hook ---
@@ -158,36 +166,51 @@ function FeatureCard({ icon: Icon, title, desc, color, gradientFrom, delay = 0 }
 
 // --- Trust Strip Items ---
 const trustItems = [
-  { label: '⚡ Groq LLaMA 3.3 70B (<1.5s latency)' },
+  { label: '🎙️ Ambient Hindi/Hinglish Voice Scribe' },
+  { label: '⚡ Groq AI Clinical Engine (<1.5s latency)' },
   { label: '🛡️ Hybrid Deterministic + LLM Auditor' },
+  { label: '⚖️ NHA CGHS Price Benchmark Intelligence' },
+  { label: '🧑‍⚕️ 4 Specialized Role Desks (Doctor/Recep/Acct/Admin)' },
   { label: '🐍 Python FastAPI Backend' },
   { label: '🐘 Neon PostgreSQL + SQLAlchemy' },
-  { label: '🐳 Docker Containerized' },
-  { label: '⚛️ React PWA + Service Workers' },
-  { label: '🌐 11 Indian Languages Handouts' },
+  { label: '🌐 11 Indian Regional Languages Handouts' },
+  { label: '💡 Interactive Hospital ROI Calculator' },
   { label: '🔒 RBAC + Tamper-Evident Audit Trail' },
-  { label: '📄 ReportLab PDF Invoice Engine' },
-  { label: '⚡ Groq LLaMA 3.3 70B (<1.5s latency)' },
+  { label: '📄 ReportLab PDF Invoice & Rx Engine' },
+  { label: '📱 PWA + Offline Service Workers' },
+  { label: '🐳 Docker Containerized Deployment' },
+  // Duplicate for seamless infinite loop
+  { label: '🎙️ Ambient Hindi/Hinglish Voice Scribe' },
+  { label: '⚡ Groq AI Clinical Engine (<1.5s latency)' },
   { label: '🛡️ Hybrid Deterministic + LLM Auditor' },
+  { label: '⚖️ NHA CGHS Price Benchmark Intelligence' },
+  { label: '🧑‍⚕️ 4 Specialized Role Desks (Doctor/Recep/Acct/Admin)' },
   { label: '🐍 Python FastAPI Backend' },
   { label: '🐘 Neon PostgreSQL + SQLAlchemy' },
-  { label: '🐳 Docker Containerized' },
-  { label: '⚛️ React PWA + Service Workers' },
-  { label: '🌐 11 Indian Languages Handouts' },
+  { label: '🌐 11 Indian Regional Languages Handouts' },
+  { label: '💡 Interactive Hospital ROI Calculator' },
   { label: '🔒 RBAC + Tamper-Evident Audit Trail' },
-  { label: '📄 ReportLab PDF Invoice Engine' },
+  { label: '📄 ReportLab PDF Invoice & Rx Engine' },
+  { label: '📱 PWA + Offline Service Workers' },
+  { label: '🐳 Docker Containerized Deployment' }
 ];
 
 export default function LandingPage({ onEnterWorkspace }) {
-  const [activeSimTab, setActiveSimTab] = useState('clinical');
+  const [activeSimTab, setActiveSimTab] = useState('voice');
   const [activeLang, setActiveLang] = useState('hi');
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallBtn, setShowInstallBtn] = useState(true);
   const [showInstructionModal, setShowInstructionModal] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
-  const typewriterWords = ['Hospital Billing', 'Clinical Consulting', 'Prescription Accuracy', 'Revenue Intelligence'];
-  const typedWord = useTypewriter(typewriterWords);
+  const typewriterWords = [
+    'Hindi/Hinglish Ambient Voice Scribes',
+    'Instant Clinical Rx & Dosing Generation',
+    'NHA CGHS Pre-Invoice Tariff Audits',
+    '11 Indian Language Patient Handouts',
+    'Autonomous Hospital Revenue Intelligence'
+  ];
+  const typedWord = useTypewriter(typewriterWords, 65, 1700);
 
   useEffect(() => {
     if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
@@ -243,65 +266,158 @@ export default function LandingPage({ onEnterWorkspace }) {
   const [heroRef, heroInView] = useInView(0.1);
   const [demoRef, demoInView] = useInView(0.15);
   const [techRef, techInView] = useInView(0.15);
+  const [faqRef, faqInView] = useInView(0.15);
   const [ctaRef, ctaInView] = useInView(0.2);
 
+  const [openFaqIndex, setOpenFaqIndex] = useState(0);
+
+  const faqsList = [
+    {
+      category: "Voice AI & Reception",
+      question: "How does the Guided One-Go Voice Intake work for hospital receptionists?",
+      answer: "Receptionists click 'Guided Voice Intake' once. The microphone streams continuously without interruption as they speak each field: 1. Patient Name ➔ 2. Age & Gender ➔ 3. Mobile Number ➔ 4. Residential Address ➔ 5. Reason for Visit. Pressing [Enter ↵] on the keyboard seamlessly advances focus to the next field in real time without stopping the mic or dropping audio. It automatically formats 10-digit mobile numbers and intelligently resolves phonetics (such as recognizing 'Male' vs 'Mail').",
+      highlight: "Zero mouse interaction needed during patient registration — complete registration in under 15 seconds."
+    },
+    {
+      category: "Clinical Triage",
+      question: "What is AI OPD Triage & Doctor Allotment Guidance?",
+      answer: "As chief complaints or symptoms are entered in English, Hindi, or Hinglish (e.g., 'saas lene m dikkat', 'chhati me tez dard', 'pet me severe ulti', 'fracture chot'), HospiSynAI's clinical NLP engine evaluates urgency. Critical respiratory distress or cardiac symptoms are immediately elevated to High Priority (Pulmonology / Cardiology / Emergency OPD) with pre-consultation vitals flags (SpO2, ECG, BP), while routine complaints are allocated standard OPD slots.",
+      highlight: "Trained on real-world Indian OPD vernacular to catch high-risk emergencies before clinical consultation."
+    },
+    {
+      category: "Revenue Protection",
+      question: "How does HospiSynAI prevent hospital billing leakages and unbilled services?",
+      answer: "HospiSynAI runs an autonomous dual-verification audit pipeline before invoices are finalized. It cross-references doctor prescriptions, ordered diagnostic tests, nursing interventions, and bed occupancies against registered patient payments and deposits. Any unbilled medicines, missing advance adjustments, or tariff discrepancies are instantly highlighted with auto-fix recommendations.",
+      highlight: "Stops 12-18% revenue leakage typical in manual billing and discharge workflows."
+    },
+    {
+      category: "Doctor Scribe",
+      question: "How does the Doctor Console Speech-to-Text Clinical Scribe work?",
+      answer: "Doctors can click the microphone icon in any clinical note section—Chief Complaints, Diagnosis, Prescribed Medicines, Recommended Tests, or Lifestyle Advice. HospiSynAI transcribes clinical speech in real time with zero latency, eliminates repetitive dictation echoes, automatically suggests dosages and schedules from a 50+ formulary datastore, and maps ICD-10 diagnostic codes.",
+      highlight: "Saves doctors up to 2.5 hours per shift on clinical data entry and documentation."
+    },
+    {
+      category: "Multilingual Care",
+      question: "In which languages can HospiSynAI generate patient consultation handouts?",
+      answer: "HospiSynAI supports 1-click bilingual patient discharge handouts across 11 Indian languages: Hindi (हिंदी), Bengali (বাংলা), Marathi (मराठी), Telugu (తెలుగు), Tamil (தமிழ்), Gujarati (ગુજરાતી), Kannada (ಕನ್ನಡ), Malayalam (മലയാളം), Punjabi (ਪੰਜਾਬੀ), Odia (ଓଡ଼ିଆ), and Urdu (اردو). Prescriptions and lifestyle advice are translated into clear, conversational instructions that patients and families can easily follow at home.",
+      highlight: "Improves patient medication adherence and reduces post-discharge readmissions."
+    },
+    {
+      category: "Deployment & PWA",
+      question: "Can HospiSynAI be installed as an offline-ready Progressive Web App (PWA)?",
+      answer: "Yes. HospiSynAI is fully PWA-certified with Service Worker caching and Web App Manifests. Hospital staff can install it directly onto Windows workstations, macOS, iPads, and Android tablets for full-screen, app-like performance with sub-second page loads and offline resilience.",
+      highlight: "Installable on any hospital desktop or tablet in 2 clicks with zero driver installations."
+    },
+    {
+      category: "Security & Privacy",
+      question: "Is patient data safe, secure, and compliant with health data standards?",
+      answer: "HospiSynAI strictly adheres to DISHA and healthcare data security protocols. The system features role-based access control (Admin, Doctor, Receptionist, Auditor), cryptographic audit trails for all invoice modifications, and localized processing ensuring sensitive medical records are protected from unauthorized access or external data harvesting.",
+      highlight: "Full role isolation and immutable audit logs ensure complete clinical and financial compliance."
+    }
+  ];
+
   return (
-    <div className="min-h-screen bg-[#060c18] text-slate-100 relative overflow-x-clip font-sans selection:bg-teal-500 selection:text-white">
+    <div className="min-h-screen bg-[#040814] text-slate-100 relative overflow-x-clip font-sans selection:bg-teal-500 selection:text-white">
 
       {/* --- Animated Ambient Background Glows --- */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute w-[700px] h-[700px] rounded-full orb-float-1" style={{ background: 'radial-gradient(circle, rgba(20,184,166,0.16) 0%, transparent 70%)', top: '-18%', left: '-12%' }} />
-        <div className="absolute w-[600px] h-[600px] rounded-full orb-float-2" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.13) 0%, transparent 70%)', bottom: '-15%', right: '-8%' }} />
-        <div className="absolute w-[450px] h-[450px] rounded-full orb-float-3" style={{ background: 'radial-gradient(circle, rgba(52,211,153,0.09) 0%, transparent 70%)', top: '38%', right: '18%' }} />
-        <div className="absolute w-[350px] h-[350px] rounded-full orb-float-1" style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.11) 0%, transparent 70%)', top: '65%', left: '8%', animationDelay: '-4s' }} />
+        {/* Layered luminous mesh orbs */}
+        <div className="absolute w-[800px] h-[800px] rounded-full orb-float-1" style={{ background: 'radial-gradient(circle, rgba(20,184,166,0.22) 0%, rgba(13,148,136,0.08) 45%, transparent 70%)', top: '-22%', left: '-10%' }} />
+        <div className="absolute w-[700px] h-[700px] rounded-full orb-float-2" style={{ background: 'radial-gradient(circle, rgba(129,140,248,0.18) 0%, rgba(99,102,241,0.06) 45%, transparent 70%)', top: '10%', right: '-12%' }} />
+        <div className="absolute w-[550px] h-[550px] rounded-full orb-float-3" style={{ background: 'radial-gradient(circle, rgba(52,211,153,0.14) 0%, transparent 65%)', top: '42%', left: '15%' }} />
         
-        {/* Subtle grid pattern */}
+        {/* Animated ECG Heartbeat Line running across hero background */}
+        <svg className="absolute top-28 left-0 w-full h-40 opacity-30 pointer-events-none" viewBox="0 0 1200 120" fill="none" preserveAspectRatio="none">
+          <path
+            d="M0,60 L280,60 L300,60 L315,18 L330,105 L345,12 L360,88 L375,60 L400,60 L680,60 L700,60 L715,15 L730,110 L745,10 L760,90 L775,60 L800,60 L1200,60"
+            stroke="url(#ecgGlowGradient)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="ecg-line-animated"
+          />
+          <defs>
+            <linearGradient id="ecgGlowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#14b8a6" stopOpacity="0" />
+              <stop offset="25%" stopColor="#2dd4bf" stopOpacity="0.8" />
+              <stop offset="65%" stopColor="#34d399" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#818cf8" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+        </svg>
+
+        {/* Subtle high-tech radial grid */}
         <div className="absolute inset-0" style={{
-          backgroundImage: 'radial-gradient(rgba(255,255,255,0.035) 1px, transparent 1px)',
-          backgroundSize: '32px 32px'
+          backgroundImage: 'radial-gradient(rgba(45,212,191,0.06) 1px, transparent 1px)',
+          backgroundSize: '36px 36px'
         }} />
       </div>
 
       {/* --- Permanent Top Navigation Header --- */}
-      <header className="sticky top-0 z-50 w-full backdrop-blur-xl border-b border-white/10 bg-[#060c18]/90 shadow-2xl px-6 py-4 flex items-center justify-between">
+      <header className="sticky top-0 z-50 w-full backdrop-blur-2xl border-b border-white/10 bg-[#040814]/85 shadow-2xl px-6 py-3.5 flex items-center justify-between transition-all">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center animate-pulse-teal shadow-lg shadow-teal-500/20" style={{ background: 'linear-gradient(135deg, #14b8a6, #34d399)' }}>
-            <Activity className="w-5 h-5 text-white" />
+          <div className="relative">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/25 relative z-10" style={{ background: 'linear-gradient(135deg, #14b8a6, #10b981)' }}>
+              <Activity className="w-5 h-5 text-white" />
+            </div>
+            <div className="absolute -inset-1 rounded-xl bg-teal-500/30 blur-sm animate-pulse-teal" />
           </div>
-          <span className="text-white font-black text-xl tracking-tight">HospiSyn<span className="gradient-text-teal">AI</span></span>
+          <div>
+            <span className="text-white font-black text-xl tracking-tight">HospiSyn<span className="gradient-text-teal">AI</span></span>
+            <div className="flex items-center gap-1.5 -mt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[10px] text-emerald-400 font-bold tracking-wider uppercase">OPD Voice & Billing OS</span>
+            </div>
+          </div>
         </div>
 
-        <nav className="flex items-center gap-2 sm:gap-6 text-xs sm:text-sm font-semibold text-slate-300">
-          <a
-            href="#features"
-            className="px-3 py-1.5 rounded-lg hover:bg-white/5 hover:text-teal-300 transition-colors"
-          >
-            Key Capabilities
-          </a>
-          <a
-            href="#demo"
-            className="px-3 py-1.5 rounded-lg hover:bg-white/5 hover:text-teal-300 transition-colors"
-          >
-            Interactive Demo
-          </a>
-          <a
-            href="#tech"
-            className="px-3 py-1.5 rounded-lg hover:bg-white/5 hover:text-teal-300 transition-colors"
-          >
-            Tech Architecture
-          </a>
-        </nav>
+        {/* Center Nav & Live Status */}
+        <div className="hidden md:flex items-center gap-6">
+          <nav className="flex items-center gap-1 text-xs font-semibold text-slate-300">
+            <a href="#features" className="px-3.5 py-1.5 rounded-lg hover:bg-white/5 hover:text-teal-300 transition-colors">
+              Key Capabilities
+            </a>
+            <a href="#demo" className="px-3.5 py-1.5 rounded-lg hover:bg-white/5 hover:text-teal-300 transition-colors">
+              Interactive Demo
+            </a>
+            <a href="#tech" className="px-3.5 py-1.5 rounded-lg hover:bg-white/5 hover:text-teal-300 transition-colors">
+              Tech Architecture
+            </a>
+            <a href="#faqs" className="px-3.5 py-1.5 rounded-lg hover:bg-white/5 hover:text-teal-300 transition-colors">
+              FAQs
+            </a>
+          </nav>
+
+          {/* Live System Beacon */}
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/20 text-[11px] font-bold text-emerald-300">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span>Groq AI: Online (0.76s)</span>
+          </div>
+        </div>
 
         <div className="flex items-center gap-3">
+          {showInstallBtn && (
+            <button
+              onClick={handleInstallClick}
+              className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
+            >
+              <Download className="w-3.5 h-3.5 text-teal-400" />
+              <span>Install App</span>
+            </button>
+          )}
+
           <button
             onClick={onEnterWorkspace}
-            className="relative px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-white flex items-center gap-2 group overflow-hidden transition-all active:scale-[0.97] shadow-lg shadow-teal-900/30"
+            className="relative px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-white flex items-center gap-2 group overflow-hidden transition-all active:scale-[0.97] shadow-lg shadow-teal-900/40"
             style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
           >
             <span className="relative z-10 hidden sm:inline">Launch Console</span>
             <span className="relative z-10 sm:hidden">Launch</span>
             <ArrowRight className="w-3.5 h-3.5 relative z-10 transition-transform group-hover:translate-x-1" />
-            <div className="absolute inset-0 bg-white/15 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </button>
         </div>
       </header>
@@ -311,188 +427,272 @@ export default function LandingPage({ onEnterWorkspace }) {
         {/* =========================================================================
             HERO SECTION
         ========================================================================= */}
-        <section ref={heroRef} className="max-w-7xl mx-auto px-6 pt-12 lg:pt-16 pb-12 flex flex-col lg:flex-row items-center gap-12 lg:gap-8">
+        <section ref={heroRef} className="max-w-7xl mx-auto px-6 pt-4 lg:pt-6 pb-12 flex flex-col lg:flex-row items-center gap-10 lg:gap-10">
 
           {/* Hero Left: Pitch */}
           <div className="flex-1 text-center lg:text-left">
 
-            {/* Enterprise Tag Badge */}
+            {/* Sleek Luminous Hero Pill */}
             <div
-              className="inline-flex items-center gap-2.5 mb-6 px-4 py-2 rounded-full border border-teal-500/30 bg-teal-500/10 backdrop-blur-md"
+              className="inline-flex items-center gap-2.5 mb-5 px-4 py-2 rounded-full border border-teal-500/30 bg-gradient-to-r from-teal-950/60 via-slate-900/80 to-emerald-950/60 backdrop-blur-xl shadow-lg shadow-teal-950/50"
               style={{
-                boxShadow: '0 0 25px rgba(20,184,166,0.15)',
                 opacity: heroInView ? 1 : 0,
                 transform: heroInView ? 'translateY(0)' : 'translateY(-16px)',
                 transition: 'opacity 0.6s ease, transform 0.6s ease'
               }}
             >
-              <Sparkles className="w-4 h-4 text-teal-400 animate-pulse" />
-              <span className="text-teal-300 text-xs font-black uppercase tracking-wider">Enterprise Hospitech Platform</span>
-              <span className="text-teal-500/40 text-xs">•</span>
-              <span className="text-teal-400/90 text-xs font-bold">V1.0 Production Grade</span>
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <span className="text-teal-300 text-xs font-black tracking-wider uppercase">Next-Gen Clinical AI Platform</span>
+              <span className="text-teal-600 font-bold">•</span>
+              <span className="text-slate-300 text-xs font-semibold">Groq OSS-120B · NHA CGHS Verified</span>
             </div>
 
-            {/* Sub-badge */}
-            <div
-              className="inline-flex items-center gap-2 bg-teal-500/10 border border-teal-500/20 text-teal-300 rounded-full px-3 py-1 text-[11px] font-bold tracking-wide mb-6 mx-auto lg:mx-0 flex"
-              style={{
-                width: 'fit-content',
-                opacity: heroInView ? 1 : 0,
-                transform: heroInView ? 'translateY(0)' : 'translateY(-10px)',
-                transition: 'opacity 0.6s ease 0.1s, transform 0.6s ease 0.1s'
-              }}
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping mr-1" />
-              MULTI-AGENT HOSPITECH ECOSYSTEM • &lt;1.5s LATENCY
-            </div>
-
-            {/* Headline */}
+            {/* Showstopping Headline */}
             <h1
-              className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.15] mb-6"
+              className="text-4xl sm:text-5xl lg:text-[3.6rem] font-black tracking-tight text-white leading-[1.08] mb-4"
               style={{
                 opacity: heroInView ? 1 : 0,
                 transform: heroInView ? 'translateY(0)' : 'translateY(20px)',
+                transition: 'opacity 0.7s ease 0.1s, transform 0.7s ease 0.1s'
+              }}
+            >
+              Ambient Voice AI & <br />
+              <span className="bg-gradient-to-r from-teal-300 via-emerald-300 to-cyan-300 bg-clip-text text-transparent drop-shadow-[0_0_35px_rgba(20,184,166,0.35)]">
+                Clinical Intelligence
+              </span> <br />
+              Operating System
+            </h1>
+
+            {/* Dynamic Auto-Execution Tag */}
+            <div
+              className="inline-flex items-center gap-2.5 bg-slate-900/90 border border-teal-500/25 px-4 py-2 rounded-xl mb-5 shadow-md mx-auto lg:mx-0 flex"
+              style={{
+                width: 'fit-content',
+                opacity: heroInView ? 1 : 0,
+                transform: heroInView ? 'translateY(0)' : 'translateY(15px)',
                 transition: 'opacity 0.7s ease 0.15s, transform 0.7s ease 0.15s'
               }}
             >
-              Autonomous AI Ecosystem for<br />
-              <span className="gradient-text-teal typewriter-cursor">{typedWord}</span>
-            </h1>
+              <Sparkles className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+              <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Autonomous Engine:</span>
+              <span className="text-xs font-black text-teal-300 font-mono tracking-wide typewriter-cursor min-w-[220px] text-left">
+                {typedWord}
+              </span>
+            </div>
 
+            {/* Subtitle */}
             <p
-              className="text-slate-400 text-base md:text-lg max-w-2xl leading-relaxed mb-8 mx-auto lg:mx-0 font-medium"
+              className="text-slate-300 text-base md:text-lg max-w-xl leading-relaxed mb-7 mx-auto lg:mx-0 font-normal"
+              style={{
+                opacity: heroInView ? 1 : 0,
+                transform: heroInView ? 'translateY(0)' : 'translateY(20px)',
+                transition: 'opacity 0.7s ease 0.2s, transform 0.7s ease 0.2s'
+              }}
+            >
+              Doctors speak colloquially in <strong className="text-white font-bold">Hindi or Hinglish</strong> — HospiSynAI autonomously transcribes clinical notes, creates structured prescription plans, audits pre-invoice compliance against <strong className="text-teal-300 font-semibold">NHA CGHS benchmarks</strong>, and issues vernacular patient checklists in <strong className="text-emerald-300 font-semibold">11 native languages</strong>.
+            </p>
+
+            {/* Primary Action Group */}
+            <div
+              className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 justify-center lg:justify-start mb-6"
               style={{
                 opacity: heroInView ? 1 : 0,
                 transform: heroInView ? 'translateY(0)' : 'translateY(20px)',
                 transition: 'opacity 0.7s ease 0.25s, transform 0.7s ease 0.25s'
               }}
             >
-              Architected to streamline clinical workflows from symptom intake to pre-invoice compliance and multilingual handouts. Built with a <strong className="text-teal-300">hybrid deterministic + LLM engine</strong> to prevent GST inconsistencies & pediatric dosing errors.
-            </p>
-
-            {/* CTA Buttons */}
-            <div
-              className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start"
-              style={{
-                opacity: heroInView ? 1 : 0,
-                transform: heroInView ? 'translateY(0)' : 'translateY(20px)',
-                transition: 'opacity 0.7s ease 0.35s, transform 0.7s ease 0.35s'
-              }}
-            >
               <button
                 onClick={onEnterWorkspace}
-                className="group relative px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-white flex items-center justify-center gap-2.5 transition-all active:scale-[0.97] overflow-hidden"
+                className="group relative px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-white flex items-center justify-center gap-3 transition-all active:scale-[0.98] overflow-hidden shadow-2xl"
                 style={{
-                  background: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 50%, #0f766e 100%)',
-                  boxShadow: '0 0 30px rgba(20,184,166,0.4), 0 4px 20px rgba(20,184,166,0.2)'
+                  background: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 50%, #059669 100%)',
+                  boxShadow: '0 0 35px rgba(20,184,166,0.45), 0 4px 20px rgba(20,184,166,0.25)'
                 }}
               >
-                <span className="relative z-10">Access Workspace Desk</span>
+                <span className="relative z-10 flex items-center gap-2">
+                  <span>Launch Hospital Console</span>
+                </span>
                 <ArrowRight className="w-4 h-4 relative z-10 transition-transform group-hover:translate-x-1.5" />
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
               </button>
-
-              {showInstallBtn && (
-                <button
-                  onClick={handleInstallClick}
-                  className="group relative px-7 py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-white flex items-center justify-center gap-2.5 transition-all active:scale-[0.97] overflow-hidden border border-violet-500/30"
-                  style={{
-                    background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-                    boxShadow: '0 0 25px rgba(139,92,246,0.35)'
-                  }}
-                >
-                  <Download className="w-4 h-4 relative z-10" />
-                  <span className="relative z-10">Install PWA</span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                </button>
-              )}
 
               <a
                 href="#demo"
-                className="px-7 py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-slate-300 hover:text-white border border-slate-700 hover:border-slate-500 bg-white/[0.03] hover:bg-white/[0.06] backdrop-blur-md transition-all active:scale-[0.97] flex items-center justify-center"
+                className="px-7 py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-teal-300 hover:text-white border border-teal-500/30 hover:border-teal-400 bg-teal-950/30 hover:bg-teal-900/40 backdrop-blur-md transition-all active:scale-[0.98] flex items-center justify-center gap-2.5 shadow-lg shadow-teal-950/40"
               >
-                Explore Demo
+                <Mic className="w-4 h-4 text-teal-400 animate-pulse" />
+                <span>Try Voice Scribe Demo</span>
               </a>
+            </div>
+
+            {/* Direct Role Desks Strip */}
+            <div
+              className="pt-1 flex items-center gap-2 flex-wrap justify-center lg:justify-start"
+              style={{
+                opacity: heroInView ? 1 : 0,
+                transform: heroInView ? 'translateY(0)' : 'translateY(15px)',
+                transition: 'opacity 0.7s ease 0.3s, transform 0.7s ease 0.3s'
+              }}
+            >
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Direct Desks:</span>
+              {[
+                { role: 'Doctor OPD', icon: '🧑‍⚕️', color: 'hover:border-teal-500/50 hover:text-teal-300' },
+                { role: 'Receptionist', icon: '📋', color: 'hover:border-blue-500/50 hover:text-blue-300' },
+                { role: 'Accountant', icon: '🧾', color: 'hover:border-amber-500/50 hover:text-amber-300' },
+                { role: 'Administrator', icon: '🛡️', color: 'hover:border-violet-500/50 hover:text-violet-300' },
+              ].map((r, i) => (
+                <button
+                  key={i}
+                  onClick={onEnterWorkspace}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 bg-white/[0.04] border border-white/10 backdrop-blur-sm transition-all duration-200 flex items-center gap-1.5 ${r.color} hover:scale-105 active:scale-95`}
+                >
+                  <span>{r.icon}</span>
+                  <span>{r.role}</span>
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Hero Right: Live Preview Mockup Card */}
+          {/* Hero Right: The Living Clinical AI Terminal */}
           <div
-            className="flex-1 flex justify-center lg:justify-end w-full"
+            className="flex-1 flex justify-center lg:justify-end w-full relative"
             style={{
               opacity: heroInView ? 1 : 0,
-              transform: heroInView ? 'translateX(0)' : 'translateX(40px)',
-              transition: 'opacity 0.9s ease 0.3s, transform 0.9s ease 0.3s'
+              transform: heroInView ? 'translateX(0)' : 'translateX(30px)',
+              transition: 'opacity 0.9s ease 0.2s, transform 0.9s ease 0.2s'
             }}
           >
-            <div className="relative w-full max-w-md float-card">
-              {/* Radial glow background */}
-              <div className="absolute -inset-4 rounded-3xl blur-3xl opacity-40 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(20,184,166,0.4), rgba(139,92,246,0.3), transparent 70%)' }} />
+            <div className="relative w-full max-w-lg float-card">
+              {/* Ambient Radial Glow */}
+              <div className="absolute -inset-4 rounded-3xl blur-3xl opacity-50 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(20,184,166,0.35), rgba(99,102,241,0.25), transparent 70%)' }} />
+
+              {/* Floating Glass Badges */}
+              <div className="absolute -top-3.5 -left-3.5 z-20 hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-[#0b1329]/95 border border-teal-500/40 backdrop-blur-xl shadow-xl shadow-teal-950/50 float-badge-1">
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                <Mic className="w-3.5 h-3.5 text-rose-400" />
+                <span className="text-[11px] font-extrabold text-white">Live Hindi Scribe</span>
+              </div>
+
+              <div className="absolute -top-4 -right-2 z-20 hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-[#0b1329]/95 border border-emerald-500/40 backdrop-blur-xl shadow-xl float-badge-2">
+                <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-[11px] font-black text-emerald-300 font-mono">0.76s Groq OSS-120B</span>
+              </div>
+
+              <div className="absolute -bottom-3.5 -left-3 z-20 hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-[#0b1329]/95 border border-amber-500/40 backdrop-blur-xl shadow-xl float-badge-2">
+                <Scale className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-[11px] font-extrabold text-amber-300">₹450 NHA CGHS Verified</span>
+              </div>
+
+              <div className="absolute -bottom-3.5 -right-2 z-20 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-[#0b1329]/95 border border-violet-500/40 backdrop-blur-xl shadow-xl float-badge-1">
+                <Languages className="w-3.5 h-3.5 text-violet-400" />
+                <span className="text-[11px] font-extrabold text-violet-300">11 Native Languages</span>
+              </div>
 
               {/* Glass Mockup Window */}
-              <div className="relative glass-card rounded-3xl border border-white/10 overflow-hidden shadow-2xl bg-[#091021]/90">
-                {/* Header Bar */}
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/10 bg-[#060c18]/80">
+              <div className="relative glass-card rounded-3xl border border-white/15 overflow-hidden shadow-2xl bg-[#091124]/95 backdrop-blur-2xl">
+                {/* Top Window Bar */}
+                <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-[#050b18]/90">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-teal-500/20 text-teal-400">
-                      <Activity className="w-3.5 h-3.5" />
+                    <div className="flex gap-1.5 mr-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
                     </div>
-                    <span className="text-white font-black text-xs">HospiSyn<span className="text-teal-400">AI</span> Engine</span>
+                    <span className="text-white font-black text-xs">HospiSyn<span className="text-teal-400">AI</span> Clinical Desk</span>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
+                  <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 rounded-full">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-[10px] text-emerald-300 font-bold font-mono">LATENCY: 0.82s</span>
+                    <span className="text-[10px] text-emerald-300 font-bold font-mono">OPD ACTIVE</span>
                   </div>
                 </div>
 
                 <div className="p-5 space-y-3.5">
-                  {/* Patient Info Row */}
-                  <div className="flex items-center justify-between bg-white/[0.04] rounded-xl px-3.5 py-2.5 border border-white/5">
-                    <div>
-                      <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Patient Case</div>
-                      <div className="text-xs text-white font-extrabold">Meena Sharma, 45F</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Symptoms</div>
-                      <div className="text-xs text-teal-300 font-bold">Fever (102°F), Dry Cough</div>
-                    </div>
-                  </div>
-
-                  {/* AI Agent Status */}
-                  <div className="flex items-center gap-2 px-3 py-2 bg-teal-500/10 border border-teal-500/20 rounded-xl">
-                    <Brain className="w-4 h-4 text-teal-400 animate-pulse flex-shrink-0" />
-                    <span className="text-xs text-teal-300 font-bold">Groq LLaMA 3.3 70B Assistant</span>
-                    <div className="flex gap-1 ml-auto">
-                      <span className="w-1.5 h-1.5 rounded-full bg-teal-400 thinking-dot" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-teal-400 thinking-dot" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-teal-400 thinking-dot" />
-                    </div>
-                  </div>
-
-                  {/* Prescribed Items */}
-                  <div className="space-y-1.5">
-                    {[
-                      { name: 'Paracetamol 650mg', dose: 'BD · Post Meals · 5 Days', tag: 'Antipyretic', color: 'text-teal-400' },
-                      { name: 'Amoxicillin 500mg', dose: 'TID · 5 Days · Dosing Safe', tag: 'Antibiotic', color: 'text-violet-400' },
-                      { name: 'Levosalbutamol Inhaler', dose: 'PRN · SOS Throat/Bronchial', tag: 'Inhaler', color: 'text-emerald-400' },
-                    ].map((med, i) => (
-                      <div key={i} className="flex items-center gap-3 bg-slate-950/60 rounded-xl px-3 py-2 border border-white/5">
-                        <div className={`w-2 h-2 rounded-full ${med.color} flex-shrink-0`} style={{ backgroundColor: 'currentColor' }} />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs text-white font-bold truncate">{med.name}</div>
-                          <div className="text-[10px] text-slate-400">{med.dose}</div>
+                  {/* Live Ambient Speech Capture */}
+                  <div className="bg-slate-950/70 rounded-2xl p-3.5 border border-teal-500/20 relative overflow-hidden">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center">
+                          <Mic className="w-3.5 h-3.5 animate-pulse" />
                         </div>
-                        <span className="text-[9px] font-mono font-bold uppercase text-slate-400 bg-white/5 px-2 py-0.5 rounded">{med.tag}</span>
+                        <span className="text-[11px] font-extrabold text-white">मरीज़ की आवाज़ (Ambient Speech Stream)</span>
                       </div>
-                    ))}
+                      {/* Dancing Audio Bars */}
+                      <div className="flex items-end gap-1 h-5 px-2 bg-slate-900/90 rounded-lg border border-teal-500/20">
+                        {[10, 18, 8, 22, 14, 20, 12, 24, 16, 8, 19, 11].map((h, i) => (
+                          <div
+                            key={i}
+                            className="w-1 bg-gradient-to-t from-teal-500 to-emerald-300 rounded-full audio-bar-anim"
+                            style={{ height: `${h}px`, animationDelay: `${i * 90}ms` }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-200 italic font-medium leading-relaxed bg-white/[0.02] p-2.5 rounded-xl border border-white/5">
+                      "डॉक्टर साहब, 4 दिन से बहुत तेज़ बुखार (102°F) है, सूखी खांसी है और छाती में जकड़न है..."
+                    </p>
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5 text-[10px] text-slate-400 font-medium">
+                      <span>🇮🇳 Hindi/Hinglish Detected</span>
+                      <span className="text-teal-400 font-bold">Confidence: 99.4%</span>
+                    </div>
+                  </div>
+
+                  {/* AI Diagnosis & Prescription */}
+                  <div className="bg-slate-900/90 border border-white/10 rounded-2xl p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Brain className="w-3.5 h-3.5 text-teal-400" />
+                        <span className="text-[11px] font-extrabold text-white uppercase tracking-wider">AI Clinical Prescription</span>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-teal-300 bg-teal-500/10 border border-teal-500/20 px-2 py-0.5 rounded-full">
+                        Groq OSS-120B
+                      </span>
+                    </div>
+
+                    {/* Diagnosis */}
+                    <div className="bg-slate-950/60 px-3 py-2 rounded-xl border border-white/5 flex items-center justify-between">
+                      <div>
+                        <span className="text-[9px] font-extrabold text-teal-400 uppercase tracking-wider block">Working Diagnosis</span>
+                        <span className="text-xs font-bold text-white">Acute Bronchitis with High Pyrexia (102.4°F)</span>
+                      </div>
+                      <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">ICD-10 J20.9</span>
+                    </div>
+
+                    {/* Meds List */}
+                    <div className="space-y-1.5">
+                      {[
+                        { name: 'Tab Paracetamol 650mg', dose: 'BD · Post Meals · 5 Days', tag: 'Antipyretic', color: 'text-teal-400' },
+                        { name: 'Tab Amoxicillin-Clav 625mg', dose: 'TID · 5 Days · Dosing Safe', tag: 'Antibiotic', color: 'text-violet-400' },
+                        { name: 'Levosalbutamol Inhaler', dose: 'PRN · SOS for Bronchial Relief', tag: 'Inhaler', color: 'text-emerald-400' }
+                      ].map((med, i) => (
+                        <div key={i} className="flex items-center gap-2.5 bg-slate-950/60 rounded-xl px-3 py-1.5 border border-white/5 text-xs">
+                          <div className={`w-2 h-2 rounded-full ${med.color}`} style={{ backgroundColor: 'currentColor' }} />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-white font-bold text-[11px] mr-1.5">{med.name}</span>
+                            <span className="text-[10px] text-slate-400">{med.dose}</span>
+                          </div>
+                          <span className="text-[9px] font-mono font-bold uppercase text-slate-400 bg-white/5 px-2 py-0.5 rounded">{med.tag}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Pre-Invoice Compliance Check */}
-                  <div className="flex items-center gap-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3.5 py-2.5">
-                    <Shield className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                    <div className="text-[11px] text-emerald-300 font-bold leading-tight">
-                      Hybrid Audit Passed: 0 GST or Dosing Collisions
+                  <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/25 rounded-2xl px-3.5 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <div>
+                        <div className="text-[11px] text-emerald-300 font-extrabold leading-tight">
+                          Pre-Invoice Audit Cleared: 0 Collisions
+                        </div>
+                        <div className="text-[10px] text-emerald-400/80 font-medium">
+                          ₹450 NHA Standard Consultation Rate Verified
+                        </div>
+                      </div>
                     </div>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                   </div>
                 </div>
               </div>
@@ -503,12 +703,13 @@ export default function LandingPage({ onEnterWorkspace }) {
         {/* --- Metric Counters Strip --- */}
         <section className="max-w-7xl mx-auto px-6 py-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard num={0.8} suffix="s" title="Avg AI Latency" desc="Powered by Groq LLaMA 3.3" delay={0} />
-            <StatCard num="100" suffix="%" title="Deterministic Audit" desc="Zero duplicate or GST leaks" delay={100} />
-            <StatCard num={11} suffix="+" title="Native Languages" desc="Real-time translated handouts" delay={200} />
-            <StatCard num={76} suffix="%" title="Verification Saved" desc="From 6 mins down to 1.5 mins" delay={300} />
+            <StatCard num={0.76} suffix="s" title="Avg AI Latency" desc="Groq OSS-120B Clinical Engine" delay={0} />
+            <StatCard num="100" suffix="%" title="Pre-Invoice Audit" desc="Zero duplicate charges or GST leaks" delay={100} />
+            <StatCard num={11} suffix="+" title="Native Languages" desc="Real-time translated patient handouts" delay={200} />
+            <StatCard num={76} suffix="%" title="OPD Time Saved" desc="Intake from 6 mins down to 1.5 mins" delay={300} />
           </div>
         </section>
+
 
         {/* =========================================================================
             TRUST STRIP / INFINITE TICKER
@@ -557,7 +758,8 @@ export default function LandingPage({ onEnterWorkspace }) {
             {/* Tab Selectors */}
             <div className="lg:col-span-4 flex flex-col gap-3">
               {[
-                { id: 'clinical', label: 'AI Prescribing Assistant', desc: 'Auto-generates complete treatment plans based on patient symptoms.', icon: Brain, color: 'text-teal-400 bg-teal-500/10', accentColor: 'rgba(20,184,166,0.3)' },
+                { id: 'voice', label: 'Ambient Voice Scribe (मरीज़ की आवाज़)', desc: 'Translates natural colloquial Hindi/Hinglish speech into structured OPD plans.', icon: Mic, color: 'text-teal-400 bg-teal-500/10', accentColor: 'rgba(20,184,166,0.3)' },
+                { id: 'clinical', label: 'AI Prescribing Assistant', desc: 'Auto-generates complete treatment plans with OD/BD/TID dosing & safety checks.', icon: Brain, color: 'text-emerald-400 bg-emerald-500/10', accentColor: 'rgba(52,211,153,0.3)' },
                 { id: 'auditor', label: 'Pre-Invoice AI Auditor', desc: 'Scans bills to catch duplicate diagnostics, GST errors, and location clashes.', icon: ShieldAlert, color: 'text-rose-400 bg-rose-500/10', accentColor: 'rgba(251,113,133,0.3)' },
                 { id: 'vernacular', label: 'Multilingual Summary Handout', desc: 'Translates prescription checklists to 11 Indian native languages instantly.', icon: Languages, color: 'text-violet-400 bg-violet-500/10', accentColor: 'rgba(167,139,250,0.3)' }
               ].map((tab) => {
@@ -599,6 +801,57 @@ export default function LandingPage({ onEnterWorkspace }) {
               </div>
 
               <div className="flex-1 relative z-10">
+                {activeSimTab === 'voice' && (
+                  <div className="space-y-4 animate-in fade-in duration-300">
+                    <div className="flex items-center justify-between bg-teal-500/10 border border-teal-500/20 px-3.5 py-2.5 rounded-xl">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
+                        <span className="text-xs font-black text-rose-400">मरीज़ बोल रहे हैं... (Live Ambient Voice Intake)</span>
+                      </div>
+                      <div className="flex items-center gap-1 h-5 px-2 bg-slate-900/80 rounded-lg border border-slate-800">
+                        {[12, 18, 8, 22, 14, 26, 19, 10, 24, 16, 8, 20].map((h, i) => (
+                          <div key={i} className="w-1 bg-gradient-to-t from-teal-400 to-emerald-300 rounded-full animate-pulse" style={{ height: `${h}px`, animationDelay: `${i * 70}ms` }} />
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-950/70 rounded-xl p-3 border border-white/5 text-xs font-medium">
+                      <span className="text-teal-400 font-bold block text-[10px] uppercase tracking-wider mb-1">Colloquial Spoken Hindi/Hinglish Input:</span>
+                      <p className="text-slate-100 italic">"Mere ball bahut toot rahe Hain aur saath he mere ko dandruff bhee bahut jyaada hai. So what should I do?"</p>
+                    </div>
+
+                    <div className="bg-slate-900/80 border border-white/10 rounded-2xl p-4 mt-2 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-teal-400" />
+                        <span className="text-xs font-black text-white">Groq AI Extraction Result</span>
+                        <span className="ml-auto text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full font-mono">⚡ 0.76s Latency</span>
+                      </div>
+                      
+                      <div className="bg-slate-950/60 p-2.5 rounded-xl border border-white/5">
+                        <span className="text-[10px] font-extrabold text-teal-400 uppercase tracking-wider block">Clinical Working Diagnosis</span>
+                        <span className="text-xs font-bold text-white">Telogen Effluvium with Seborrheic Dermatitis of Scalp</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                        <div className="bg-slate-950/60 p-3 rounded-xl border border-white/5">
+                          <span className="text-[10px] font-extrabold text-teal-400 uppercase block tracking-wider mb-1.5">Prescribed Medicines</span>
+                          <ul className="space-y-1.5 text-slate-300 font-medium text-[11px]">
+                            <li className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />Scalpe+ (Ketoconazole 2% + ZPTO) – 2-3x/week</li>
+                            <li className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-violet-400 shrink-0" />Tab Keraglo-Eva (Biotin 10mg + Zinc) – 1 Tab OD</li>
+                          </ul>
+                        </div>
+                        <div className="bg-slate-950/60 p-3 rounded-xl border border-white/5">
+                          <span className="text-[10px] font-extrabold text-teal-400 uppercase block tracking-wider mb-1.5">Indicated Lab Tests</span>
+                          <ul className="space-y-1.5 text-slate-300 font-medium text-[11px]">
+                            <li className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />Serum Ferritin & Iron Profile (TIBC)</li>
+                            <li className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0" />Thyroid Profile (TSH, Free T4) + Vit D3</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {activeSimTab === 'clinical' && (
                   <div className="space-y-4 animate-in fade-in duration-300">
                     <div className="flex items-center gap-3">
@@ -711,7 +964,7 @@ export default function LandingPage({ onEnterWorkspace }) {
         </section>
 
         {/* =========================================================================
-            STANDOUT CAPABILITIES SECTION
+            STANDOUT CAPABILITIES SECTION (3x3 Grid)
         ========================================================================= */}
         <section id="features" className="max-w-7xl mx-auto px-6 py-12 scroll-mt-28">
           <div className="text-center mb-16">
@@ -721,20 +974,23 @@ export default function LandingPage({ onEnterWorkspace }) {
             </div>
             <h2 className="text-2xl md:text-4xl font-extrabold text-white mb-3">Engineered for Reliability & Scale</h2>
             <p className="text-slate-400 text-sm md:text-base max-w-2xl mx-auto">
-              Connecting clinical diagnostics, pre-invoice compliance, and financial administration in a decoupled high-performance stack.
+              Connecting clinical ambient intake, pre-invoice compliance, government tariffs, and multi-role operations in a decoupled high-performance stack.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { icon: Brain, title: "AI Prescription Suggester", desc: "Transforms symptom arrays into structured medication plans with precise OD/BD/TID dosing, pediatric safety caps, and follow-up schedules.", color: "text-teal-400 bg-teal-500/10", gradientFrom: 'rgba(20,184,166,0.5)' },
+              { icon: Mic, title: "Ambient Voice Scribe (मरीज़ की आवाज़)", desc: "Translates colloquial Hindi/Hinglish speech into structured OPD plans with diagnoses, medicines, and tests in real time without doctor re-typing.", color: "text-teal-400 bg-teal-500/10", gradientFrom: 'rgba(20,184,166,0.5)' },
+              { icon: Brain, title: "AI Prescribing & Safety Engine", desc: "Transforms patient symptoms into structured medication plans with precise OD/BD/TID dosing, pediatric safety caps, and non-overlapping classes.", color: "text-emerald-400 bg-emerald-500/10", gradientFrom: 'rgba(52,211,153,0.5)' },
               { icon: ShieldAlert, title: "Hybrid Pre-Invoice AI Auditor", desc: "Combines deterministic rule validation with LLM reasoning to catch 6 critical billing inconsistencies before invoice checkout.", color: "text-rose-400 bg-rose-500/10", gradientFrom: 'rgba(251,113,133,0.5)' },
-              { icon: Languages, title: "Multilingual Patient Handouts", desc: "Translates complex clinical notes into 11 Indian native languages with visual emoji checklists for patient compliance.", color: "text-violet-400 bg-violet-500/10", gradientFrom: 'rgba(167,139,250,0.5)' },
-              { icon: BarChart3, title: "AI Revenue Intelligence", desc: "Generates natural language summaries of outstanding ledger balances, digital vs cash splits, and actionable management alerts.", color: "text-emerald-400 bg-emerald-500/10", gradientFrom: 'rgba(52,211,153,0.5)' },
-              { icon: FileText, title: "ReportLab PDF Receipts", desc: "Server-side dynamic PDF generation reproducing official diagnostic and payment receipts with customizable hospital branding.", color: "text-amber-400 bg-amber-500/10", gradientFrom: 'rgba(251,191,36,0.5)' },
-              { icon: Lock, title: "RBAC & Audit Trail Security", desc: "Tamper-evident system logs capturing Receptionist deposits, Accountant checkouts, and Admin settings with JWT role enforcement.", color: "text-indigo-400 bg-indigo-500/10", gradientFrom: 'rgba(99,102,241,0.5)' }
+              { icon: Languages, title: "11 Indian Language Handouts", desc: "Translates complex clinical notes into 11 Indian native languages with visual emoji daily-routine checklists for patient adherence.", color: "text-violet-400 bg-violet-500/10", gradientFrom: 'rgba(167,139,250,0.5)' },
+              { icon: Users, title: "4 Role-Tailored Workspaces", desc: "Dedicated consoles for Doctor (Clinical Queue), Receptionist (Speed Registration & Advance Deposits), Accountant (Reconciliation), and Admin.", color: "text-blue-400 bg-blue-500/10", gradientFrom: 'rgba(96,165,250,0.5)' },
+              { icon: Scale, title: "NHA & CGHS Price Benchmarks", desc: "Real-time tariff auditing against National Health Authority (NHA) & CGHS standards to detect overbilling, undercharging, and margin leakage.", color: "text-amber-400 bg-amber-500/10", gradientFrom: 'rgba(251,191,36,0.5)' },
+              { icon: BarChart3, title: "AI Revenue & Audit Insights", desc: "Generates natural language summaries of outstanding ledger balances, digital vs cash splits, and actionable management alerts.", color: "text-cyan-400 bg-cyan-500/10", gradientFrom: 'rgba(34,211,238,0.5)' },
+              { icon: FileText, title: "ReportLab PDF Receipts & Rx", desc: "Server-side dynamic PDF generation reproducing official diagnostic slips & prescriptions with Devanagari font support and custom branding.", color: "text-orange-400 bg-orange-500/10", gradientFrom: 'rgba(251,146,60,0.5)' },
+              { icon: TrendingUp, title: "Hospital ROI & Savings Calculator", desc: "Interactive financial model simulating annual hospital cost recovery from eliminated billing leakage, reduced consultation delays, and automated audits.", color: "text-indigo-400 bg-indigo-500/10", gradientFrom: 'rgba(129,140,248,0.5)' }
             ].map((feat, i) => (
-              <FeatureCard key={i} {...feat} delay={i * 80} />
+              <FeatureCard key={i} {...feat} delay={i * 70} />
             ))}
           </div>
         </section>
@@ -799,8 +1055,8 @@ export default function LandingPage({ onEnterWorkspace }) {
                 {
                   icon: Terminal, title: 'Backend Core', color: 'bg-violet-500/10 text-violet-400', items: [
                     { label: 'Python FastAPI', color: 'text-violet-300' },
-                    { label: 'Groq Llama 3.3 70B', color: 'text-violet-300' },
-                    { label: 'ReportLab PDF', color: 'text-slate-300' },
+                    { label: 'Groq OSS-120B Clinical Engine', color: 'text-violet-300' },
+                    { label: 'ReportLab PDF Engine', color: 'text-slate-300' },
                     { label: 'SQLAlchemy ORM', color: 'text-slate-300' },
                   ]
                 },
@@ -832,6 +1088,119 @@ export default function LandingPage({ onEnterWorkspace }) {
                 );
               })}
             </div>
+          </div>
+        </section>
+
+        {/* =========================================================================
+            FREQUENTLY ASKED QUESTIONS (FAQ) ACCORDION SECTION
+        ========================================================================= */}
+        <section id="faqs" ref={faqRef} className="max-w-5xl mx-auto px-6 py-20 relative z-10">
+          {/* Ambient section header */}
+          <div
+            className="text-center mb-14"
+            style={{
+              opacity: faqInView ? 1 : 0,
+              transform: faqInView ? 'translateY(0)' : 'translateY(24px)',
+              transition: 'opacity 0.7s ease, transform 0.7s ease'
+            }}
+          >
+            <div className="inline-flex items-center gap-2 text-xs text-teal-400 font-bold uppercase tracking-wider bg-teal-500/10 px-4 py-1.5 rounded-full border border-teal-500/30 mb-4">
+              <HelpCircle className="w-3.5 h-3.5 text-teal-400" />
+              Frequently Asked Questions
+            </div>
+            <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight mb-4">
+              Everything You Need to Know About <span className="gradient-text-teal">HospiSynAI</span>
+            </h2>
+            <p className="text-slate-400 text-sm md:text-base max-w-2xl mx-auto font-medium leading-relaxed">
+              Explore how our autonomous clinical dictation, guided voice intake, real-time AI triage, and pre-invoice audit engine transform modern hospital operations.
+            </p>
+          </div>
+
+          {/* FAQ Accordion List */}
+          <div
+            className="space-y-3.5"
+            style={{
+              opacity: faqInView ? 1 : 0,
+              transform: faqInView ? 'translateY(0)' : 'translateY(30px)',
+              transition: 'opacity 0.8s ease 0.15s, transform 0.8s ease 0.15s'
+            }}
+          >
+            {faqsList.map((faq, index) => {
+              const isOpen = openFaqIndex === index;
+              return (
+                <div
+                  key={index}
+                  className={`rounded-2xl border transition-all duration-300 overflow-hidden ${
+                    isOpen
+                      ? 'bg-gradient-to-r from-slate-900/95 via-[#0a1628]/95 to-slate-900/95 border-teal-500/50 shadow-xl shadow-teal-950/30'
+                      : 'bg-[#080f1e]/60 hover:bg-[#0d172e]/70 border-white/10 hover:border-white/20'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenFaqIndex(isOpen ? null : index)}
+                    className="w-full text-left p-5 md:p-6 flex items-center justify-between gap-4 cursor-pointer focus:outline-none"
+                    aria-expanded={isOpen}
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <span className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 transition-colors ${
+                        isOpen ? 'bg-teal-500 text-slate-950 shadow-md shadow-teal-500/30' : 'bg-white/5 text-slate-400'
+                      }`}>
+                        {index + 1}
+                      </span>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-300 border border-teal-500/20">
+                            {faq.category}
+                          </span>
+                        </div>
+                        <h3 className="text-sm md:text-base font-extrabold text-white tracking-tight">
+                          {faq.question}
+                        </h3>
+                      </div>
+                    </div>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-transform duration-300 ${
+                      isOpen ? 'rotate-180 bg-teal-500/20 text-teal-300' : 'bg-white/5 text-slate-400'
+                    }`}>
+                      <ChevronDown className="w-4 h-4" />
+                    </div>
+                  </button>
+
+                  {isOpen && (
+                    <div className="px-5 md:px-6 pb-6 pt-1 border-t border-teal-500/15 text-xs md:text-sm text-slate-300 leading-relaxed font-normal animate-in slide-in-from-top-2 duration-200">
+                      <p className="text-slate-300 font-medium">
+                        {faq.answer}
+                      </p>
+                      {faq.highlight && (
+                        <div className="mt-3 inline-flex items-center gap-2 bg-teal-500/10 border border-teal-500/30 px-3 py-1.5 rounded-xl text-[11.5px] font-semibold text-teal-300">
+                          <Sparkles className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                          <span>{faq.highlight}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Quick Support / Contact Callout Banner */}
+          <div className="mt-10 p-5 rounded-2xl bg-gradient-to-r from-teal-950/40 via-slate-900 to-teal-950/40 border border-teal-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-teal-500/20 flex items-center justify-center text-teal-400 shrink-0">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white">Have more questions or need custom hospital integration?</h4>
+                <p className="text-xs text-slate-400 font-medium">Our clinical engineering team provides tailored deployment support for NABH & Ayushman Bharat hospitals.</p>
+              </div>
+            </div>
+            <button
+              onClick={onEnterWorkspace}
+              className="px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-teal-500/20 transition-all active:scale-95 shrink-0 cursor-pointer"
+            >
+              Test Live Console →
+            </button>
           </div>
         </section>
 

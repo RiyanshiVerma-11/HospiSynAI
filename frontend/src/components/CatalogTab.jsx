@@ -1,5 +1,16 @@
-import React from 'react';
-import { PlusCircle } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { PlusCircle, Search, Filter, X } from 'lucide-react';
+
+const SERVICE_CATEGORIES = [
+  "Doctor Consultation",
+  "OPD Charges",
+  "IPD Charges",
+  "ICU Charges",
+  "Laboratory Tests",
+  "Radiology/X-Ray/MRI",
+  "Pharmacy/Medicines",
+  "Other Hospital Services"
+];
 
 export default function CatalogTab({
   services,
@@ -11,47 +22,155 @@ export default function CatalogTab({
   handleUpdateService,
   handleAddService
 }) {
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Category counts
+  const categoryCounts = useMemo(() => {
+    const counts = {};
+    (services || []).forEach(s => {
+      counts[s.category] = (counts[s.category] || 0) + 1;
+    });
+    return counts;
+  }, [services]);
+
+  // Filtered services
+  const filteredServices = useMemo(() => {
+    return (services || []).filter(s => {
+      const matchCat = selectedCategory === 'All' || s.category === selectedCategory;
+      const matchSearch = !searchQuery.trim() ||
+        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.category.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchCat && matchSearch;
+    });
+  }, [services, selectedCategory, searchQuery]);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch animate-in fade-in duration-300 h-full md:h-full md:max-h-full md:overflow-hidden min-h-0">
       {/* Services catalog list (Left 2 cols) */}
       <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col md:h-full md:overflow-hidden min-h-[300px]">
-        <h3 className="font-bold text-slate-900 text-xs mb-2 uppercase tracking-wider text-slate-500 flex-shrink-0">Service Standards & Price Table</h3>
+        {/* Header Toolbar */}
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-3 flex-shrink-0">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500">Service Standards & Price Table</h3>
+              <span className="text-[10px] font-bold text-teal-700 bg-teal-50 border border-teal-200/60 px-2 py-0.5 rounded-full">
+                {filteredServices.length} {filteredServices.length === 1 ? 'Service' : 'Services'}
+              </span>
+            </div>
+            <p className="text-[10.5px] text-slate-400 font-medium mt-0.5">
+              Standardized hospital procedures, OPD consults, and investigation charges
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Search Input */}
+            <div className="relative min-w-[130px]">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+              <input
+                type="text"
+                placeholder="Search service..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-2.5 py-1 text-xs font-semibold placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {(selectedCategory !== 'All' || searchQuery) && (
+              <button
+                type="button"
+                onClick={() => { setSelectedCategory('All'); setSearchQuery(''); }}
+                className="text-xs text-rose-600 hover:text-rose-800 font-bold flex items-center gap-1 bg-rose-50 hover:bg-rose-100 px-2 py-1 rounded-xl border border-rose-200/60 transition-colors cursor-pointer"
+              >
+                <X className="w-3 h-3" /> Reset
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Table */}
         <div className="overflow-x-auto rounded-xl border border-slate-100 md:flex-1 md:overflow-y-auto min-h-0 compact-scroll">
           <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-50 text-slate-455 font-bold uppercase tracking-wider text-[9px] border-b border-slate-100">
-                <th className="py-2.5 px-3">Category</th>
+            <thead className="sticky top-0 bg-slate-50/95 backdrop-blur-xs z-10">
+              <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[9px] border-b border-slate-100">
+                <th className="py-2.5 px-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="flex items-center gap-1">
+                      <Filter className="w-2.5 h-2.5 text-teal-600" />
+                      <span>Category</span>
+                    </span>
+                    <select
+                      className="bg-white border border-slate-200 rounded-md px-1.5 py-0.5 text-[9px] font-bold text-slate-700 cursor-pointer focus:outline-none focus:border-teal-500 shadow-2xs"
+                      value={selectedCategory}
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                      title="Filter by category"
+                    >
+                      <option value="All">All ({services.length})</option>
+                      {SERVICE_CATEGORIES.map(cat => (
+                        <option key={cat} value={cat}>
+                          {cat} ({categoryCounts[cat] || 0})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </th>
                 <th className="py-2.5 px-3">Service Item Name</th>
                 <th className="py-2.5 px-3 text-right">Standard Price</th>
                 <th className="py-2.5 px-3 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 text-slate-700 font-medium">
-              {services.map(s => (
-                <tr key={s.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="py-2 px-3">
-                    <span className="bg-teal-50 text-teal-800 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase border border-teal-100">{s.category}</span>
+              {filteredServices.map(s => (
+                <tr key={s.id} className="hover:bg-slate-50/70 transition-colors">
+                  <td className="py-2.5 px-3">
+                    <span className="bg-teal-50 text-teal-800 text-[9.5px] font-extrabold px-2.5 py-0.5 rounded-full uppercase border border-teal-100">{s.category}</span>
                   </td>
-                  <td className="py-2 px-3 text-slate-900 font-semibold">{s.name}</td>
-                  <td className="py-2 px-3 text-right font-extrabold text-slate-950">₹{s.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                  <td className="py-2 px-3 text-center space-x-2 whitespace-nowrap">
+                  <td className="py-2.5 px-3 text-slate-900 font-bold">{s.name}</td>
+                  <td className="py-2.5 px-3 text-right font-black text-slate-950">₹{s.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  <td className="py-2.5 px-3 text-center space-x-2 whitespace-nowrap">
                     <button
                       type="button"
                       onClick={() => setEditingService(s)}
-                      className="text-teal-600 hover:text-teal-800 text-[10px] font-bold bg-teal-50 px-2 py-1 rounded"
+                      className="text-teal-700 hover:text-teal-900 text-[10px] font-black bg-teal-50 hover:bg-teal-100 px-2.5 py-1 rounded-lg border border-teal-100 transition-colors cursor-pointer"
                     >
                       Edit
                     </button>
                     <button
                       type="button"
                       onClick={() => handleDeleteService(s.id)}
-                      className="text-rose-600 hover:text-rose-800 text-[10px] font-bold bg-rose-50 px-2 py-1 rounded"
+                      className="text-rose-600 hover:text-rose-800 text-[10px] font-black bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg border border-rose-100 transition-colors cursor-pointer"
                     >
                       Delete
                     </button>
                   </td>
                 </tr>
               ))}
+              {filteredServices.length === 0 && (
+                <tr>
+                  <td colSpan="4" className="py-10 text-center text-slate-400 font-medium text-xs">
+                    No services found for category <b className="text-slate-600">"{selectedCategory}"</b>
+                    {searchQuery && ` matching "${searchQuery}"`}.
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedCategory('All'); setSearchQuery(''); }}
+                        className="text-teal-600 hover:underline font-bold text-xs cursor-pointer"
+                      >
+                        Show All Categories
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

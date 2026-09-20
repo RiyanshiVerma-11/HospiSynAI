@@ -14,7 +14,7 @@ export default function UsersTab({
         <div className="overflow-x-auto rounded-xl border border-slate-100 md:flex-1 md:overflow-y-auto min-h-0 compact-scroll">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-slate-50 text-slate-450 font-bold uppercase tracking-wider text-[9px] border-b border-slate-100">
+              <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[9px] border-b border-slate-100">
                 <th className="py-2.5 px-3">Username</th>
                 <th className="py-2.5 px-3">Full Name</th>
                 <th className="py-2.5 px-3">Role Access</th>
@@ -76,7 +76,7 @@ export default function UsersTab({
             <div>
               <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Staff Role Permission</label>
               <select
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:bg-white focus:border-teal-500 font-bold text-slate-655 cursor-pointer"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:bg-white focus:border-teal-500 font-bold text-slate-700 cursor-pointer"
                 value={newUserForm.role}
                 onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value })}
               >

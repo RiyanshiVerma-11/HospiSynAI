@@ -93,6 +93,7 @@ class VisitBase(BaseModel):
     follow_up_date: Optional[str] = None
     patient_summary: Optional[str] = None
     status: Optional[str] = "Waiting"
+    token_number: Optional[int] = None
 
 class VisitSummaryUpdate(BaseModel):
     diagnosis: Optional[str] = None
@@ -113,6 +114,7 @@ class VisitResponse(VisitBase):
     visit_id: str
     patient_id: int
     doctor_id: Optional[int] = None
+    token_number: Optional[int] = None
     visit_date: datetime
     is_active: bool
     doctor: Optional[DoctorResponse] = None
@@ -162,6 +164,7 @@ class BillItemBase(BaseModel):
 
 class BillItemCreate(BaseModel):
     service_id: Optional[int] = None
+    service_name: Optional[str] = None
     amount: float  # Stored price (overridable)
 
 class BillItemResponse(BillItemBase):
@@ -398,7 +401,39 @@ class AIInsightResponse(BaseModel):
     insight: str
     action: str
     metric_highlight: str
-    sentiment: str  # "positive" | "neutral" | "negative"
+    sentiment: Optional[str] = "neutral"
+
+# Voice Intake & Clinical Scribe Schemas
+class VoiceIntakeParseRequest(BaseModel):
+    transcript: str
+
+class VoiceIntakeParseResponse(BaseModel):
+    name: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    mobile_number: Optional[str] = None
+    address: Optional[str] = None
+    chief_complaints: Optional[str] = None
+    confidence: Optional[str] = "high"
+    source: Optional[str] = "ai"  # "ai" | "heuristic"
+
+class VoiceConsultationParseRequest(BaseModel):
+    transcript: str
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    mode: Optional[str] = "patient_voice"  # "patient_voice" | "doctor_dictation"
+    language: Optional[str] = "auto"
+
+class VoiceConsultationParseResponse(BaseModel):
+    chief_complaints: Optional[str] = None
+    diagnosis: Optional[str] = None
+    medicines_list: Optional[str] = None
+    tests_list: Optional[str] = None
+    advice: Optional[str] = None
+    follow_up_date: Optional[str] = None
+    patient_verbatim: Optional[str] = None
+    detected_language: Optional[str] = None
+    source: Optional[str] = "ai"
 
 PatientResponse.update_forward_refs()
 VisitResponse.update_forward_refs()

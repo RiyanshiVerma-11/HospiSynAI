@@ -331,6 +331,63 @@
   background: radial-gradient(circle at 50% 0%, rgba(20, 184, 166, 0.25), transparent 70%);
 }
 
+/* ECG Heartbeat Line Animation */
+@keyframes ecg-dash {
+  0% {
+    stroke-dashoffset: 1200;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.ecg-line-animated {
+  stroke-dasharray: 600;
+  stroke-dashoffset: 600;
+  animation: ecg-dash 6s linear infinite;
+}
+
+/* Audio Waveform Bars */
+@keyframes audio-bounce {
+  0%, 100% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.audio-bar-anim {
+  transform-origin: bottom;
+  animation: audio-bounce 1s ease-in-out infinite;
+}
+
+/* Floating Badges */
+@keyframes float-badge-1 {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(-1deg); }
+}
+
+@keyframes float-badge-2 {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(8px) rotate(1deg); }
+}
+
+.float-badge-1 { animation: float-badge-1 5s ease-in-out infinite; }
+.float-badge-2 { animation: float-badge-2 6s ease-in-out infinite 0.5s; }
+
+/* Radiant Glowing Ring */
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 0.3; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.pulse-ring-glow {
+  animation: pulse-ring 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+
 /* ============================================================
    COMMAND PALETTE & QUICK SHORTCUT STYLES
    ============================================================ */

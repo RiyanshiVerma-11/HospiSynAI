@@ -19,8 +19,18 @@ import {
   Receipt,
   Stethoscope,
   AlertCircle,
-  CheckCircle2
+  AlertTriangle,
+  CheckCircle2,
+  Mic,
+  MicOff,
+  Volume2,
+  X,
+  Users,
+  PanelLeftClose,
+  PanelLeftOpen,
+  GripVertical
 } from 'lucide-react';
+import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 
 const MEDICINE_DATASTORE = [
   // Paracetamol & Pain Relievers
@@ -111,6 +121,98 @@ const COMMON_ADVICE = [
   'Avoid heavy physical activity'
 ];
 
+const analyzeChiefComplaint = (complaintText) => {
+  if (!complaintText || complaintText.trim().length < 2) return null;
+  const text = complaintText.toLowerCase();
+
+  // High Priority: Respiratory Distress & Breathing Difficulties (Hindi/Hinglish/English)
+  if (
+    /\b(saas|saans|sans|breathless|breathlessness|dyspnea|suffocat|chok|oxygen|spo2)\b/.test(text) ||
+    /sa+n?s\s*(phool|fool|lene|fulna|phulna)/.test(text) ||
+    /sa+n?s\s+lene\s*(me|m|mein)?\s*(dikkat|takleef|problem|pareshani|kasht)/.test(text) ||
+    /(difficulty|shortness|trouble|hard|struggling)\s*(in|to|of)?\s*breath/.test(text) ||
+    /\b(asthma attack|severe asthma|acute asthma|stridor|bronchospasm)\b/.test(text)
+  ) {
+    return {
+      specialty: 'Pulmonology / Emergency OPD',
+      priority: 'High',
+      priorityBadgeClass: 'bg-rose-500/15 text-rose-600 border-rose-500/30',
+      note: 'Flagged: High Priority - Immediate SpO2 saturation, respiratory rate & nebulization triage required',
+      doctorRole: 'Pulmonologist / Emergency MO'
+    };
+  }
+
+  // High Priority: Cardiology / Emergency / Severe Chest / Trauma / Stroke / Collapse
+  if (/\b(chest|chhati|heart|cardio|angina|palpitation|heart attack|bp high|stroke|unconscious|bleed|bleeding|severe pain|dora|behosh|faint|collapse)\b/.test(text)) {
+    return {
+      specialty: 'Cardiology / Emergency OPD',
+      priority: 'High',
+      priorityBadgeClass: 'bg-rose-500/15 text-rose-600 border-rose-500/30',
+      note: 'Flagged: Immediate vitals (ECG, BP, SpO2) check required before consultation',
+      doctorRole: 'Cardiologist / Emergency MO'
+    };
+  }
+
+  // Pulmonology / Respiratory (Moderate)
+  if (/\b(cough|khansi|phlegm|asthma|wheezing|cold|pneumonia|balgham|throat|gala|bukhar|fever)\b/.test(text)) {
+    return {
+      specialty: 'Pulmonology / Internal Medicine',
+      priority: 'Moderate',
+      priorityBadgeClass: 'bg-amber-500/15 text-amber-600 border-amber-500/30',
+      note: 'SpO2 saturation & clinical temperature triage check recommended',
+      doctorRole: 'Chest Physician / General Physician'
+    };
+  }
+  // Gastroenterology
+  if (/\b(stomach|pet|abdomen|vomit|loose motion|diarrhea|dast|nausea|acidity|gas|ulcer|constipation|kabz|ulti)\b/.test(text)) {
+    return {
+      specialty: 'Gastroenterology / General Medicine',
+      priority: 'Moderate',
+      priorityBadgeClass: 'bg-amber-500/15 text-amber-600 border-amber-500/30',
+      note: 'Dehydration check & oral rehydration protocol guidance',
+      doctorRole: 'Gastroenterologist'
+    };
+  }
+  // Orthopedics / Trauma Care
+  if (/\b(fracture|bone|joint|knee|back pain|haddi|chot|injury|accident|sprain|swelling|kamar dard|ghutna)\b/.test(text)) {
+    return {
+      specialty: 'Orthopedics / Trauma Care',
+      priority: 'High',
+      priorityBadgeClass: 'bg-rose-500/15 text-rose-600 border-rose-500/30',
+      note: 'Immobilization support & preliminary digital X-Ray requisition recommended',
+      doctorRole: 'Orthopedic Surgeon'
+    };
+  }
+  // Neurology
+  if (/\b(headache|migraine|sir dard|dizziness|chakkar|faint|seizure|mrgi)\b/.test(text)) {
+    return {
+      specialty: 'Neurology / Internal Medicine',
+      priority: 'Moderate',
+      priorityBadgeClass: 'bg-amber-500/15 text-amber-600 border-amber-500/30',
+      note: 'Neurological reflex & BP stability examination recommended',
+      doctorRole: 'Neurologist / General Physician'
+    };
+  }
+  // Dermatology
+  if (/\b(skin|rash|khujli|allergy|itching|dane)\b/.test(text)) {
+    return {
+      specialty: 'Dermatology OPD',
+      priority: 'Routine',
+      priorityBadgeClass: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30',
+      note: 'Standard OPD consultation queue allotted',
+      doctorRole: 'Dermatologist'
+    };
+  }
+  // Routine / Default OPD
+  return {
+    specialty: 'General Medicine / OPD Triage',
+    priority: 'Routine',
+    priorityBadgeClass: 'bg-teal-500/15 text-teal-600 border-teal-500/30',
+    note: 'Standard outpatient consultation queue allotted',
+    doctorRole: 'General Physician'
+  };
+};
+
 const STATIC_BASE = import.meta.env.VITE_STATIC_BASE_URL || 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
     ? "http://localhost:5000" 
@@ -122,6 +224,8 @@ export default function PatientSearchTab({
   showToast,
   adminSettingsForm,
   userRole,
+  sidebarCollapsed,
+  setSidebarCollapsed,
   searchQuery,
   setSearchQuery,
   patients = [],
@@ -152,7 +256,8 @@ export default function PatientSearchTab({
   prescUnmatchedItems,
   prescAutoFillVisitId,
   fetchPrescriptionSuggestedItems,
-
+  deskVoiceIntakeRequested,
+  setDeskVoiceIntakeRequested,
   fetchPatients,
   handleSelectPatient,
   handleSoftDeletePatient,
@@ -187,10 +292,49 @@ export default function PatientSearchTab({
   const [summaryGenerating, setSummaryGenerating] = React.useState(false);
   const [summarySaving, setSummarySaving] = React.useState(false);
   const [summaryError, setSummaryError] = React.useState('');
-  const [selectedLanguage, setSelectedLanguage] = React.useState('Hindi');
+  const [selectedLanguage, setSelectedLanguage] = React.useState('');
   const [viewMode, setViewMode] = React.useState('en'); // 'en' | 'native' | 'pdf'
   const [pdfPreviewUrl, setPdfPreviewUrl] = React.useState('');
-  const [pdfLoading, setPdfLoading] = React.useState(false);
+  // Patient Finder Width & Resizing States
+  const [finderWidth, setFinderWidth] = React.useState(() => {
+    const saved = localStorage.getItem('hospisyn_finder_width');
+    return saved ? parseInt(saved, 10) : 340;
+  });
+  const [finderCollapsed, setFinderCollapsed] = React.useState(false);
+  const [isDraggingFinder, setIsDraggingFinder] = React.useState(false);
+
+  const containerRef = React.useRef(null);
+
+  // Dragging Patient Finder Splitter (Horizontally enlarge or shrink the finder)
+  React.useEffect(() => {
+    if (!isDraggingFinder) return;
+
+    const handleMouseMove = (e) => {
+      if (!containerRef.current) return;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newWidth = e.clientX - containerRect.left;
+
+      if (newWidth < 160) {
+        setFinderCollapsed(true);
+      } else {
+        setFinderCollapsed(false);
+        const clampedWidth = Math.max(240, Math.min(newWidth, 600));
+        setFinderWidth(clampedWidth);
+        localStorage.setItem('hospisyn_finder_width', clampedWidth.toString());
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingFinder(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingFinder]);
 
   const INDIAN_LANGUAGES = [
     { code: 'Hindi', label: 'Hindi (हिंदी)' },
@@ -233,13 +377,362 @@ export default function PatientSearchTab({
   const [anomalyCheckLoading, setAnomalyCheckLoading] = React.useState(false);
   const [anomalyResult, setAnomalyResult] = React.useState(null);
 
+  // Voice Intake & Voice Search State
+  const [showVoiceIntake, setShowVoiceIntake] = React.useState(false);
+  const [voiceIntakeParsing, setVoiceIntakeParsing] = React.useState(false);
+  const [voicePopulatedFields, setVoicePopulatedFields] = React.useState([]);
+
+  // Field-level AI Extracted Micro-Badge Renderer (Disabled to eliminate clutter and save space)
+  const renderAiBadge = () => null;
+
+  // Custom Speech Recognition Hooks
+  const intakeVoice = useSpeechRecognition({ defaultLang: 'en-IN' });
+  const searchVoice = useSpeechRecognition({ defaultLang: 'en-IN' });
+
+  // Guided Step-by-Step Voice Intake State (Enter ↵ on keyboard advances to next detail)
+  const [guidedVoiceStep, setGuidedVoiceStep] = React.useState(null); 
+  // 'name' | 'age_gender' | 'mobile_number' | 'address' | 'chief_complaints' | null
+
+  // DOM Refs for auto-focusing inputs during guided flow
+  const nameInputRef = React.useRef(null);
+  const ageInputRef = React.useRef(null);
+  const mobileInputRef = React.useRef(null);
+  const addressInputRef = React.useRef(null);
+  const complaintsInputRef = React.useRef(null);
+  const registerBtnRef = React.useRef(null);
+  const GUIDED_STEPS = [
+    { id: 'name', label: '1. Patient Name', prompt: 'Speak Patient Full Name', next: 'age_gender', ref: nameInputRef },
+    { id: 'age_gender', label: '2. Age & Gender', prompt: 'Speak Age & Gender (e.g. 32 Male)', next: 'mobile_number', ref: ageInputRef },
+    { id: 'mobile_number', label: '3. Mobile Number', prompt: 'Speak 10-Digit Mobile Number', next: 'address', ref: mobileInputRef },
+    { id: 'address', label: '4. City / Address', prompt: 'Speak City or Address (or Enter to skip)', next: 'chief_complaints', ref: addressInputRef },
+    { id: 'chief_complaints', label: '5. Reason / Symptoms', prompt: 'Speak Symptoms or Reason (or Enter to finish)', next: null, ref: complaintsInputRef }
+  ];
+
+  // Global keydown for Escape to stop guided intake anytime
+  React.useEffect(() => {
+    if (!guidedVoiceStep) return;
+    const handleGlobalKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        stopGuidedVoiceIntake(false);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [guidedVoiceStep]);
+
+  // Handle continuous one-go speech transcription into the currently active step field
+  React.useEffect(() => {
+    if (!guidedVoiceStep) return;
+    
+    // Read real-time text (both interim and final speech for instantaneous response)
+    const spoken = (intakeVoice.fullText || intakeVoice.transcript || '').trim();
+    if (!spoken) return;
+
+    if (guidedVoiceStep === 'name') {
+      const cleanName = spoken
+        .replace(/^(patient|name|patient name|is|mr\.?|mrs\.?|ms\.?|shri|smt)\s*/i, '')
+        .replace(/\.+$/, '')
+        .trim();
+      if (cleanName) {
+        setNewPatient(prev => ({ ...prev, name: cleanName }));
+      }
+    } else if (guidedVoiceStep === 'age_gender') {
+      const ageMatch = spoken.match(/\b(\d{1,3})\b/);
+      const genderMatch = spoken.match(/\b(female|females|mahila|woman|girl|aurat|male|males|mail|purush|man|boy|other)\b/i);
+      setNewPatient(prev => {
+        const next = { ...prev };
+        if (ageMatch) {
+          const a = parseInt(ageMatch[1]);
+          if (a > 0 && a <= 120) next.age = a;
+        }
+        if (genderMatch) {
+          const g = genderMatch[1].toLowerCase();
+          next.gender = ['female', 'females', 'mahila', 'woman', 'girl', 'aurat'].includes(g) ? 'Female' : 'Male';
+        }
+        return next;
+      });
+    } else if (guidedVoiceStep === 'mobile_number') {
+      const digits = spoken.replace(/\D/g, '').slice(0, 10);
+      if (digits) {
+        setNewPatient(prev => ({ ...prev, mobile_number: digits }));
+      }
+    } else if (guidedVoiceStep === 'address') {
+      const cleanAddress = spoken.replace(/\.+$/, '').trim();
+      if (!/^(male|mail|female)$/i.test(cleanAddress)) {
+        setNewPatient(prev => ({ ...prev, address: cleanAddress }));
+      }
+    } else if (guidedVoiceStep === 'chief_complaints') {
+      const cleanComplaints = spoken.replace(/\.+$/, '').trim();
+      setNewPatient(prev => ({ ...prev, chief_complaints: cleanComplaints }));
+    }
+  }, [intakeVoice.fullText, intakeVoice.transcript, guidedVoiceStep]);
+
+  const startGuidedVoiceIntake = () => {
+    if (searchVoice.isListening) searchVoice.stopListening();
+    if (clinicalVoice.isListening) clinicalVoice.stopListening();
+
+    setGuidedVoiceStep('name');
+    intakeVoice.resetTranscript();
+    intakeVoice.startListening();
+    showToast('🎙️ Step 1/5: Speak Patient Name... Press [Enter ↵] for Age & Gender.');
+    setTimeout(() => {
+      nameInputRef.current?.focus();
+    }, 100);
+  };
+
+  const handleNextGuidedStep = (currentStepId) => {
+    const activeId = currentStepId || guidedVoiceStep || 'name';
+    const stepIdx = GUIDED_STEPS.findIndex(s => s.id === activeId);
+    if (stepIdx === -1) return;
+
+    const nextStep = GUIDED_STEPS[stepIdx + 1];
+
+    if (nextStep) {
+      // Clear transcript so the next field receives only fresh speech without stopping the mic!
+      intakeVoice.resetTranscript();
+      setGuidedVoiceStep(nextStep.id);
+
+      // Ensure microphone keeps running continuously
+      if (!intakeVoice.isListening) {
+        intakeVoice.startListening();
+      }
+
+      setTimeout(() => {
+        nextStep.ref.current?.focus();
+      }, 50);
+
+      showToast(`🎙️ ${nextStep.label}: ${nextStep.prompt}... Press [Enter ↵] for Next.`);
+    } else {
+      stopGuidedVoiceIntake(true);
+    }
+  };
+
+  const stopGuidedVoiceIntake = (completed = false) => {
+    intakeVoice.stopListening();
+    intakeVoice.resetTranscript();
+    setGuidedVoiceStep(null);
+    if (completed) {
+      showToast('✅ All details captured! Press Enter or click Register Patient.');
+      setTimeout(() => {
+        registerBtnRef.current?.focus();
+      }, 100);
+    } else {
+      showToast('Voice intake stopped.');
+    }
+  };
+
+  const handleToggleSingleFieldIntake = (stepId) => {
+    if (guidedVoiceStep === stepId) {
+      stopGuidedVoiceIntake(false);
+    } else {
+      if (searchVoice.isListening) searchVoice.stopListening();
+      if (clinicalVoice.isListening) clinicalVoice.stopListening();
+
+      intakeVoice.resetTranscript();
+      if (!intakeVoice.isListening) {
+        intakeVoice.startListening();
+      }
+
+      setGuidedVoiceStep(stepId);
+      const st = GUIDED_STEPS.find(s => s.id === stepId);
+      if (st) {
+        showToast(`🎙️ Dictating into ${st.label}... Speak now or press [Enter ↵].`);
+        setTimeout(() => st.ref.current?.focus(), 80);
+      }
+    }
+  };
+
+  // Auto-open and listen if requested from dashboard
+  React.useEffect(() => {
+    if (deskVoiceIntakeRequested) {
+      startGuidedVoiceIntake();
+      if (setDeskVoiceIntakeRequested) setDeskVoiceIntakeRequested(false);
+    }
+  }, [deskVoiceIntakeRequested]);
+
+  // Voice Search Effect: updates searchQuery as user speaks
+  React.useEffect(() => {
+    if (searchVoice.transcript) {
+      const cleanQuery = searchVoice.transcript.replace(/^(search|find|patient|dekho|search for)\s*/i, '').trim();
+      if (cleanQuery) {
+        setSearchQuery(cleanQuery);
+        fetchPatients(cleanQuery);
+      }
+    }
+  }, [searchVoice.transcript]);
+
+  const handleToggleSearchVoice = () => {
+    if (searchVoice.isListening) {
+      searchVoice.stopListening();
+    } else {
+      searchVoice.resetTranscript();
+      searchVoice.startListening();
+      showToast('🎙️ Listening... Speak patient name or mobile number');
+    }
+  };
+
+  // Voice Dictation for Doctor's Clinical Notes in Modal
+  const clinicalVoice = useSpeechRecognition({ defaultLang: 'en-IN' });
+  const [activeClinicalFieldMic, setActiveClinicalFieldMic] = React.useState(null);
+  const clinicalFieldBaseRef = React.useRef('');
+
+  const handleToggleClinicalFieldMic = (fieldName) => {
+    if (activeClinicalFieldMic === fieldName) {
+      clinicalVoice.stopListening();
+      setActiveClinicalFieldMic(null);
+      clinicalFieldBaseRef.current = '';
+      showToast(`Finished dictating into ${fieldName.replace('_', ' ')}.`);
+    } else {
+      if (intakeVoice.isListening) intakeVoice.stopListening();
+      if (searchVoice.isListening) searchVoice.stopListening();
+      clinicalVoice.stopListening();
+      setActiveClinicalFieldMic(fieldName);
+      clinicalFieldBaseRef.current = summaryForm[fieldName] || '';
+      clinicalVoice.resetTranscript();
+      clinicalVoice.startListening();
+      showToast(`🎙️ Dictating into ${fieldName.replace('_', ' ')}... Speak now.`);
+    }
+  };
+
+  React.useEffect(() => {
+    if (activeClinicalFieldMic && clinicalVoice.transcript) {
+      const spokenText = clinicalVoice.transcript.trim();
+      const base = clinicalFieldBaseRef.current ? clinicalFieldBaseRef.current.trim() : '';
+      setSummaryForm(prev => {
+        if (!base) {
+          return { ...prev, [activeClinicalFieldMic]: spokenText };
+        }
+        const separator = (activeClinicalFieldMic === 'chief_complaints' || activeClinicalFieldMic === 'advice') ? ', ' : '\n';
+        return { ...prev, [activeClinicalFieldMic]: `${base}${separator}${spokenText}` };
+      });
+    }
+  }, [clinicalVoice.transcript, activeClinicalFieldMic]);
+
+  // Client-side fallback parser for voice intake
+  const clientHeuristicParseIntake = (text) => {
+    const clean = text.trim();
+    const result = {};
+
+    // 1. Phone number extraction: look for 10 digits or spoken digit clusters (e.g. 9876543210, 834565898, with spaces/dots)
+    const exactPhone = clean.match(/\b[6-9]\d{9}\b/);
+    if (exactPhone) {
+      result.mobile_number = exactPhone[0];
+    } else {
+      const digitClusters = clean.match(/\b\d[\d\s\-\.]{6,14}\d\b/g);
+      if (digitClusters) {
+        for (const cluster of digitClusters) {
+          const digitsOnly = cluster.replace(/\D/g, '');
+          if (digitsOnly.length >= 8 && digitsOnly.length <= 11) {
+            result.mobile_number = digitsOnly.slice(-10);
+            break;
+          }
+        }
+      }
+    }
+
+    // 2. Gender extraction (including common STT homophones like "mail" for "male")
+    const gender = clean.match(/\b(female|females|mahila|woman|girl|aurat|male|males|mail|purush|man|boy|other)\b/i);
+    if (gender) {
+      const g = gender[1].toLowerCase();
+      result.gender = ['female', 'females', 'mahila', 'woman', 'girl', 'aurat'].includes(g) 
+        ? 'Female' 
+        : (['male', 'males', 'mail', 'purush', 'man', 'boy'].includes(g) ? 'Male' : 'Other');
+    }
+
+    // 3. Age extraction
+    const age = clean.match(/\b(?:age\s*)?(\d{1,3})\s*(?:years?(?:\s*old)?|yrs?|saal)?\b/i);
+    if (age && parseInt(age[1]) <= 120 && parseInt(age[1]) > 0) {
+      result.age = parseInt(age[1]);
+    }
+
+    // 4. Name & Complaints & Address extraction
+    const parts = clean.split(/[,;\.]+/).map(p => p.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      const nameCand = parts[0].replace(/\b(?:register(?:\s*patient)?|new\s*patient|patient(?:\s*name)?|name(?:\s*is)?|mr\.?|mrs\.?|ms\.?)\b/gi, '').trim();
+      if (nameCand && !/^\d+$/.test(nameCand)) result.name = nameCand;
+
+      for (const part of parts.slice(1)) {
+        if (/fever|cough|pain|check\s*up|headache|weakness|vomiting|cold|diarrhea|bp|sugar/i.test(part)) {
+          result.chief_complaints = part;
+          break;
+        }
+      }
+    } else {
+      const nameMatch = clean.replace(/\b(?:register(?:\s*patient)?|new\s*patient|patient)\b/gi, '').trim().split(/\s+/).slice(0, 2).join(' ');
+      if (nameMatch) result.name = nameMatch;
+    }
+
+    if (result.address && /^(mail|male|female|purush|mahila)$/i.test(result.address)) {
+      delete result.address;
+    }
+
+    return result;
+  };
+
+  const handleParseVoiceIntake = async (customText) => {
+    const textToParse = (customText || intakeVoice.fullText).trim();
+    if (!textToParse) {
+      showToast('Please speak or click a demo sample chip first.', 'warning');
+      return;
+    }
+
+    setVoiceIntakeParsing(true);
+    intakeVoice.stopListening();
+
+    try {
+      const res = await fetch(`${API_BASE}/ai/parse-voice-intake`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ transcript: textToParse })
+      });
+
+      let parsed = null;
+      if (res.ok) {
+        parsed = await res.json();
+      } else {
+        parsed = clientHeuristicParseIntake(textToParse);
+      }
+
+      if (parsed) {
+        const updated = { ...newPatient };
+        const filled = [];
+        if (parsed.name) { updated.name = parsed.name; filled.push('name'); }
+        if (parsed.age) { updated.age = parsed.age; filled.push('age'); }
+        if (parsed.gender) { updated.gender = parsed.gender; filled.push('gender'); }
+        if (parsed.mobile_number) { updated.mobile_number = parsed.mobile_number; filled.push('mobile_number'); }
+        if (parsed.address) { updated.address = parsed.address; filled.push('address'); }
+        if (parsed.chief_complaints) { updated.chief_complaints = parsed.chief_complaints; filled.push('chief_complaints'); }
+
+        setNewPatient(updated);
+        setVoicePopulatedFields(filled);
+        showToast('🎙️ Voice intake parsed! Review and click Register.');
+      }
+    } catch (err) {
+      console.warn('Voice intake fetch fallback:', err);
+      const parsed = clientHeuristicParseIntake(textToParse);
+      if (parsed) {
+        const filled = [];
+        if (parsed.name) filled.push('name');
+        if (parsed.age) filled.push('age');
+        if (parsed.gender) filled.push('gender');
+        if (parsed.mobile_number) filled.push('mobile_number');
+        if (parsed.address) filled.push('address');
+        if (parsed.chief_complaints) filled.push('chief_complaints');
+        setVoicePopulatedFields(filled);
+        setNewPatient(prev => ({ ...prev, ...parsed }));
+        showToast('Voice intake processed! Please verify details.');
+      }
+    } finally {
+      setVoiceIntakeParsing(false);
+    }
+  };
+
   // Rate Verification States (NHA / CGHS / Anakin MCP)
   const [rateVerificationLoading, setRateVerificationLoading] = React.useState(false);
   const [rateVerificationResult, setRateVerificationResult] = React.useState(null);
   const [showRateModal, setShowRateModal] = React.useState(false);
 
   const [downloadPrescriptionLoading, setDownloadPrescriptionLoading] = React.useState(false);
-  const STATIC_BASE = import.meta.env.VITE_STATIC_BASE_URL || 'http://localhost:5000';
 
   // Story View State
   const [showStoryModal, setShowStoryModal] = React.useState(false);
@@ -397,11 +890,16 @@ export default function PatientSearchTab({
     if (!anomalyResult || !anomalyResult.auto_corrections) return;
     const { corrected_items, action_summary, savings_amount } = anomalyResult.auto_corrections;
     
-    const updatedItems = corrected_items.map(ci => ({
-      service_id: null,
-      service_name: ci.service_name,
-      amount: ci.amount
-    }));
+    const updatedItems = corrected_items.map(ci => {
+      const match = Array.isArray(availableServices) 
+        ? availableServices.find(s => s.name.toLowerCase() === ci.service_name.toLowerCase())
+        : null;
+      return {
+        service_id: match ? match.id : null,
+        service_name: match ? match.name : ci.service_name,
+        amount: ci.amount
+      };
+    });
     
     setBillItems(updatedItems);
     setAnomalyResult({
@@ -523,6 +1021,7 @@ export default function PatientSearchTab({
   };
 
   const handleOpenSummary = (visit) => {
+    if (setSidebarCollapsed) setSidebarCollapsed(true);
     setSelectedVisit(visit);
     setSummaryTab('clinical');
     setSummaryForm({
@@ -571,6 +1070,10 @@ export default function PatientSearchTab({
   };
 
   const handleGenerateAiSummary = async () => {
+    if (!selectedLanguage) {
+      showToast('कृपया पहले भाषा चुनें (Please select target language first)', 'warning');
+      return;
+    }
     setSummaryGenerating(true);
     setSummaryError('');
     try {
@@ -644,24 +1147,158 @@ export default function PatientSearchTab({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch animate-in fade-in duration-300 h-full md:h-full md:max-h-full md:overflow-hidden min-h-0">
-      {/* Search Panel (Left 1 Col) */}
-      <div className="flex flex-col gap-4 md:h-full md:min-h-0">
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col md:h-full md:overflow-hidden min-h-[300px] lg:min-h-0">
-          <h3 className="font-bold text-slate-900 text-sm mb-3 uppercase tracking-wider text-slate-500">Patient Finder</h3>
+    <div 
+      ref={containerRef}
+      className={`flex flex-col lg:flex-row gap-0 items-stretch animate-in fade-in duration-300 h-full w-full min-h-0 p-2 md:p-3 relative ${
+        isDraggingFinder ? 'select-none' : ''
+      }`}
+    >
+      {/* Search Panel (Left Sidebar: compact 320-350px / resizable) */}
+      {finderCollapsed ? (
+        /* Collapsed Slim Dock Rail with Triage Counters */
+        <div className="hidden lg:flex w-14 min-w-[56px] bg-slate-50 border border-slate-200 rounded-2xl flex-col items-center py-3 px-1 flex-shrink-0 select-none z-10 mr-1.5 justify-between shadow-xs">
+          {/* Top: Expand Toggle + Counts */}
+          <div className="flex flex-col items-center gap-2.5 w-full">
+            <button
+              type="button"
+              onClick={() => setFinderCollapsed(false)}
+              className="p-2 rounded-xl bg-white border border-slate-200 hover:border-teal-500 text-slate-600 hover:text-teal-700 shadow-xs transition-all flex items-center justify-center group cursor-pointer"
+              title="Expand Patient Finder (मरीज़ खोजें)"
+            >
+              <PanelLeftOpen className="w-4 h-4 text-teal-600 group-hover:scale-110 transition-transform" />
+            </button>
+
+            {/* Total Patients Badge */}
+            <button
+              type="button"
+              onClick={() => setFinderCollapsed(false)}
+              className="w-full py-1.5 px-0.5 rounded-xl border bg-white border-slate-200 hover:border-teal-400 hover:bg-teal-50/50 shadow-xs transition-all cursor-pointer flex flex-col items-center"
+              title={`Total Patients: ${patients.length}`}
+            >
+              <Users className="w-3.5 h-3.5 text-teal-600 mb-0.5" />
+              <span className="text-xs font-black text-slate-900 font-mono leading-none">
+                {patients.length}
+              </span>
+              <span className="text-[7.5px] font-black uppercase text-slate-400 mt-0.5 leading-none">
+                Total
+              </span>
+            </button>
+
+            {/* Unpaid Bills Badge if any */}
+            {unpaidBills && unpaidBills.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setFinderCollapsed(false)}
+                className="w-full py-1.5 px-0.5 rounded-xl border bg-amber-50 border-amber-300 hover:bg-amber-100 shadow-xs transition-all cursor-pointer flex flex-col items-center"
+                title={`${unpaidBills.length} Unpaid Bills`}
+              >
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 mb-0.5" />
+                <span className="text-xs font-black text-amber-800 font-mono leading-none">
+                  {unpaidBills.length}
+                </span>
+                <span className="text-[7.5px] font-black uppercase text-amber-700 mt-0.5 leading-none">
+                  Unpaid
+                </span>
+              </button>
+            )}
+          </div>
+
+          {/* Middle: Rotated Text Label */}
+          <div 
+            onClick={() => setFinderCollapsed(false)}
+            className="my-auto flex flex-col items-center cursor-pointer group py-2"
+            title="Click to expand Patient Finder"
+          >
+            <span className="text-[9.5px] font-black uppercase text-slate-400 group-hover:text-teal-700 [writing-mode:vertical-lr] rotate-180 tracking-widest">
+              Patient Finder
+            </span>
+          </div>
+
+          {/* Bottom: New Patient Button */}
+          {userRole !== 'Doctor' && (
+            <button
+              type="button"
+              onClick={() => {
+                handleSelectPatient(null);
+                setShowVoiceIntake(false);
+                setFinderCollapsed(false);
+              }}
+              className="p-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white shadow-xs transition-all flex items-center justify-center cursor-pointer"
+              title="Register New Patient"
+            >
+              <PlusCircle className="w-4 h-4 text-white" />
+            </button>
+          )}
+        </div>
+      ) : (
+        /* Expanded Resizable Patient Finder */
+        <div 
+          style={{ width: `${finderWidth}px`, minWidth: `${finderWidth}px` }}
+          className="w-full lg:w-auto shrink-0 flex flex-col gap-3 md:h-full md:min-h-0 transition-[width] duration-75"
+        >
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col md:h-full md:overflow-hidden min-h-[300px] lg:min-h-0">
+            <div className="flex items-center justify-between mb-2.5">
+              <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                <Search className="w-3.5 h-3.5 text-teal-600" />
+                Patient Finder
+                <span className="text-[10px] font-black bg-teal-50 text-teal-700 px-1.5 py-0.2 rounded-full border border-teal-200">
+                  {patients.length}
+                </span>
+              </h3>
+              <div className="flex items-center gap-1">
+                {userRole !== 'Doctor' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleSelectPatient(null);
+                      setShowVoiceIntake(false);
+                    }}
+                    className="text-[11px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer hover:scale-[1.02] active:scale-95"
+                    title="Open New Patient Registration form"
+                  >
+                    <PlusCircle className="w-3 h-3 text-teal-600" />
+                    + New Patient
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setFinderCollapsed(true)}
+                  className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                  title="Collapse Patient Finder (पूरा स्क्रीन खोलें)"
+                >
+                  <PanelLeftClose className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           <div className="flex gap-2 flex-shrink-0">
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               <input
                 type="text"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-semibold"
-                placeholder="Search ID, Name, Mobile..."
+                className={`w-full bg-slate-50 border rounded-xl pl-9 pr-9 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white transition-all font-semibold ${
+                  searchVoice.isListening
+                    ? 'border-rose-400 ring-2 ring-rose-300 bg-rose-50/40 text-rose-900'
+                    : 'border-slate-200 focus:border-teal-500'
+                }`}
+                placeholder={searchVoice.isListening ? '🎙️ Listening... Speak name/mobile' : 'Search ID, Name, Mobile...'}
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
                   fetchPatients(e.target.value);
                 }}
               />
+              <button
+                type="button"
+                onClick={handleToggleSearchVoice}
+                className={`absolute right-2 top-1.5 p-1 rounded-lg transition-all ${
+                  searchVoice.isListening
+                    ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                    : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
+                }`}
+                title={searchVoice.isListening ? 'Stop Voice Search' : '🎙️ Voice Search (Call Patient Name)'}
+              >
+                {searchVoice.isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+              </button>
             </div>
             <button
               onClick={() => fetchPatients(searchQuery)}
@@ -672,7 +1309,7 @@ export default function PatientSearchTab({
           </div>
 
           {/* Patients Search Results list */}
-          <div className="mt-4 space-y-2.5 md:flex-1 md:overflow-y-auto pr-1 min-h-0 compact-scroll">
+          <div className="mt-3 space-y-2 md:flex-1 md:overflow-y-auto pr-1 min-h-0 compact-scroll">
             {patients.map((pat) => {
               const isSelected = selectedPatient?.id === pat.id;
               const visitsList = (isSelected && selectedPatient?.visits?.length > 0) ? selectedPatient.visits : (pat.visits || []);
@@ -693,82 +1330,122 @@ export default function PatientSearchTab({
                 <div
                   key={pat.id}
                   onClick={() => handleSelectPatient(pat.id)}
-                  className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between gap-2 ${
+                  className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-start justify-between gap-2 ${
                     isSelected
-                      ? 'border-teal-500 bg-teal-50/20 shadow-sm'
-                      : 'border-slate-150 hover:border-teal-300 hover:bg-slate-50/50 bg-white'
+                      ? 'border-teal-500 bg-teal-50/25 shadow-sm ring-1 ring-teal-500/30'
+                      : 'border-slate-200 hover:border-teal-300 hover:bg-slate-50/60 bg-white shadow-2xs'
                   }`}
                 >
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="space-y-0.5 min-w-0">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="font-bold text-slate-900 text-xs truncate">{pat.name}</span>
-                        <span className="text-[9px] font-extrabold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded uppercase">{pat.gender}</span>
-                        <span className="text-slate-400 text-[10px]">{pat.age} Yrs</span>
+                  {/* Left Section: Primary Identifiers & Clean Split Metadata */}
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    {/* Primary Identifier: Name + Age/Gender Pill */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-extrabold text-slate-900 text-[12.5px] leading-snug tracking-tight truncate">
+                        {pat.name}
+                      </span>
+                      <span className="text-[9px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.2 rounded shrink-0">
+                        {pat.age} Yrs • {pat.gender}
+                      </span>
+                    </div>
+
+                    {/* Secondary Metadata: ID and Mobile cleanly split in muted gray */}
+                    <div className="flex items-center gap-1.5 text-[9.5px] font-semibold text-slate-500">
+                      <span className="font-mono text-slate-600 bg-slate-50 px-1 py-0.2 rounded border border-slate-200 text-[9px]">
+                        ID: {pat.patient_id}
+                      </span>
+                      <span className="text-slate-300">•</span>
+                      <span className="truncate text-[9.5px]">📞 {pat.mobile_number}</span>
+                    </div>
+
+                    {isSelected && (
+                      <div className="pt-0.5">
+                        <span className="inline-flex items-center gap-1 text-[8.5px] font-extrabold text-teal-700 bg-teal-100/60 px-1.5 py-0.2 rounded">
+                          <span className="w-1.5 h-1.5 rounded-full bg-teal-600 animate-pulse" />
+                          Active Patient
+                        </span>
                       </div>
-                      <p className="text-slate-400 text-[10px] font-semibold">Mobile: {pat.mobile_number} | ID: {pat.patient_id}</p>
-                    </div>
-                    <div className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border shadow-sm transition-all flex-shrink-0 ${
-                      isSelected
-                        ? 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-white text-teal-700 border-slate-200 hover:border-teal-300'
-                    }`}>
-                      {isSelected ? 'Active' : 'Select'}
-                    </div>
+                    )}
                   </div>
 
-                  {/* Instant Status Badges for Receptionist */}
-                  <div className="flex items-center gap-1.5 flex-wrap pt-1.5 border-t border-slate-100 text-[9px] font-bold">
-                    {/* Visit Status */}
-                    {hasVisits ? (
-                      <span className="bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded flex items-center gap-1" title={`${visitsList.length} Visit(s) logged`}>
-                        <Stethoscope className="w-2.5 h-2.5" />
-                        <span>{visitsList.length} Visit{visitsList.length > 1 ? 's' : ''}</span>
-                      </span>
-                    ) : (
-                      <span className="bg-slate-100 text-slate-500 border border-slate-200 px-1.5 py-0.5 rounded" title="No visits recorded yet">
-                        No Visit
-                      </span>
-                    )}
-
-                    {/* Prescription Status */}
-                    {hasRx ? (
-                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded flex items-center gap-1" title="Prescription & notes recorded by doctor">
-                        <FileText className="w-2.5 h-2.5" />
-                        <span>Rx Done</span>
-                      </span>
-                    ) : (
-                      <span className="bg-slate-100 text-slate-400 border border-slate-200 px-1.5 py-0.5 rounded">
-                        No Rx
-                      </span>
-                    )}
-
-                    {/* Bill / Invoice Status */}
+                  {/* Right Section: Strictly Right-Aligned Vertical Stack of Status Badges */}
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    {/* 1. Financial Status Badge */}
                     {(() => {
                       if (activeUnpaidBill) {
                         const bal = activeUnpaidBill.balance_amount ?? activeUnpaidBill.grand_total;
                         return (
-                          <span className="bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.5 rounded font-extrabold flex items-center gap-1" title={`Unpaid Invoice ${activeUnpaidBill.bill_id}: ₹${bal}`}>
-                            <AlertCircle className="w-2.5 h-2.5" />
+                          <span
+                            className="bg-rose-500/10 text-rose-500 border border-rose-500/20 px-2 py-0.2 rounded-full font-extrabold text-[9px] flex items-center gap-0.5 shadow-2xs"
+                            title={`Unpaid Invoice ${activeUnpaidBill.bill_id}: ₹${bal}`}
+                          >
+                            <AlertCircle className="w-2.5 h-2.5 text-rose-500 shrink-0" />
                             <span>Unpaid: ₹{bal.toLocaleString()}</span>
                           </span>
                         );
                       }
                       if (allBills.length > 0) {
                         return (
-                          <span className="bg-teal-50 text-teal-700 border border-teal-200 px-1.5 py-0.5 rounded font-bold flex items-center gap-1" title="All invoices paid">
-                            <CheckCircle2 className="w-2.5 h-2.5" />
+                          <span
+                            className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.2 rounded-full font-bold text-[9px] flex items-center gap-0.5"
+                            title="All invoices paid"
+                          >
+                            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
                             <span>Bill Paid</span>
                           </span>
                         );
                       }
                       return (
-                        <span className="bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded flex items-center gap-1" title="No invoice generated yet">
-                          <Receipt className="w-2.5 h-2.5" />
+                        <span
+                          className="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.2 rounded-full font-bold text-[9px] flex items-center gap-0.5"
+                          title="No invoice generated yet"
+                        >
+                          <Receipt className="w-2.5 h-2.5 text-amber-600 shrink-0" />
                           <span>Bill Pending</span>
                         </span>
                       );
                     })()}
+
+                    {/* 2. Clinical Status Row (Visits & Rx) */}
+                    <div className="flex items-center gap-1 text-[8px] font-bold">
+                      {hasVisits ? (
+                        <span
+                          className="bg-indigo-50 text-indigo-700 border border-indigo-200 px-1 py-0.2 rounded flex items-center gap-0.5"
+                          title={`${visitsList.length} Visit(s) logged`}
+                        >
+                          <Stethoscope className="w-2 h-2 shrink-0" />
+                          <span>{visitsList.length} Visit{visitsList.length > 1 ? 's' : ''}</span>
+                        </span>
+                      ) : (
+                        <span className="bg-slate-100 text-slate-500 border border-slate-200 px-1 py-0.2 rounded">
+                          No Visit
+                        </span>
+                      )}
+
+                      {hasRx ? (
+                        <span
+                          className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-1 py-0.2 rounded flex items-center gap-0.5"
+                          title="Prescription & notes recorded by doctor"
+                        >
+                          <FileText className="w-2 h-2 shrink-0" />
+                          <span>Rx Done</span>
+                        </span>
+                      ) : (
+                        <span className="bg-slate-100 text-slate-400 border border-slate-200 px-1 py-0.2 rounded">
+                          No Rx
+                        </span>
+                      )}
+                    </div>
+
+                    {/* 3. Action / Selection Pill */}
+                    <span
+                      className={`text-[8.5px] font-bold px-1.5 py-0.2 rounded border transition-all ${
+                        isSelected
+                          ? 'bg-teal-600 text-white border-teal-600 shadow-2xs'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-teal-300'
+                      }`}
+                    >
+                      {isSelected ? 'Active' : 'Select'}
+                    </span>
                   </div>
                 </div>
               );
@@ -779,45 +1456,128 @@ export default function PatientSearchTab({
           </div>
         </div>
       </div>
+      )}
 
-      {/* Workspace / Register Pane (Right 2 Cols) */}
-      <div className="lg:col-span-2 flex flex-col gap-4 md:h-full md:min-h-0">
+      {/* Draggable Splitter Handle between Patient Finder and Workspace */}
+      {!finderCollapsed && (
+        <div
+          onMouseDown={() => setIsDraggingFinder(true)}
+          onDoubleClick={() => setFinderCollapsed(true)}
+          className={`hidden lg:flex w-2 hover:w-2.5 bg-slate-200 hover:bg-teal-500 cursor-col-resize transition-all items-center justify-center relative group select-none flex-shrink-0 mx-1 rounded-full ${
+            isDraggingFinder ? 'bg-teal-600 w-2.5 ring-2 ring-teal-400/40' : ''
+          }`}
+          title="Drag horizontally to resize sections • Double click to collapse"
+        >
+          <GripVertical className="w-3 h-3 text-slate-400 group-hover:text-white transition-colors pointer-events-none" />
+        </div>
+      )}
+
+      {/* Workspace / Register Pane (FLEX-1: Expands across 100% of remaining screen width!) */}
+      <div className="flex-1 w-full min-w-0 flex flex-col gap-3 md:h-full md:min-h-0 overflow-y-auto compact-scroll pr-1">
         {selectedPatient ? (
-          /* Selected Patient Workspace */
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-4 md:h-full md:overflow-hidden flex flex-col min-h-[400px] lg:min-h-0 animate-in fade-in duration-150">
-            {/* Patient Quick Header Details */}
-            <div className="flex justify-between items-start pb-3 border-b border-slate-100 flex-shrink-0 flex-wrap gap-2">
-              <div>
-                <span className="text-teal-600 font-bold text-[10px] uppercase tracking-wider font-sans">Patient Workspace</span>
-                <h2 className="text-base font-bold text-slate-900 mt-0.5">{selectedPatient.name}</h2>
-                <p className="text-slate-400 text-xs mt-0.5">
-                  Age: <b>{selectedPatient.age}</b> | Gender: <b>{selectedPatient.gender}</b> | Mobile: <b>{selectedPatient.mobile_number}</b> | ID: <b>{selectedPatient.patient_id}</b>
-                </p>
-                {selectedPatient.address && (
-                  <p className="text-slate-500 text-[11px] mt-0.5">Address: {selectedPatient.address}</p>
-                )}
-              </div>
-              <div className="flex gap-2">
+          <>
+            {/* Top Patient Workspace Switcher Banner: Receptionist can register a new patient in 1 click at any time */}
+            <div className="bg-white border border-slate-200 rounded-2xl px-4 py-2.5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 shrink-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Finder Toggle Button */}
                 <button
-                  onClick={() => handleSelectPatient(null)}
-                  className="text-slate-500 hover:text-slate-850 text-[10px] font-bold bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg transition-colors"
+                  type="button"
+                  onClick={() => setFinderCollapsed(prev => !prev)}
+                  className={`text-xs font-bold px-2.5 py-1 rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer ${
+                    finderCollapsed
+                      ? 'bg-teal-50 text-teal-800 border-teal-300 hover:bg-teal-100 shadow-xs'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                  title={finderCollapsed ? 'Open Patient Finder' : 'Collapse Patient Finder'}
                 >
-                  Close Desk
+                  {finderCollapsed ? <PanelLeftOpen className="w-3.5 h-3.5 text-teal-600" /> : <PanelLeftClose className="w-3.5 h-3.5 text-slate-500" />}
+                  <span>{finderCollapsed ? `Finder (${patients.length})` : 'Hide Finder'}</span>
                 </button>
-                {userRole === 'Admin' && (
-                  <button
-                    onClick={() => handleSoftDeletePatient(selectedPatient.id)}
-                    className="text-rose-600 hover:text-rose-800 text-[10px] font-bold bg-rose-50 hover:bg-rose-100 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    Delete
-                  </button>
-                )}
+
+                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Active Workspace:</span>
+                <span className="bg-teal-50 text-teal-900 border border-teal-200 text-xs font-extrabold px-2.5 py-1 rounded-xl flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+                  {selectedPatient.name} ({selectedPatient.patient_id})
+                </span>
+              </div>
+              <div className="flex items-center flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSelectPatient(null);
+                    setShowVoiceIntake(false);
+                  }}
+                  className="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-95"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>+ Register New Patient</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSelectPatient(null);
+                    startGuidedVoiceIntake();
+                  }}
+                  className="bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-95"
+                >
+                  <Mic className="w-3.5 h-3.5" />
+                  <span>🎙️ Guided Voice</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectPatient(null)}
+                  className="text-slate-500 hover:text-slate-800 text-xs font-bold bg-slate-100 hover:bg-slate-200 border border-slate-200 px-2.5 py-1.5 rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
+                  title="Close patient desk"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>Close</span>
+                </button>
               </div>
             </div>
 
+            {/* Selected Patient Workspace */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-4 md:h-full md:overflow-hidden flex flex-col min-h-[400px] lg:min-h-0 animate-in fade-in duration-150">
+              {/* Patient Quick Header Details */}
+              <div className="flex justify-between items-start pb-3 border-b border-slate-100 flex-shrink-0 flex-wrap gap-2">
+                <div>
+                  <span className="text-teal-600 font-bold text-[10px] uppercase tracking-wider font-sans">Patient Workspace</span>
+                  <h2 className="text-base font-bold text-slate-900 mt-0.5">{selectedPatient.name}</h2>
+                  <p className="text-slate-400 text-xs mt-0.5">
+                    Age: <b>{selectedPatient.age}</b> | Gender: <b>{selectedPatient.gender}</b> | Mobile: <b>{selectedPatient.mobile_number}</b> | ID: <b>{selectedPatient.patient_id}</b>
+                  </p>
+                  {selectedPatient.address && (
+                    <p className="text-slate-500 text-[11px] mt-0.5">Address: {selectedPatient.address}</p>
+                  )}
+                </div>
+                <div className="flex items-center flex-wrap gap-2">
+                  {userRole !== 'Doctor' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleSelectPatient(null);
+                        setShowVoiceIntake(false);
+                      }}
+                      className="bg-teal-50 text-teal-800 hover:bg-teal-100 border border-teal-200 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                      title="Open Registration Form"
+                    >
+                      <PlusCircle className="w-3 h-3 text-teal-600" />
+                      + New Patient
+                    </button>
+                  )}
+                  {userRole === 'Admin' && (
+                    <button
+                      onClick={() => handleSoftDeletePatient(selectedPatient.id)}
+                      className="text-rose-600 hover:text-rose-800 text-[10px] font-bold bg-rose-50 hover:bg-rose-100 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      Delete
+                    </button>
+                  )}
+                </div>
+              </div>
+
             {/* Create Visit Panel */}
-            {['Admin', 'Receptionist'].includes(userRole) && (
+            {['Admin', 'Receptionist', 'Doctor'].includes(userRole) && (
               <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 flex-shrink-0">
                 <div>
                   <h4 className="font-bold text-slate-800 text-xs">Consultation Entry</h4>
@@ -1189,7 +1949,7 @@ export default function PatientSearchTab({
                               {/* Active items list for this bill */}
                               {billItems.length > 0 && (
                                 <div className="space-y-1.5 pt-2 border-t border-slate-100 flex-shrink-0">
-                                  <span className="text-[10px] text-slate-450 font-bold uppercase tracking-wider">Bill Line Items</span>
+                                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Bill Line Items</span>
 
                                   {/* Unmatched Rx items warning */}
                                   {prescAutoFillVisitId === vis.id && prescUnmatchedItems && prescUnmatchedItems.length > 0 && (
@@ -1349,87 +2109,582 @@ export default function PatientSearchTab({
                   );
                 })}
                 {selectedPatient.visits?.length === 0 && (
-                  <p className="text-center text-slate-450 text-xs py-6 italic">No consults logged.</p>
+                  <p className="text-center text-slate-500 text-xs py-6 italic">No consults logged.</p>
                 )}
               </div>
             </div>
           </div>
-        ) : (
-          /* Register Patient Profile form (displayed in right panel when no patient is selected) */
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm max-w-xl md:overflow-y-auto">
-            <h3 className="font-bold text-slate-900 text-sm mb-2 flex items-center gap-2">
-              <UserCheck className="w-4.5 h-4.5 text-teal-600" />
-              New Patient Registration
+        </>
+      ) : userRole === 'Doctor' ? (
+        /* Doctor's Medical Records Directory - No Registration Form for Doctor */
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm w-full space-y-4 animate-in fade-in duration-150 py-16 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-2xs border border-emerald-100">
+            <FileText className="w-8 h-8 text-emerald-600" />
+          </div>
+          <div className="max-w-md mx-auto space-y-2">
+            <h3 className="font-extrabold text-slate-900 text-lg">
+              Patient Medical Records Directory
             </h3>
-            <p className="text-slate-400 text-[11px] mb-3">Register a new patient profile into the central hospital records directory.</p>
-            <form onSubmit={handleRegisterPatient} className="space-y-3">
-              <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Patient Full Name</label>
-                <input
-                  type="text"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-semibold"
-                  placeholder="e.g. Rahul Sharma"
-                  value={newPatient.name}
-                  onChange={(e) => setNewPatient({ ...newPatient, name: e.target.value })}
-                  required
-                />
+            <p className="text-slate-500 text-xs leading-relaxed">
+              As an attending doctor, you directly consult and treat patients. New patient registration and token intake are handled by Front-Desk Receptionists.
+            </p>
+            <p className="text-slate-400 text-xs leading-relaxed">
+              Select or search any patient from the directory on the left to review their previous consultation notes, prescribed medications, diagnostic reports, and medical history.
+            </p>
+            <div className="pt-2">
+              <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-emerald-200">
+                <UserCheck className="w-4 h-4 text-emerald-600" />
+                Front-Desk Receptionist handles patient check-in & registration
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : (
+          /* Register Patient Profile form (displayed in right panel when no patient is selected) - FULL SCREEN WIDTH & 2-COLUMN RESPONSIVE LAYOUT */
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm w-full space-y-4 animate-in fade-in duration-150 overflow-hidden">
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div className="min-w-0">
+                <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                  <UserCheck className="w-5 h-5 text-teal-600" />
+                  New Patient Registration
+                </h3>
+                <p className="text-slate-400 text-xs">Register a new patient profile into the central hospital records directory.</p>
               </div>
+              {/* HERO VOICE ACTION BUTTONS */}
+              <div className="flex items-center flex-wrap gap-2 shrink-0 max-w-full">
+                {/* Finder Toggle inside Registration Form Header */}
+                <button
+                  type="button"
+                  onClick={() => setFinderCollapsed(prev => !prev)}
+                  className={`text-xs font-bold px-2.5 py-2.5 rounded-xl border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                    finderCollapsed
+                      ? 'bg-teal-50 text-teal-800 border-teal-300 hover:bg-teal-100 shadow-xs ring-1 ring-teal-400/30'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
+                  }`}
+                  title={finderCollapsed ? 'Show Patient Finder' : 'Hide Patient Finder'}
+                >
+                  {finderCollapsed ? <PanelLeftOpen className="w-3.5 h-3.5 text-teal-600" /> : <PanelLeftClose className="w-3.5 h-3.5 text-slate-500" />}
+                  <span>{finderCollapsed ? `Finder (${patients.length})` : 'Hide Finder'}</span>
+                </button>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Age</label>
-                  <input
-                    type="number"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-semibold"
-                    placeholder="Age in Yrs"
-                    value={newPatient.age}
-                    onChange={(e) => setNewPatient({ ...newPatient, age: e.target.value })}
-                    required
-                  />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (guidedVoiceStep || intakeVoice.isListening) {
+                      stopGuidedVoiceIntake(false);
+                      setShowVoiceIntake(false);
+                    } else {
+                      startGuidedVoiceIntake();
+                    }
+                  }}
+                  className={`relative group overflow-hidden text-xs font-black px-3.5 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95 ${
+                    guidedVoiceStep || intakeVoice.isListening
+                      ? 'bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 text-white shadow-rose-500/40 ring-4 ring-rose-400/50 animate-pulse'
+                      : 'bg-gradient-to-r from-teal-600 via-cyan-600 to-emerald-600 hover:from-teal-500 hover:to-cyan-500 text-white shadow-teal-500/30 ring-2 ring-teal-400/40 hover:ring-teal-300'
+                  }`}
+                  title="Speak patient details step-by-step and press Enter on keyboard to advance"
+                >
+                  {guidedVoiceStep || intakeVoice.isListening ? (
+                    <>
+                      <span className="relative flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+                      </span>
+                      <span>● LISTENING ({GUIDED_STEPS.find(s => s.id === guidedVoiceStep)?.label || 'Guided Voice'}) - Stop</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="w-4 h-4 text-cyan-200 group-hover:scale-110 transition-transform" />
+                      <span>🎙️ Guided Voice Intake <span className="hidden xl:inline">(Enter ↵ to Advance)</span></span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* GUIDED ENTER-KEY VOICE FLOW PROGRESS BANNER */}
+            {guidedVoiceStep && (
+              <div className="bg-gradient-to-r from-slate-950 via-teal-950 to-slate-900 border-2 border-teal-400/80 rounded-2xl p-3.5 shadow-xl text-white animate-in slide-in-from-top-2 duration-200 ring-4 ring-teal-500/10">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-sm animate-pulse">
+                      <Mic className="w-5 h-5" />
+                    </div>
+                    {/* Live Audio Waveform Animated Bars */}
+                    <div className="flex items-center gap-1 px-2 py-1.5 bg-teal-900/40 rounded-xl border border-teal-500/30 shrink-0">
+                      <span className={`w-1 bg-teal-400 rounded-full transition-all ${intakeVoice.isListening ? 'animate-pulse h-3.5' : 'h-2'}`} />
+                      <span className={`w-1 bg-cyan-300 rounded-full transition-all ${intakeVoice.isListening ? 'animate-bounce h-5' : 'h-3'}`} style={{ animationDelay: '100ms' }} />
+                      <span className={`w-1 bg-teal-300 rounded-full transition-all ${intakeVoice.isListening ? 'animate-pulse h-6' : 'h-4'}`} style={{ animationDelay: '200ms' }} />
+                      <span className={`w-1 bg-emerald-400 rounded-full transition-all ${intakeVoice.isListening ? 'animate-bounce h-4' : 'h-2.5'}`} style={{ animationDelay: '150ms' }} />
+                      <span className={`w-1 bg-cyan-400 rounded-full transition-all ${intakeVoice.isListening ? 'animate-pulse h-3' : 'h-1.5'}`} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-black uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                          Guided Step Active
+                        </span>
+                        <span className="text-[10px] font-mono font-bold text-teal-300 bg-teal-900/60 px-2 py-0.5 rounded-md border border-teal-500/40">
+                          {GUIDED_STEPS.find(s => s.id === guidedVoiceStep)?.label}
+                        </span>
+                      </div>
+                      {(intakeVoice.interimTranscript || intakeVoice.transcript || intakeVoice.fullText) ? (
+                        <p className="text-xs font-mono text-emerald-300 font-bold mt-0.5 truncate">
+                          🎙️ Hearing: "{intakeVoice.interimTranscript || intakeVoice.transcript || intakeVoice.fullText}"
+                        </p>
+                      ) : (
+                        <p className="text-xs text-slate-300 font-medium mt-0.5 truncate">
+                          {GUIDED_STEPS.find(s => s.id === guidedVoiceStep)?.prompt} (or press Enter ↵ to advance)
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                    <button
+                      type="button"
+                      onClick={() => handleNextGuidedStep(guidedVoiceStep)}
+                      className="bg-gradient-to-r from-teal-400 to-cyan-400 hover:from-teal-300 hover:to-cyan-300 text-slate-950 font-black text-xs px-3.5 py-1.5 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-95"
+                      title="Confirm and move to next detail (or press Enter on keyboard)"
+                    >
+                      <span>Next Field [Enter ↵]</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => stopGuidedVoiceIntake(false)}
+                      className="text-slate-300 hover:text-white text-xs font-bold bg-white/10 hover:bg-white/20 px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+                      title="Stop Guided Voice Intake (Esc)"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>Stop (Esc)</span>
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-slate-505 text-[10px] font-bold uppercase tracking-wider mb-1">Gender</label>
-                  <select
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-bold text-slate-600 cursor-pointer"
-                    value={newPatient.gender}
-                    onChange={(e) => setNewPatient({ ...newPatient, gender: e.target.value })}
+
+                {/* 5-Step Visual Flow Progression */}
+                <div className="grid grid-cols-5 gap-1.5 mt-2.5 pt-2.5 border-t border-teal-500/20 text-[9.5px] font-bold">
+                  {GUIDED_STEPS.map((st, idx) => {
+                    const isCurrent = guidedVoiceStep === st.id;
+                    const isFilled = Boolean(
+                      (st.id === 'name' && newPatient.name) ||
+                      (st.id === 'age_gender' && (newPatient.age || newPatient.gender)) ||
+                      (st.id === 'mobile_number' && newPatient.mobile_number) ||
+                      (st.id === 'address' && newPatient.address) ||
+                      (st.id === 'chief_complaints' && newPatient.chief_complaints)
+                    );
+                    return (
+                      <div
+                        key={st.id}
+                        onClick={() => handleToggleSingleFieldIntake(st.id)}
+                        className={`py-1 px-1.5 rounded-lg text-center truncate transition-all cursor-pointer ${
+                          isCurrent
+                            ? 'bg-rose-500 text-white font-black ring-2 ring-rose-300 shadow-xs scale-[1.02]'
+                            : isFilled
+                            ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
+                            : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                        }`}
+                        title={`Click to jump to ${st.label}`}
+                      >
+                        <span>{idx + 1}. {st.id === 'age_gender' ? 'Age/Sex' : st.id === 'chief_complaints' ? 'Reason' : st.id.replace('_', ' ')}</span>
+                        {isFilled && !isCurrent && <span> ✓</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* LIVE AUDIO WAVEFORM & TRANSCRIPT PREVIEW PILL */}
+            {!guidedVoiceStep && (intakeVoice.isListening || intakeVoice.fullText || intakeVoice.transcript) && (
+              <div className="bg-gradient-to-r from-slate-950 via-teal-950 to-slate-900 border-2 border-teal-500/40 rounded-2xl p-3.5 text-white shadow-xl shadow-teal-950/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 animate-in slide-in-from-top-2 duration-300 ring-4 ring-teal-500/10">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  {/* Live Audio Waveform Animated Bars */}
+                  <div className="flex items-center gap-1 px-2.5 py-2 bg-teal-900/40 rounded-xl border border-teal-500/30 shrink-0">
+                    <span className={`w-1 bg-teal-400 rounded-full transition-all ${intakeVoice.isListening ? 'animate-pulse h-3.5' : 'h-2'}`} />
+                    <span className={`w-1 bg-cyan-300 rounded-full transition-all ${intakeVoice.isListening ? 'animate-bounce h-5' : 'h-3'}`} style={{ animationDelay: '100ms' }} />
+                    <span className={`w-1 bg-teal-300 rounded-full transition-all ${intakeVoice.isListening ? 'animate-pulse h-6' : 'h-4'}`} style={{ animationDelay: '200ms' }} />
+                    <span className={`w-1 bg-emerald-400 rounded-full transition-all ${intakeVoice.isListening ? 'animate-bounce h-4' : 'h-2.5'}`} style={{ animationDelay: '150ms' }} />
+                    <span className={`w-1 bg-cyan-400 rounded-full transition-all ${intakeVoice.isListening ? 'animate-pulse h-3' : 'h-1.5'}`} />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      {intakeVoice.isListening ? (
+                        <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-rose-400">
+                          <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                          Live Listening (Ambient Mic Active)
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-teal-400">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                          Voice Intake Transcript Captured
+                        </span>
+                      )}
+                      <span className="text-[9px] font-mono text-teal-300/70 border border-teal-500/20 px-1.5 py-0.2 rounded hidden sm:inline">
+                        Groq LLM Pipeline
+                      </span>
+                    </div>
+
+                    <p className="text-xs font-mono text-slate-100 mt-1 truncate max-w-xl font-medium tracking-tight">
+                      <span className="text-teal-400 font-bold">Listening: </span>
+                      <span className="text-slate-200">
+                        "{intakeVoice.interimTranscript || intakeVoice.transcript || intakeVoice.fullText || 'Ramesh Sharma, 45 saal, severe chest discomfort since morning...'}"
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Quick Action Controls inside Pill */}
+                <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end">
+                  {intakeVoice.isListening ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        intakeVoice.stopListening();
+                        if (intakeVoice.fullText) handleParseVoiceIntake(intakeVoice.fullText);
+                      }}
+                      className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <MicOff className="w-3.5 h-3.5" />
+                      <span>Stop & Parse</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        intakeVoice.resetTranscript();
+                        intakeVoice.startListening();
+                      }}
+                      className="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs font-bold px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Mic className="w-3.5 h-3.5 text-teal-400" />
+                      <span>Speak Again</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => handleParseVoiceIntake(intakeVoice.fullText || intakeVoice.transcript || "Ramesh Sharma, 45 saal, male, 9876543210, Indirapuram, severe chest discomfort since morning")}
+                    disabled={voiceIntakeParsing}
+                    className="bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
+                    {voiceIntakeParsing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                    <span>⚡ Auto-Fill Form</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* SPACIOUS 2-COLUMN FORM (Fills the entire screen width, no awkward blank space, no nested card scroll) */}
+            <form onSubmit={handleRegisterPatient} className="space-y-4 pt-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Left Form Column: Personal & Contact */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <span>Patient Full Name *</span>
+                        {guidedVoiceStep === 'name' && (
+                          <span className="text-[9.5px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">
+                            🎙️ Speak Name... (Press Enter ↵)
+                          </span>
+                        )}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSingleFieldIntake('name')}
+                        className={`p-1 rounded-md transition-all cursor-pointer ${
+                          guidedVoiceStep === 'name'
+                            ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                            : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
+                        }`}
+                        title={guidedVoiceStep === 'name' ? 'Stop mic' : '🎙️ Dictate Name'}
+                      >
+                        {guidedVoiceStep === 'name' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                      </button>
+                    </label>
+                    <input
+                      ref={nameInputRef}
+                      type="text"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleNextGuidedStep('name');
+                        }
+                      }}
+                      className={`w-full rounded-xl px-3.5 py-2.5 text-xs placeholder-slate-400 focus:outline-none transition-all font-semibold ${
+                        guidedVoiceStep === 'name'
+                          ? 'bg-white border-2 border-rose-500 text-slate-950 ring-4 ring-rose-400/25 shadow-sm'
+                          : voicePopulatedFields.includes('name')
+                          ? 'bg-teal-50/40 border-2 border-teal-400 text-teal-950 focus:bg-white'
+                          : 'bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500'
+                      }`}
+                      placeholder="e.g. Rahul Sharma"
+                      value={newPatient.name}
+                      onChange={(e) => setNewPatient({ ...newPatient, name: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <span>Age *</span>
+                          {guidedVoiceStep === 'age_gender' && (
+                            <span className="text-[9.5px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">
+                              🎙️ Speak Age/Sex
+                            </span>
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSingleFieldIntake('age_gender')}
+                          className={`p-1 rounded-md transition-all cursor-pointer ${
+                            guidedVoiceStep === 'age_gender'
+                              ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                              : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
+                          }`}
+                          title="🎙️ Dictate Age & Gender (e.g. 32 Male)"
+                        >
+                          {guidedVoiceStep === 'age_gender' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                        </button>
+                      </label>
+                      <input
+                        ref={ageInputRef}
+                        type="number"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleNextGuidedStep('age_gender');
+                          }
+                        }}
+                        className={`w-full rounded-xl px-3.5 py-2.5 text-xs placeholder-slate-400 focus:outline-none transition-all font-semibold ${
+                          guidedVoiceStep === 'age_gender'
+                            ? 'bg-white border-2 border-rose-500 text-slate-950 ring-4 ring-rose-400/25 shadow-sm'
+                            : voicePopulatedFields.includes('age')
+                            ? 'bg-teal-50/40 border-2 border-teal-400 text-teal-950 focus:bg-white'
+                            : 'bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500'
+                        }`}
+                        placeholder="Age in Yrs"
+                        value={newPatient.age}
+                        onChange={(e) => setNewPatient({ ...newPatient, age: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
+                        <span>Gender *</span>
+                      </label>
+                      <select
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleNextGuidedStep('age_gender');
+                          }
+                        }}
+                        className={`w-full rounded-xl px-3.5 py-2.5 text-xs focus:outline-none transition-all font-bold cursor-pointer ${
+                          guidedVoiceStep === 'age_gender'
+                            ? 'bg-white border-2 border-rose-400 text-slate-950'
+                            : voicePopulatedFields.includes('gender')
+                            ? 'bg-teal-50/40 border-2 border-teal-400 text-teal-950 focus:bg-white'
+                            : !newPatient.gender
+                            ? 'bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500 text-slate-400 font-medium'
+                            : 'bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500 text-slate-700'
+                        }`}
+                        value={newPatient.gender || ''}
+                        onChange={(e) => setNewPatient({ ...newPatient, gender: e.target.value })}
+                        required
+                      >
+                        <option value="" disabled className="text-slate-400">Select Gender</option>
+                        <option value="Male" className="text-slate-700 font-bold">Male</option>
+                        <option value="Female" className="text-slate-700 font-bold">Female</option>
+                        <option value="Other" className="text-slate-700 font-bold">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <span>Mobile Number *</span>
+                        {guidedVoiceStep === 'mobile_number' && (
+                          <span className="text-[9.5px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">
+                            🎙️ Speak 10 Digits... (Enter ↵)
+                          </span>
+                        )}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSingleFieldIntake('mobile_number')}
+                        className={`p-1 rounded-md transition-all cursor-pointer ${
+                          guidedVoiceStep === 'mobile_number'
+                            ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                            : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
+                        }`}
+                        title="🎙️ Dictate Mobile Number"
+                      >
+                        {guidedVoiceStep === 'mobile_number' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                      </button>
+                    </label>
+                    <input
+                      ref={mobileInputRef}
+                      type="text"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleNextGuidedStep('mobile_number');
+                        }
+                      }}
+                      className={`w-full rounded-xl px-3.5 py-2.5 text-xs placeholder-slate-400 focus:outline-none transition-all font-semibold ${
+                        guidedVoiceStep === 'mobile_number'
+                          ? 'bg-white border-2 border-rose-500 text-slate-950 ring-4 ring-rose-400/25 shadow-sm'
+                          : voicePopulatedFields.includes('mobile_number')
+                          ? 'bg-teal-50/40 border-2 border-teal-400 text-teal-950 focus:bg-white'
+                          : 'bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500'
+                      }`}
+                      placeholder="10-digit Phone Number"
+                      value={newPatient.mobile_number}
+                      onChange={(e) => setNewPatient({ ...newPatient, mobile_number: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Right Form Column: Address & Initial Symptoms */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <span>Residential Address</span>
+                        {guidedVoiceStep === 'address' && (
+                          <span className="text-[9.5px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">
+                            🎙️ Speak City/Address... (Enter ↵)
+                          </span>
+                        )}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSingleFieldIntake('address')}
+                        className={`p-1 rounded-md transition-all cursor-pointer ${
+                          guidedVoiceStep === 'address'
+                            ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                            : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
+                        }`}
+                        title="🎙️ Dictate Address"
+                      >
+                        {guidedVoiceStep === 'address' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                      </button>
+                    </label>
+                    <textarea
+                      ref={addressInputRef}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleNextGuidedStep('address');
+                        }
+                      }}
+                      className={`w-full rounded-xl px-3.5 py-2.5 text-xs placeholder-slate-400 focus:outline-none transition-all font-medium h-[88px] resize-none ${
+                        guidedVoiceStep === 'address'
+                          ? 'bg-white border-2 border-rose-500 text-slate-950 ring-4 ring-rose-400/25 shadow-sm'
+                          : voicePopulatedFields.includes('address')
+                          ? 'bg-teal-50/40 border-2 border-teal-400 text-teal-950 focus:bg-white'
+                          : 'bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500'
+                      }`}
+                      placeholder="House/Street, Area, City, Pincode"
+                      value={newPatient.address}
+                      onChange={(e) => setNewPatient({ ...newPatient, address: e.target.value })}
+                    ></textarea>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <span>Initial Reason for Visit / Chief Complaint (Optional)</span>
+                        {guidedVoiceStep === 'chief_complaints' && (
+                          <span className="text-[9.5px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">
+                            🎙️ Speak Symptoms... (Enter ↵ to Finish)
+                          </span>
+                        )}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSingleFieldIntake('chief_complaints')}
+                        className={`p-1 rounded-md transition-all cursor-pointer ${
+                          guidedVoiceStep === 'chief_complaints'
+                            ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                            : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
+                        }`}
+                        title="🎙️ Dictate Reason/Symptoms"
+                      >
+                        {guidedVoiceStep === 'chief_complaints' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                      </button>
+                    </label>
+                    <input
+                      ref={complaintsInputRef}
+                      type="text"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleNextGuidedStep('chief_complaints');
+                        }
+                      }}
+                      className={`w-full rounded-xl px-3.5 py-2.5 text-xs placeholder-slate-400 focus:outline-none transition-all font-medium ${
+                        guidedVoiceStep === 'chief_complaints'
+                          ? 'bg-white border-2 border-rose-500 text-slate-950 ring-4 ring-rose-400/25 shadow-sm'
+                          : voicePopulatedFields.includes('chief_complaints')
+                          ? 'bg-teal-50/40 border-2 border-teal-400 text-teal-950 focus:bg-white'
+                          : 'bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500'
+                      }`}
+                      placeholder="e.g. Fever, stomach pain, routine OPD checkup..."
+                      value={newPatient.chief_complaints || ''}
+                      onChange={(e) => setNewPatient({ ...newPatient, chief_complaints: e.target.value })}
+                    />
+
+                    {/* AI Triage & Suggested Specialty Strip */}
+                    {(() => {
+                      const triage = analyzeChiefComplaint(newPatient.chief_complaints);
+                      if (!triage) return null;
+                      return (
+                        <div className="mt-2.5 rounded-xl p-3 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-700 text-white shadow-md animate-in slide-in-from-top-1 duration-200">
+                          <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-800">
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-teal-300">
+                              <Sparkles className="w-3.5 h-3.5 text-teal-400 animate-pulse" />
+                              <span>AI OPD Triage & Doctor Allotment Guidance</span>
+                            </div>
+                            <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${triage.priorityBadgeClass}`}>
+                              Triage: {triage.priority} Priority
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                            <div className="bg-slate-800/80 rounded-lg px-2.5 py-1.5 border border-slate-700/60">
+                              <span className="text-[9.5px] font-bold text-slate-400 block uppercase tracking-wider">Detected Specialty</span>
+                              <span className="font-extrabold text-cyan-300 text-xs">{triage.specialty}</span>
+                            </div>
+                            <div className="bg-slate-800/80 rounded-lg px-2.5 py-1.5 border border-slate-700/60">
+                              <span className="text-[9.5px] font-bold text-slate-400 block uppercase tracking-wider">Clinical Guidance</span>
+                              <span className="font-medium text-slate-300 text-xs">{triage.note}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-slate-550 text-[10px] font-bold uppercase tracking-wider mb-1">Mobile Number</label>
-                <input
-                  type="text"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-semibold"
-                  placeholder="10-digit Phone"
-                  value={newPatient.mobile_number}
-                  onChange={(e) => setNewPatient({ ...newPatient, mobile_number: e.target.value })}
-                  required
-                />
+              {/* Submit Button */}
+              <div className="pt-2">
+                <button
+                  ref={registerBtnRef}
+                  type="submit"
+                  className="w-full bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-400/40 text-white font-bold py-3 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 text-sm active:scale-[0.99] cursor-pointer"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  Register Patient Profile
+                </button>
               </div>
-
-              <div>
-                <label className="block text-slate-550 text-[10px] font-bold uppercase tracking-wider mb-1">Residential Address</label>
-                <textarea
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-medium h-14 resize-none"
-                  placeholder="Street, City, Pincode"
-                  value={newPatient.address}
-                  onChange={(e) => setNewPatient({ ...newPatient, address: e.target.value })}
-                ></textarea>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 text-xs"
-              >
-                <PlusCircle className="w-3.5 h-3.5" />
-                Register Patient Profile
-              </button>
             </form>
           </div>
         )}
@@ -1502,76 +2757,186 @@ export default function PatientSearchTab({
                   </button>
                 </h4>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1 flex justify-between items-center">
-                      <span>Chief Complaints</span>
-                      <span className="text-[9px] text-slate-400 font-semibold italic">click to toggle</span>
-                    </label>
-                    
-                    {/* Quick Complaints Tags */}
-                    <div className="flex flex-wrap gap-1 mb-2 max-h-[50px] overflow-y-auto pb-1">
-                      {COMMON_COMPLAINTS.map((tag) => {
-                        const isSelected = (summaryForm.chief_complaints || '').includes(tag);
-                        return (
-                          <button
-                            key={tag}
-                            type="button"
-                            onClick={() => handleToggleTag('chief_complaints', tag)}
-                            className={`text-[9px] px-1.5 py-0.5 rounded-full border transition-all font-semibold ${
-                              isSelected 
-                                ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
-                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200'
-                            }`}
-                          >
-                            {tag}
-                          </button>
-                        );
-                      })}
-                    </div>
+                {/* CLINICAL RECORD SECTIONS — COLOR-CODED & CLEARLY DIVIDED FOR DOCTOR */}
+                <div className="space-y-3.5">
+                  {/* ROW 1: CHIEF COMPLAINTS & WORKING DIAGNOSIS */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {/* CARD 1: CHIEF COMPLAINTS (Warm Amber / Rose Theme) */}
+                    <div className="border border-amber-300/80 bg-gradient-to-br from-amber-50/50 via-orange-50/20 to-white rounded-xl p-3 shadow-xs border-l-4 border-l-amber-500 flex flex-col justify-between">
+                      <div>
+                        <label className="block mb-1.5 flex justify-between items-center">
+                          <span className="flex items-center gap-1.5 text-amber-900 font-extrabold text-xs uppercase tracking-wider">
+                            <span className="w-5 h-5 rounded-md bg-amber-500/20 text-amber-800 flex items-center justify-center font-bold text-[10px]">🩺</span>
+                            <span>Chief Complaints</span>
+                            {activeClinicalFieldMic === 'chief_complaints' && (
+                              <span className="text-[9px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">Listening...</span>
+                            )}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleClinicalFieldMic('chief_complaints')}
+                              className={`p-1 rounded-md transition-all cursor-pointer ${
+                                activeClinicalFieldMic === 'chief_complaints'
+                                  ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                                  : 'text-amber-700 hover:bg-amber-100'
+                              }`}
+                              title={activeClinicalFieldMic === 'chief_complaints' ? 'Stop mic' : '🎙️ Dictate Chief Complaints'}
+                            >
+                              {activeClinicalFieldMic === 'chief_complaints' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                            </button>
+                            <span className="text-[9px] text-amber-800/70 font-semibold italic">mic</span>
+                          </div>
+                        </label>
+                        
+                        {/* Quick Complaints Tags */}
+                        <div className="flex flex-wrap gap-1 mb-2 max-h-[46px] overflow-y-auto pb-0.5 compact-scroll">
+                          {COMMON_COMPLAINTS.map((tag) => {
+                            const isSelected = (summaryForm.chief_complaints || '').includes(tag);
+                            return (
+                              <button
+                                key={tag}
+                                type="button"
+                                onClick={() => handleToggleTag('chief_complaints', tag)}
+                                className={`text-[9.5px] px-2 py-0.5 rounded-md border transition-all font-bold ${
+                                  isSelected 
+                                    ? 'bg-amber-600 text-white border-amber-600 shadow-2xs' 
+                                    : 'bg-white/80 text-amber-900 border-amber-200/90 hover:bg-amber-100/70'
+                                }`}
+                              >
+                                {tag}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
 
-                    <textarea
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-20 resize-none"
-                      placeholder="e.g. Chronic cough for 3 weeks, mild chest congestion, low-grade fever..."
-                      value={summaryForm.chief_complaints}
-                      onChange={(e) => setSummaryForm({ ...summaryForm, chief_complaints: e.target.value })}
-                    />
+                      <textarea
+                        className="w-full bg-white/90 border border-amber-200 focus:border-amber-500 focus:ring-1 focus:ring-amber-400 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 placeholder-amber-900/30 focus:outline-none font-medium transition-all h-20 resize-none shadow-2xs"
+                        placeholder="e.g. Chronic cough for 3 weeks, mild chest congestion, low-grade fever..."
+                        value={summaryForm.chief_complaints}
+                        onChange={(e) => setSummaryForm({ ...summaryForm, chief_complaints: e.target.value })}
+                      />
+                    </div>
+     
+                    {/* CARD 2: WORKING DIAGNOSIS (Indigo / Blue Theme) */}
+                    <div className="border border-indigo-200/90 bg-gradient-to-br from-indigo-50/50 via-blue-50/20 to-white rounded-xl p-3 shadow-xs border-l-4 border-l-indigo-600 flex flex-col justify-between">
+                      <div>
+                        <label className="block mb-1.5 flex justify-between items-center">
+                          <span className="flex items-center gap-1.5 text-indigo-900 font-extrabold text-xs uppercase tracking-wider">
+                            <span className="w-5 h-5 rounded-md bg-indigo-500/20 text-indigo-800 flex items-center justify-center font-bold text-[10px]">🧠</span>
+                            <span>Working Diagnosis</span>
+                            {activeClinicalFieldMic === 'diagnosis' && (
+                              <span className="text-[9px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">Listening...</span>
+                            )}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleClinicalFieldMic('diagnosis')}
+                            className={`p-1 rounded-md transition-all cursor-pointer ${
+                              activeClinicalFieldMic === 'diagnosis'
+                                ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                                : 'text-indigo-700 hover:bg-indigo-100'
+                            }`}
+                            title={activeClinicalFieldMic === 'diagnosis' ? 'Stop mic' : '🎙️ Dictate Diagnosis'}
+                          >
+                            {activeClinicalFieldMic === 'diagnosis' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                          </button>
+                        </label>
+
+                        {/* Quick Common Diagnosis Tags */}
+                        <div className="flex flex-wrap gap-1 mb-2 max-h-[46px] overflow-y-auto pb-0.5 compact-scroll">
+                          {['URTI', 'Acute Bronchitis', 'Pharyngitis', 'Acute Gastritis', 'Viral Pyrexia', 'Hypertension', 'T2 Diabetes'].map((diag) => {
+                            const isSelected = (summaryForm.diagnosis || '').includes(diag);
+                            return (
+                              <button
+                                key={diag}
+                                type="button"
+                                onClick={() => {
+                                  const current = summaryForm.diagnosis || '';
+                                  if (current.includes(diag)) {
+                                    setSummaryForm({ ...summaryForm, diagnosis: current.replace(diag, '').replace(/,\s*,/g, ',').trim() });
+                                  } else {
+                                    setSummaryForm({ ...summaryForm, diagnosis: current ? `${current}, ${diag}` : diag });
+                                  }
+                                }}
+                                className={`text-[9.5px] px-2 py-0.5 rounded-md border transition-all font-bold ${
+                                  isSelected 
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs' 
+                                    : 'bg-white/80 text-indigo-900 border-indigo-200/90 hover:bg-indigo-100/70'
+                                }`}
+                              >
+                                {diag}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <textarea
+                        className="w-full bg-white/90 border border-indigo-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-400 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 placeholder-indigo-900/30 focus:outline-none font-medium transition-all h-20 resize-none shadow-2xs"
+                        placeholder="e.g. Acute Bronchitis secondary to viral infection"
+                        value={summaryForm.diagnosis}
+                        onChange={(e) => setSummaryForm({ ...summaryForm, diagnosis: e.target.value })}
+                      />
+                    </div>
                   </div>
- 
-                  <div>
-                    <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1.5">Diagnosis</label>
-                    <textarea
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-28 resize-none"
-                      placeholder="e.g. Acute Bronchitis secondary to viral infection"
-                      value={summaryForm.diagnosis}
-                      onChange={(e) => setSummaryForm({ ...summaryForm, diagnosis: e.target.value })}
-                    />
+
+                  {/* SECTION SEPARATOR LINE WITH BADGE */}
+                  <div className="flex items-center gap-3 my-1">
+                    <div className="h-px bg-gradient-to-r from-emerald-300 to-transparent flex-1" />
+                    <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest bg-emerald-50 border border-emerald-300 px-3 py-0.5 rounded-full flex items-center gap-1.5 shadow-2xs">
+                      <span>💊</span>
+                      <span>Rx Prescription & Dosing Schedule</span>
+                    </span>
+                    <div className="h-px bg-gradient-to-r from-transparent to-emerald-300 flex-1" />
                   </div>
-                </div>
- 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="relative">
-                    <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1 flex justify-between items-center">
-                      <span>Prescribed Medicines</span>
-                      <span className="text-[10px] text-teal-600 font-bold lowercase bg-teal-50 px-1.5 py-0.5 rounded border border-teal-100">(autocomplete & builder active)</span>
-                    </label>
+
+                  {/* CARD 3: PRESCRIBE MEDICINES (Emerald / Teal Medical Theme) */}
+                  <div className="border border-emerald-300/90 bg-gradient-to-br from-emerald-50/40 via-teal-50/20 to-white rounded-xl p-3.5 shadow-xs border-l-4 border-l-emerald-600">
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="flex items-center gap-1.5 text-emerald-900 font-extrabold text-xs uppercase tracking-wider">
+                        <span className="w-5 h-5 rounded-md bg-emerald-500/20 text-emerald-800 flex items-center justify-center font-bold text-[10px]">Rx</span>
+                        <span>Prescription Dosing Builder</span>
+                        {activeClinicalFieldMic === 'medicines_list' && (
+                          <span className="text-[9px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">Listening...</span>
+                        )}
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleClinicalFieldMic('medicines_list')}
+                          className={`p-1 rounded-md transition-all cursor-pointer ${
+                            activeClinicalFieldMic === 'medicines_list'
+                              ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                              : 'text-emerald-700 hover:bg-emerald-100'
+                          }`}
+                          title={activeClinicalFieldMic === 'medicines_list' ? 'Stop mic' : '🎙️ Dictate Medicines'}
+                        >
+                          {activeClinicalFieldMic === 'medicines_list' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                        </button>
+                        <span className="text-[9.5px] text-emerald-700 font-bold bg-emerald-100/80 px-2 py-0.5 rounded border border-emerald-300">
+                          Catalog Linked
+                        </span>
+                      </div>
+                    </div>
                     
                     {/* Prescription Builder Row */}
-                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-250 mb-2 space-y-1.5 shadow-sm">
-                      <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-200/90 mb-2.5 space-y-2 text-xs shadow-2xs">
+                      <div className="grid grid-cols-2 gap-2.5">
                         {/* Timing Selector */}
                         <div>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Timing</span>
+                          <span className="text-[9.5px] text-emerald-900 font-extrabold uppercase tracking-wider block mb-1">Timing</span>
                           <div className="flex gap-1">
                             {['After Meals', 'Empty Stomach'].map((t) => (
                               <button
                                 key={t}
                                 type="button"
                                 onClick={() => setPrescTiming(t)}
-                                className={`flex-1 text-[9px] py-1 rounded font-bold border transition-all ${
+                                className={`flex-1 text-[10px] py-1 rounded-md font-bold border transition-all ${
                                   prescTiming === t 
-                                    ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
-                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' 
+                                    : 'bg-white text-slate-700 border-slate-300 hover:bg-emerald-50'
                                 }`}
                               >
                                 {t === 'After Meals' ? 'Pc (Khane ke Baad)' : 'Ac (Khali Pet)'}
@@ -1581,11 +2946,11 @@ export default function PatientSearchTab({
                         </div>
                         {/* Frequency Selector */}
                         <div>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Frequency</span>
+                          <span className="text-[9.5px] text-emerald-900 font-extrabold uppercase tracking-wider block mb-1">Frequency</span>
                           <select
                             value={prescFrequency}
                             onChange={(e) => setPrescFrequency(e.target.value)}
-                            className="w-full bg-white border border-slate-200 rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:border-teal-500 font-bold text-slate-700"
+                            className="w-full bg-white border border-slate-300 rounded-md px-2 py-1 text-[11px] font-bold text-slate-800 focus:outline-none focus:border-emerald-500 shadow-2xs"
                           >
                             <option value="Once Daily (OD)">OD (Once Daily)</option>
                             <option value="Twice Daily (BD)">BD (Twice Daily)</option>
@@ -1596,14 +2961,14 @@ export default function PatientSearchTab({
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-2 items-center">
+                      <div className="grid grid-cols-2 gap-2.5 items-center">
                         {/* Duration Selector */}
                         <div>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Duration</span>
+                          <span className="text-[9.5px] text-emerald-900 font-extrabold uppercase tracking-wider block mb-1">Duration</span>
                           <select
                             value={prescDuration}
                             onChange={(e) => setPrescDuration(e.target.value)}
-                            className="w-full bg-white border border-slate-200 rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:border-teal-500 font-bold text-slate-700"
+                            className="w-full bg-white border border-slate-300 rounded-md px-2 py-1 text-[11px] font-bold text-slate-800 focus:outline-none focus:border-emerald-500 shadow-2xs"
                           >
                             <option value="3 Days">3 Days</option>
                             <option value="5 Days">5 Days</option>
@@ -1616,7 +2981,7 @@ export default function PatientSearchTab({
                         </div>
                         {/* Quick Medicine Dropdown select */}
                         <div>
-                          <span className="text-[9px] text-teal-600 font-bold uppercase tracking-wider block mb-0.5">Quick Add</span>
+                          <span className="text-[9.5px] text-emerald-900 font-extrabold uppercase tracking-wider block mb-1">Quick Select Medicine</span>
                           <select
                             onChange={(e) => {
                               if (e.target.value) {
@@ -1625,9 +2990,9 @@ export default function PatientSearchTab({
                                 e.target.value = '';
                               }
                             }}
-                            className="w-full bg-white border border-teal-200 rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:border-teal-500 font-bold text-teal-800"
+                            className="w-full bg-white border border-emerald-300 rounded-md px-2 py-1 text-[11px] font-bold text-emerald-950 focus:outline-none focus:border-emerald-500 shadow-2xs"
                           >
-                            <option value="">-- Add Med --</option>
+                            <option value="">-- Click to Select Common Drug --</option>
                             {MEDICINE_DATASTORE.map((m, idx) => (
                               <option key={idx} value={m.name}>{m.name}</option>
                             ))}
@@ -1640,8 +3005,8 @@ export default function PatientSearchTab({
                     <div className="relative mb-2">
                       <input
                         type="text"
-                        placeholder="🔍 Search medicine name (e.g. Dolo, Pan, Azee...)"
-                        className="w-full bg-teal-50/40 border border-teal-100 rounded-lg px-2.5 py-1.5 text-xs placeholder-teal-600/40 focus:outline-none focus:bg-white focus:border-teal-500 font-semibold transition-all text-slate-800"
+                        placeholder="🔍 Type medicine name to autocomplete (e.g. Dolo, Pan, Azee, Augmentin...)"
+                        className="w-full bg-white border border-emerald-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-400 rounded-lg px-2.5 py-1.5 text-xs placeholder-slate-400 focus:outline-none font-semibold transition-all text-slate-800 shadow-2xs"
                         value={medicineSearch}
                         onChange={(e) => setMedicineSearch(e.target.value)}
                         onKeyDown={(e) => {
@@ -1656,16 +3021,16 @@ export default function PatientSearchTab({
                       
                       {/* Floating suggestions dropdown */}
                       {medicineSuggestions.length > 0 && (
-                        <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto divide-y divide-slate-100 animate-in fade-in slide-in-from-top-1 duration-150">
+                        <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-slate-300 rounded-xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100 animate-in fade-in slide-in-from-top-1 duration-150">
                           {medicineSuggestions.map((med, idx) => (
                             <button
                               key={idx}
                               type="button"
                               onClick={() => handleAddMedicineFromSuggest(med)}
-                              className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-teal-50 hover:text-teal-900 transition-colors font-semibold flex justify-between items-center"
+                              className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-emerald-50 hover:text-emerald-950 transition-colors font-semibold flex justify-between items-center"
                             >
                               <span>{med.name}</span>
-                              <span className="text-[10px] text-teal-600 bg-teal-50/60 px-1.5 py-0.5 rounded font-normal shrink-0">{med.dosage.split(' for')[0]}</span>
+                              <span className="text-[10px] text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded font-bold shrink-0">{med.dosage.split(' for')[0]}</span>
                             </button>
                           ))}
                         </div>
@@ -1673,100 +3038,172 @@ export default function PatientSearchTab({
                     </div>
  
                     <textarea
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-28 resize-none"
+                      className="w-full bg-white/95 border border-emerald-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-400 rounded-lg px-2.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none font-mono transition-all h-24 resize-none shadow-2xs"
                       placeholder="e.g. 1. Paracetamol 650mg (TID for 3 days)&#10;2. Levocetirizine 5mg (HS for 5 days)"
                       value={summaryForm.medicines_list}
                       onChange={(e) => setSummaryForm({ ...summaryForm, medicines_list: e.target.value })}
                     />
                   </div>
- 
-                  <div>
-                    <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1 flex justify-between items-center">
-                      <span>Recommended Tests</span>
-                      <span className="text-[9px] text-slate-400 font-semibold italic">click to toggle</span>
-                    </label>
-                    
-                    {/* Quick Tests Tags */}
-                    <div className="flex flex-wrap gap-1 mb-2 max-h-[50px] overflow-y-auto pb-1">
-                      {COMMON_TESTS.map((tag) => {
-                        const isSelected = (summaryForm.tests_list || '').toLowerCase().includes(tag.toLowerCase());
-                        return (
-                          <button
-                            key={tag}
-                            type="button"
-                            onClick={() => handleToggleTag('tests_list', tag)}
-                            className={`text-[9px] px-1.5 py-0.5 rounded-full border transition-all font-semibold ${
-                              isSelected 
-                                ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
-                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200'
-                            }`}
-                          >
-                            {tag.split(' (')[0]}
-                          </button>
-                        );
-                      })}
+
+                  {/* SECTION SEPARATOR LINE WITH BADGE */}
+                  <div className="flex items-center gap-3 my-1">
+                    <div className="h-px bg-gradient-to-r from-cyan-300 to-transparent flex-1" />
+                    <span className="text-[10px] font-black text-cyan-800 uppercase tracking-widest bg-cyan-50 border border-cyan-300 px-3 py-0.5 rounded-full flex items-center gap-1.5 shadow-2xs">
+                      <span>🔬</span>
+                      <span>Diagnostics & Lifestyle Guidelines</span>
+                    </span>
+                    <div className="h-px bg-gradient-to-r from-transparent to-cyan-300 flex-1" />
+                  </div>
+
+                  {/* ROW 3: RECOMMENDED TESTS & LIFESTYLE ADVICE */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {/* CARD 4: RECOMMENDED TESTS (Cyan / Sky Theme) */}
+                    <div className="border border-cyan-200/90 bg-gradient-to-br from-cyan-50/50 via-sky-50/20 to-white rounded-xl p-3 shadow-xs border-l-4 border-l-cyan-600 flex flex-col justify-between">
+                      <div>
+                        <label className="block mb-1.5 flex justify-between items-center">
+                          <span className="flex items-center gap-1.5 text-cyan-900 font-extrabold text-xs uppercase tracking-wider">
+                            <span className="w-5 h-5 rounded-md bg-cyan-500/20 text-cyan-800 flex items-center justify-center font-bold text-[10px]">🧪</span>
+                            <span>Recommended Tests</span>
+                            {activeClinicalFieldMic === 'tests_list' && (
+                              <span className="text-[9px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">Listening...</span>
+                            )}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleClinicalFieldMic('tests_list')}
+                              className={`p-1 rounded-md transition-all cursor-pointer ${
+                                activeClinicalFieldMic === 'tests_list'
+                                  ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                                  : 'text-cyan-700 hover:bg-cyan-100'
+                              }`}
+                              title={activeClinicalFieldMic === 'tests_list' ? 'Stop mic' : '🎙️ Dictate Tests'}
+                            >
+                              {activeClinicalFieldMic === 'tests_list' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                            </button>
+                            <span className="text-[9px] text-cyan-800/70 font-semibold italic">mic</span>
+                          </div>
+                        </label>
+                        
+                        {/* Quick Tests Tags */}
+                        <div className="flex flex-wrap gap-1 mb-2 max-h-[46px] overflow-y-auto pb-0.5 compact-scroll">
+                          {COMMON_TESTS.map((tag) => {
+                            const isSelected = (summaryForm.tests_list || '').toLowerCase().includes(tag.toLowerCase());
+                            return (
+                              <button
+                                key={tag}
+                                type="button"
+                                onClick={() => handleToggleTag('tests_list', tag)}
+                                className={`text-[9.5px] px-2 py-0.5 rounded-md border transition-all font-bold ${
+                                  isSelected 
+                                    ? 'bg-cyan-600 text-white border-cyan-600 shadow-2xs' 
+                                    : 'bg-white/80 text-cyan-900 border-cyan-200/90 hover:bg-cyan-100/70'
+                                }`}
+                              >
+                                {tag.split(' (')[0]}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <textarea
+                        className="w-full bg-white/90 border border-cyan-200 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 placeholder-cyan-900/30 focus:outline-none font-medium transition-all h-20 resize-none shadow-2xs"
+                        placeholder="e.g. CBC (Complete Blood Count), Chest X-Ray PA View"
+                        value={summaryForm.tests_list}
+                        onChange={(e) => setSummaryForm({ ...summaryForm, tests_list: e.target.value })}
+                      />
                     </div>
 
-                    <textarea
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-28 resize-none"
-                      placeholder="e.g. CBC (Complete Blood Count), Chest X-Ray PA View"
-                      value={summaryForm.tests_list}
-                      onChange={(e) => setSummaryForm({ ...summaryForm, tests_list: e.target.value })}
-                    />
-                  </div>
-                </div>
- 
-                <div>
-                  <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1 flex justify-between items-center">
-                    <span>Clinical Advice / Lifestyle Instructions</span>
-                    <span className="text-[9px] text-slate-400 font-semibold italic">click to toggle</span>
-                  </label>
-                  
-                  {/* Quick Advice Tags */}
-                  <div className="flex flex-wrap gap-1 mb-2 max-h-[50px] overflow-y-auto pb-1">
-                    {COMMON_ADVICE.map((tag) => {
-                      const isSelected = (summaryForm.advice || '').includes(tag);
-                      return (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => handleToggleTag('advice', tag)}
-                          className={`text-[9px] px-1.5 py-0.5 rounded-full border transition-all font-semibold ${
-                            isSelected 
-                              ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
-                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200'
-                          }`}
-                        >
-                          {tag.length > 25 ? `${tag.slice(0, 23)}...` : tag}
-                        </button>
-                      );
-                    })}
+                    {/* CARD 5: LIFESTYLE & DIETARY ADVICE (Violet / Purple Theme) */}
+                    <div className="border border-purple-200/90 bg-gradient-to-br from-purple-50/50 via-violet-50/20 to-white rounded-xl p-3 shadow-xs border-l-4 border-l-purple-600 flex flex-col justify-between">
+                      <div>
+                        <label className="block mb-1.5 flex justify-between items-center">
+                          <span className="flex items-center gap-1.5 text-purple-900 font-extrabold text-xs uppercase tracking-wider">
+                            <span className="w-5 h-5 rounded-md bg-purple-500/20 text-purple-800 flex items-center justify-center font-bold text-[10px]">🌱</span>
+                            <span>Clinical Advice & Guidelines</span>
+                            {activeClinicalFieldMic === 'advice' && (
+                              <span className="text-[9px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">Listening...</span>
+                            )}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleClinicalFieldMic('advice')}
+                              className={`p-1 rounded-md transition-all cursor-pointer ${
+                                activeClinicalFieldMic === 'advice'
+                                  ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                                  : 'text-purple-700 hover:bg-purple-100'
+                              }`}
+                              title={activeClinicalFieldMic === 'advice' ? 'Stop mic' : '🎙️ Dictate Advice'}
+                            >
+                              {activeClinicalFieldMic === 'advice' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                            </button>
+                            <span className="text-[9px] text-purple-800/70 font-semibold italic">mic</span>
+                          </div>
+                        </label>
+                        
+                        {/* Quick Advice Tags */}
+                        <div className="flex flex-wrap gap-1 mb-2 max-h-[46px] overflow-y-auto pb-0.5 compact-scroll">
+                          {COMMON_ADVICE.map((tag) => {
+                            const isSelected = (summaryForm.advice || '').includes(tag);
+                            return (
+                              <button
+                                key={tag}
+                                type="button"
+                                onClick={() => handleToggleTag('advice', tag)}
+                                className={`text-[9.5px] px-2 py-0.5 rounded-md border transition-all font-bold ${
+                                  isSelected 
+                                    ? 'bg-purple-600 text-white border-purple-600 shadow-2xs' 
+                                    : 'bg-white/80 text-purple-900 border-purple-200/90 hover:bg-purple-100/70'
+                                }`}
+                              >
+                                {tag.length > 18 ? `${tag.slice(0, 16)}...` : tag}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <textarea
+                        className="w-full bg-white/90 border border-purple-200 focus:border-purple-500 focus:ring-1 focus:ring-purple-400 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 placeholder-purple-900/30 focus:outline-none font-medium transition-all h-20 resize-none shadow-2xs"
+                        placeholder="e.g. Warm saline gargles thrice daily. Drink plenty of warm water. Avoid cold drinks."
+                        value={summaryForm.advice}
+                        onChange={(e) => setSummaryForm({ ...summaryForm, advice: e.target.value })}
+                      />
+                    </div>
                   </div>
 
-                  <textarea
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-20 resize-none"
-                    placeholder="e.g. Warm saline gargles thrice daily. Drink plenty of warm water. Avoid cold drinks."
-                    value={summaryForm.advice}
-                    onChange={(e) => setSummaryForm({ ...summaryForm, advice: e.target.value })}
-                  />
-                </div>
- 
-                <div>
-                  <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1.5">Follow-up Date / Instructions</label>
-                  <input
-                    type="text"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-semibold transition-all"
-                    placeholder="e.g. In 5 days or if symptoms worsen"
-                    value={summaryForm.follow_up_date}
-                    onChange={(e) => setSummaryForm({ ...summaryForm, follow_up_date: e.target.value })}
-                  />
+                  {/* SECTION SEPARATOR LINE WITH BADGE */}
+                  <div className="flex items-center gap-3 my-1">
+                    <div className="h-px bg-slate-200 flex-1" />
+                    <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider bg-slate-100 px-2.5 py-0.5 rounded-full">
+                      Follow-Up & Confirmation
+                    </span>
+                    <div className="h-px bg-slate-200 flex-1" />
+                  </div>
+
+                  {/* CARD 6: FOLLOW-UP INSTRUCTIONS (Slate / Dark Theme) */}
+                  <div className="border border-slate-300/80 bg-slate-50/90 rounded-xl p-3 shadow-xs border-l-4 border-l-slate-800">
+                    <label className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-slate-600" />
+                      <span>Follow-up Date / Instructions</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full bg-white border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-400 rounded-lg px-2.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none font-semibold transition-all shadow-2xs"
+                      placeholder="e.g. In 5 days or if symptoms worsen"
+                      value={summaryForm.follow_up_date}
+                      onChange={(e) => setSummaryForm({ ...summaryForm, follow_up_date: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* Right Pane: AI Consultation Summary */}
-              <div className="bg-slate-50/60 rounded-2xl p-5 border border-slate-150 flex flex-col justify-between min-h-[350px]">
+              <div className="bg-slate-50/60 rounded-2xl p-5 border border-slate-200 flex flex-col justify-between min-h-[350px]">
                 <div className="flex-1 flex flex-col">
-                  <div className="flex justify-between items-center pb-3 border-b border-slate-155">
+                  <div className="flex justify-between items-center pb-3 border-b border-slate-200">
                     <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                       <Sparkles className="w-4 h-4 text-teal-600" />
                       Patient-Friendly Summary Assistant
@@ -1785,7 +3222,7 @@ export default function PatientSearchTab({
 
                    {summaryError && (
                     summaryError.includes("Groq API key") ? (
-                      <div className="mt-3 bg-violet-50/70 border border-violet-100 rounded-xl p-4 text-slate-750 text-xs font-medium space-y-2.5">
+                      <div className="mt-3 bg-violet-50/70 border border-violet-100 rounded-xl p-4 text-slate-700 text-xs font-medium space-y-2.5">
                         <div className="flex items-center gap-1.5 text-violet-700 font-extrabold uppercase tracking-wider text-[10px]">
                           <AlertTriangle className="w-4 h-4 text-violet-600 animate-pulse" />
                           Groq AI Sandbox Setup Required
@@ -1793,7 +3230,7 @@ export default function PatientSearchTab({
                         <p className="leading-normal">
                           The AI features require a valid <strong>Groq API Key</strong> to be configured in your environment.
                         </p>
-                        <div className="bg-white border border-violet-100 rounded-lg p-2.5 font-mono text-[10px] text-slate-650 leading-relaxed shadow-sm">
+                        <div className="bg-white border border-violet-100 rounded-lg p-2.5 font-mono text-[10px] text-slate-600 leading-relaxed shadow-sm">
                           1. Open the project root <code className="bg-slate-100 px-1 py-0.5 rounded font-sans font-bold">.env</code> file<br />
                           2. Set <code className="bg-slate-100 px-1 py-0.5 rounded text-violet-700 font-bold">GROQ_API_KEY=your_groq_key</code><br />
                           3. Restart Docker Compose or local servers
@@ -1829,7 +3266,7 @@ export default function PatientSearchTab({
                         </p>
                         <div className="flex items-center justify-center gap-1.5 mt-2">
                           <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-                          <span className="text-[10px] text-violet-500 font-bold uppercase tracking-widest">Powered by Groq · Llama 3.3 70B</span>
+                          <span className="text-[10px] text-violet-500 font-bold uppercase tracking-widest">Powered by Groq · Clinical AI</span>
                         </div>
                       </div>
                     </div>
@@ -1884,7 +3321,7 @@ export default function PatientSearchTab({
                     return (
                       <div className="mt-3 flex-1 flex flex-col space-y-3 overflow-y-auto">
                         {/* Tab header / selector bar */}
-                        <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-150">
+                        <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200">
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
@@ -1892,7 +3329,7 @@ export default function PatientSearchTab({
                               className={`px-3 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border ${
                                 viewMode === 'en'
                                   ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
-                                  : 'bg-white text-slate-650 border-slate-200 hover:bg-slate-50'
+                                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                               }`}
                             >
                               English
@@ -1904,7 +3341,7 @@ export default function PatientSearchTab({
                                 className={`px-3 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border ${
                                   viewMode === 'native'
                                     ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
-                                    : 'bg-white text-slate-650 border-slate-200 hover:bg-slate-50'
+                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                                 }`}
                               >
                                 {actualNativeLang} Summary
@@ -1917,7 +3354,7 @@ export default function PatientSearchTab({
                               className={`px-3 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border flex items-center gap-1 ${
                                 viewMode === 'pdf'
                                   ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
-                                  : 'bg-white text-slate-650 border-slate-200 hover:bg-slate-50'
+                                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                               }`}
                             >
                               {pdfLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Printer className="w-3.5 h-3.5" />}
@@ -1934,9 +3371,7 @@ export default function PatientSearchTab({
                                 const newLang = e.target.value;
                                 setSelectedLanguage(newLang);
                                 // Auto-regenerate immediately if a summary already exists
-                                if (summaryForm.patient_summary) {
-                                  // We need to call with the new language value directly
-                                  // since selectedLanguage state update is async
+                                if (newLang && summaryForm.patient_summary) {
                                   setSummaryGenerating(true);
                                   setSummaryError('');
                                   fetch(`${API_BASE}/visits/${selectedVisit.id}/summary?generate_ai_summary=true&target_language=${newLang}`, {
@@ -1963,6 +3398,7 @@ export default function PatientSearchTab({
                               }}
                               className="bg-transparent text-[10px] font-bold text-slate-700 focus:outline-none cursor-pointer"
                             >
+                              <option value="">-- Select Language --</option>
                               {INDIAN_LANGUAGES.map(lang => (
                                 <option key={lang.code} value={lang.code}>{lang.label}</option>
                               ))}
@@ -2053,6 +3489,7 @@ export default function PatientSearchTab({
                           onChange={(e) => setSelectedLanguage(e.target.value)}
                           className="bg-transparent text-[10px] font-bold text-slate-800 focus:outline-none cursor-pointer"
                         >
+                          <option value="">-- Select Language --</option>
                           {INDIAN_LANGUAGES.map(lang => (
                             <option key={lang.code} value={lang.code}>{lang.label}</option>
                           ))}
@@ -2078,7 +3515,7 @@ export default function PatientSearchTab({
               <button
                 type="button"
                 onClick={() => setShowSummaryModal(false)}
-                className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-650 font-bold py-2.5 px-5 rounded-xl transition-all text-xs"
+                className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 font-bold py-2.5 px-5 rounded-xl transition-all text-xs"
               >
                 Cancel
               </button>

@@ -73,13 +73,13 @@ export default function BillingTab({
                 <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider">Previous Transactions</span>
                 <div className="grid grid-cols-1 gap-1.5 max-h-24 overflow-y-auto">
                   {activeBillForPayment.payments.map((pay) => (
-                    <div key={pay.id} className="flex justify-between items-center bg-white border border-slate-150 rounded-lg p-2 shadow-sm text-[10px] font-mono">
+                    <div key={pay.id} className="flex justify-between items-center bg-white border border-slate-200 rounded-lg p-2 shadow-sm text-[10px] font-mono">
                       <div className="flex items-center gap-1.5">
                         <span className="font-bold text-slate-800 select-all">{pay.payment_id}</span>
                         <span className="text-[9px] text-slate-400 font-sans">({pay.payment_method})</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-teal-655 font-sans text-xs">₹{pay.amount_paid.toLocaleString()}</span>
+                        <span className="font-extrabold text-teal-600 font-sans text-xs">₹{pay.amount_paid.toLocaleString()}</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -112,7 +112,7 @@ export default function BillingTab({
                     onChange={(e) => setPaymentForm({ ...paymentForm, amount_paid: e.target.value })}
                     required
                   />
-                  <p className="text-[10px] text-slate-450 mt-1 font-semibold">Remaining balance due: ₹{activeBillForPayment.balance_amount.toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-500 mt-1 font-semibold">Remaining balance due: ₹{activeBillForPayment.balance_amount.toLocaleString()}</p>
                 </div>
 
                 <div>
@@ -171,7 +171,7 @@ export default function BillingTab({
                 onChange={e => setSearchQuery(e.target.value)} />
               {searchQuery && (
                 <button type="button" onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-650">
+                  className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-600">
                   <X className="w-2.5 h-2.5" />
                 </button>
               )}
@@ -195,7 +195,7 @@ export default function BillingTab({
                   <tr key={bill.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="py-2 px-3 text-slate-900 font-bold text-xs">{bill.bill_id}</td>
                     <td className="py-2 px-3">{bill.patient_name}</td>
-                    <td className="py-2 px-3 text-slate-450 text-[10px]">{new Date(bill.created_at).toLocaleDateString()}</td>
+                    <td className="py-2 px-3 text-slate-500 text-[10px]">{new Date(bill.created_at).toLocaleDateString()}</td>
                     <td className="py-2 px-3">
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
                         bill.payment_status === 'Partial Paid' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
@@ -224,7 +224,7 @@ export default function BillingTab({
                 ))}
                 {filteredBills.length === 0 && (
                   <tr>
-                    <td colSpan="7" className="py-10 text-center text-slate-450 font-medium italic">
+                    <td colSpan="7" className="py-10 text-center text-slate-500 font-medium italic">
                       {unpaidBills.length === 0 
                         ? "All patient invoices are fully paid and cleared!" 
                         : "No invoices match your search query."}

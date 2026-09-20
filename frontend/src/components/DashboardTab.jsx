@@ -108,65 +108,91 @@ function AIInsightCard({ API_BASE }) {
 
   useEffect(() => { fetchInsight(); }, []);
 
-  const sentimentColor = {
-    positive: 'text-emerald-300',
-    negative: 'text-rose-300',
-    neutral: 'text-slate-300'
-  }[insight?.sentiment] || 'text-slate-300';
+  const isDuesOrDebt = /due|outstanding|pending|unpaid|balance|deficit/i.test(insight?.metric_highlight || '');
 
-  const sentimentIcon = {
-    positive: <TrendingUp className="w-4 h-4 text-emerald-400" />,
-    negative: <TrendingDown className="w-4 h-4 text-rose-400" />,
-    neutral: <Zap className="w-4 h-4 text-amber-400" />
-  }[insight?.sentiment] || null;
+  const sentimentColor = (() => {
+    if (isDuesOrDebt) {
+      return insight?.sentiment === 'positive' ? 'text-emerald-300' : 'text-rose-300';
+    }
+    return {
+      positive: 'text-emerald-300',
+      negative: 'text-rose-300',
+      neutral: 'text-amber-300'
+    }[insight?.sentiment] || 'text-slate-300';
+  })();
+
+  const sentimentIcon = (() => {
+    if (isDuesOrDebt) {
+      if (insight?.sentiment === 'positive') {
+        return <CheckCircle2 className="w-4 h-4 text-emerald-400" />;
+      }
+      return <AlertTriangle className="w-4 h-4 text-rose-400" />;
+    }
+    return {
+      positive: <TrendingUp className="w-4 h-4 text-emerald-400" />,
+      negative: <TrendingDown className="w-4 h-4 text-rose-400" />,
+      neutral: <Zap className="w-4 h-4 text-amber-400" />
+    }[insight?.sentiment] || null;
+  })();
 
   return (
-    <div className="ai-insight-card animate-pulse-violet p-3 animate-slide-up animate-slide-up-delay-4 md:h-full md:min-h-0 flex flex-col justify-between overflow-hidden">
+    <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 border border-violet-500/30 shadow-md rounded-xl p-2.5 text-white relative overflow-hidden flex flex-col md:h-full md:min-h-0 animate-slide-up ring-1 ring-violet-500/20">
+      {/* Ambient glowing orbs */}
+      <div className="absolute -top-12 -right-12 w-28 h-28 bg-violet-600/15 rounded-full blur-2xl pointer-events-none" />
+      <div className="absolute -bottom-12 -left-12 w-28 h-28 bg-teal-500/10 rounded-full blur-2xl pointer-events-none" />
+
       {/* Header */}
       <div className="flex items-center justify-between mb-1.5 relative z-10 flex-shrink-0">
-        <div className="flex items-center gap-1.5 text-violet-200 text-xs font-bold">
-          <Brain className="w-3.5 h-3.5 text-violet-300" />
-          <span>Executive Summary</span>
+        <div className="flex items-center gap-1.5">
+          <div className="w-5 h-5 rounded-md bg-violet-500/20 text-violet-300 flex items-center justify-center border border-violet-500/30">
+            <Brain className="w-3 h-3" />
+          </div>
+          <span className="text-xs font-black tracking-wide text-violet-200">Executive AI Copilot</span>
+          <span className="text-[8.5px] font-mono font-bold text-violet-300/80 bg-violet-500/20 border border-violet-500/30 px-1.5 py-0.2 rounded-full">
+            Groq LLM
+          </span>
         </div>
         <button
           onClick={() => fetchInsight(true)}
           disabled={refreshing}
-          className="p-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all"
+          className="p-1 rounded-md bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all cursor-pointer disabled:opacity-50"
           title="Refresh summary"
         >
-          <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin text-teal-400' : ''}`} />
         </button>
       </div>
 
       {/* Scrollable Content Wrapper */}
-      <div className="flex-1 overflow-y-auto pr-1 relative z-10 compact-scroll min-h-0 my-1">
+      <div className="flex-1 overflow-y-auto pr-1 relative z-10 compact-scroll min-h-0">
         {loading ? (
           <div className="flex items-center gap-2 py-3">
-            <div className="flex gap-1">
+            <div className="flex gap-1.5">
               <span className="thinking-dot w-2 h-2 rounded-full bg-violet-400" />
-              <span className="thinking-dot w-2 h-2 rounded-full bg-violet-400" />
-              <span className="thinking-dot w-2 h-2 rounded-full bg-violet-400" />
+              <span className="thinking-dot w-2 h-2 rounded-full bg-cyan-400" />
+              <span className="thinking-dot w-2 h-2 rounded-full bg-teal-400" />
             </div>
-            <span className="text-violet-300 text-xs font-medium">Analyzing revenue trends...</span>
+            <span className="text-violet-300 text-[11px] font-medium animate-pulse">Synthesizing revenue & clinical trends...</span>
           </div>
         ) : error ? (
-          <p className="text-slate-400 text-xs py-2">{error}</p>
+          <p className="text-slate-400 text-xs py-1.5">{error}</p>
         ) : insight ? (
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {/* Metric highlight badge */}
             {insight.metric_highlight && insight.metric_highlight !== '—' && (
-              <div className="inline-flex items-center gap-1.5 bg-white/10 border border-white/10 rounded-lg px-2.5 py-1">
+              <div className="inline-flex items-center gap-1.5 bg-white/10 border border-white/10 rounded-lg px-2 py-0.5 backdrop-blur-xs">
                 {sentimentIcon}
-                <span className={`text-[11px] font-bold ${sentimentColor}`}>{insight.metric_highlight}</span>
+                <span className={`text-[10px] font-bold ${sentimentColor}`}>{insight.metric_highlight}</span>
               </div>
             )}
             {/* Main insight */}
-            <p className="text-slate-200 text-xs leading-relaxed font-medium bg-slate-900/40 p-2.5 rounded-xl border border-white/5">{insight.insight}</p>
+            <p className="text-slate-200 text-[11px] leading-snug font-medium bg-slate-900/60 p-2 rounded-lg border border-white/10 backdrop-blur-xs">
+              {insight.insight}
+            </p>
             {/* Recommended action */}
             {insight.action && (
-              <div className="flex items-start gap-1.5 bg-teal-500/10 border border-teal-500/20 rounded-xl p-2.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-teal-400 mt-0.5 flex-shrink-0" />
-                <p className="text-teal-300 text-[10.5px] font-semibold leading-relaxed">{insight.action}</p>
+              <div className="flex items-start gap-1.5 bg-gradient-to-r from-teal-950/60 to-emerald-950/40 border border-teal-500/30 rounded-lg p-2 shadow-xs">
+                <CheckCircle2 className="w-3 h-3 text-teal-400 mt-0.5 flex-shrink-0" />
+                <p className="text-teal-200 text-[10px] font-semibold leading-snug">{insight.action}</p>
               </div>
             )}
           </div>
@@ -223,6 +249,22 @@ export default function DashboardTab({ metrics, metricsError, API_BASE, fetchRec
     }));
   }, [metrics]);
 
+  // Executive calculated metrics
+  const totalBilledEstimate = (metrics?.total_revenue || 0) + (metrics?.pending_dues || 0);
+  const collectionEfficiency = totalBilledEstimate > 0
+    ? Math.round(((metrics?.total_revenue || 0) / totalBilledEstimate) * 100)
+    : 100;
+
+  const todayCash = metrics?.cash_collection_today || 0;
+  const todayOnline = metrics?.online_collection_today || 0;
+  const todayTotal = todayCash + todayOnline;
+  const cashPercent = todayTotal > 0 ? Math.round((todayCash / todayTotal) * 100) : 50;
+  const onlinePercent = 100 - cashPercent;
+
+  const filteredTotalAmount = useMemo(() => {
+    return filteredTransactions.reduce((acc, tx) => acc + (tx.amount || 0), 0);
+  }, [filteredTransactions]);
+
   const toggleCardHighlight = (cardName) => {
     setHighlightedCard(prev => prev === cardName ? 'all' : cardName);
   };
@@ -253,18 +295,22 @@ export default function DashboardTab({ metrics, metricsError, API_BASE, fetchRec
     }
   };
 
+  const handleExportCSV = (scope = 'all') => {
+    downloadReport('csv');
+  };
+
   // ── Error state ──
   if (metricsError) {
     return (
       <div className="py-24 text-center flex flex-col items-center justify-center space-y-4">
-        <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
-          <AlertTriangle className="w-7 h-7 text-rose-400" />
+        <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shadow-xs">
+          <AlertTriangle className="w-7 h-7 text-rose-500" />
         </div>
-        <p className="text-slate-800 font-bold">Dashboard failed to load</p>
-        <p className="text-slate-400 text-sm max-w-sm">{metricsError}</p>
+        <p className="text-slate-800 font-extrabold text-base">Dashboard failed to load</p>
+        <p className="text-slate-500 text-xs max-w-sm">{metricsError}</p>
         <button
           onClick={() => window.location.reload()}
-          className="text-sm font-bold text-teal-600 bg-teal-50 border border-teal-200 px-5 py-2.5 rounded-xl hover:bg-teal-100 transition-colors"
+          className="text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 px-5 py-2.5 rounded-xl hover:bg-teal-100 transition-all shadow-xs cursor-pointer"
         >
           Retry Connection
         </button>
@@ -275,9 +321,9 @@ export default function DashboardTab({ metrics, metricsError, API_BASE, fetchRec
   // ── Skeleton loading state ──
   if (!metrics) {
     return (
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* KPI skeleton row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[0, 1, 2, 3].map(i => <SkeletonKPI key={i} />)}
         </div>
         {/* AI insight skeleton */}
@@ -288,7 +334,7 @@ export default function DashboardTab({ metrics, metricsError, API_BASE, fetchRec
           <div className="lg:col-span-2"><SkeletonChart /></div>
         </div>
         {/* Table skeleton */}
-        <div className="premium-card p-6">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
           <div className="skeleton h-3 w-40 rounded mb-6" />
           {[0,1,2,3,4].map(i => (
             <div key={i} className="flex gap-4 mb-4">
@@ -303,367 +349,424 @@ export default function DashboardTab({ metrics, metricsError, API_BASE, fetchRec
   return (
     <div className="flex flex-col gap-2.5 h-full md:max-h-full overflow-y-auto md:overflow-hidden min-h-0">
 
-      {/* ── QUICK ACTIONS HUB ───────────────────────────────── */}
-      <div className="bg-white border border-slate-200/80 rounded-xl px-3 py-1.5 shadow-2xs flex items-center justify-between gap-2 flex-wrap flex-shrink-0 animate-slide-up">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center font-bold">
+      {/* ── QUICK ACTIONS HUB / EXECUTIVE COCKPIT BANNER ── */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-950 to-teal-950 text-white border border-teal-500/30 rounded-xl px-3 py-1.5 shadow-sm flex items-center justify-between gap-2.5 flex-wrap flex-shrink-0 animate-slide-up relative overflow-hidden">
+        {/* Glow ambient background element */}
+        <div className="absolute top-0 right-1/4 w-40 h-full bg-teal-500/10 blur-xl pointer-events-none" />
+
+        <div className="flex items-center gap-2.5 relative z-10 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-teal-500/20 text-teal-400 border border-teal-500/40 flex items-center justify-center font-black shadow-xs shrink-0">
             <Zap className="w-3.5 h-3.5" />
           </div>
-          <div className="flex items-center gap-1.5">
-            <h3 className="text-xs font-bold text-slate-900 leading-none">Executive Control Hub</h3>
-            <span className="hidden sm:inline text-slate-300">•</span>
-            <p className="hidden sm:inline text-[10.5px] text-slate-400 font-medium leading-none">Quick operational triggers for hospital desk</p>
+          <div className="min-w-0 flex items-center gap-2 flex-wrap">
+            <h2 className="text-xs md:text-sm font-black text-white tracking-tight flex items-center gap-2">
+              Hospital Executive Command Center
+            </h2>
+            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.2 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              LIVE OPD TELEMETRY
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-2 relative z-10 flex-wrap">
+          {/* Collection Efficiency Pill */}
+          <div className="hidden xl:flex items-center gap-2 bg-white/5 border border-white/10 px-2.5 py-1 rounded-lg">
+            <div className="text-right">
+              <span className="text-[8.5px] uppercase tracking-wider font-bold text-slate-400 block leading-none">Collection Rate</span>
+              <span className="text-[11px] font-black text-emerald-400 leading-none">{collectionEfficiency}% Collected</span>
+            </div>
+            <div className="w-10 bg-white/10 h-1.5 rounded-full overflow-hidden">
+              <div className="bg-gradient-to-r from-teal-400 to-emerald-400 h-full rounded-full" style={{ width: `${collectionEfficiency}%` }} />
+            </div>
+          </div>
+
           <button
             onClick={() => handleExportCSV('all')}
             disabled={exportLoading === 'all'}
-            className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all"
+            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg border border-white/15 shadow-xs transition-all cursor-pointer hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+            title="Download full audit ledger CSV"
           >
-            <Download className={`w-3 h-3 ${exportLoading === 'all' ? 'animate-spin' : ''}`} />
-            Export Audit CSV
+            <Download className={`w-3.5 h-3.5 text-cyan-300 ${exportLoading === 'all' ? 'animate-spin' : ''}`} />
+            <span>Audit CSV</span>
           </button>
           <button
             onClick={() => handleExportCSV('today')}
             disabled={exportLoading === 'today'}
-            className="flex items-center gap-1 bg-teal-50 hover:bg-teal-100 text-teal-700 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-teal-200/60 transition-all"
+            className="flex items-center gap-1.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 text-[11px] font-black px-3 py-1 rounded-lg shadow-sm transition-all cursor-pointer hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+            title="Download today's collection summary"
           >
-            <FileSpreadsheet className={`w-3 h-3 ${exportLoading === 'today' ? 'animate-spin' : ''}`} />
-            Today's Ledger
+            <FileSpreadsheet className={`w-3.5 h-3.5 ${exportLoading === 'today' ? 'animate-spin' : ''}`} />
+            <span>Today's Ledger</span>
           </button>
         </div>
       </div>
 
-      {/* ── KPI Cards ───────────────────────────────── */}
+      {/* ── KPI Cards (4 Cards) ───────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 flex-shrink-0">
 
-        {/* Patients */}
+        {/* Patients Registered */}
         <div
           onClick={() => toggleCardHighlight('advance')}
-          className={`premium-card stat-card-teal p-2.5 cursor-pointer select-none animate-slide-up animate-slide-up-delay-1 ${
-            highlightedCard === 'advance' ? 'ring-2 ring-teal-500/30' : ''
+          className={`bg-white border rounded-xl p-3 cursor-pointer select-none transition-all duration-150 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 ${
+            highlightedCard === 'advance'
+              ? 'border-teal-500 ring-2 ring-teal-500/20 bg-teal-50/20'
+              : 'border-slate-200/90 hover:border-teal-300'
           }`}
         >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-slate-400 text-[9.5px] font-bold uppercase tracking-wider">Patients Registered</span>
-            <div className={`p-1 rounded-md transition-colors ${highlightedCard === 'advance' ? 'bg-teal-500 text-white' : 'bg-teal-50 text-teal-600'}`}>
-              <Users className="w-3 h-3" />
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-slate-400 text-[10px] font-extrabold uppercase tracking-wider block">Patients Registered</span>
+              <div className="text-2xl font-black text-slate-900 tracking-tight leading-tight mt-0.5 count-reveal">
+                {Math.round(animPatients).toLocaleString('en-IN')}
+              </div>
+            </div>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+              highlightedCard === 'advance' ? 'bg-teal-600 text-white' : 'bg-teal-50 text-teal-600 border border-teal-100'
+            }`}>
+              <Users className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-xl font-black text-slate-900 tracking-tight count-reveal">
-            {Math.round(animPatients).toLocaleString('en-IN')}
-          </div>
-          <div className="text-[10.5px] text-slate-400 mt-0.5 flex items-center gap-1 font-medium">
-            <span className="font-bold text-teal-600">+{metrics.today_patients}</span> new today
+          <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[10.5px]">
+            <span className="inline-flex items-center gap-1 font-bold text-teal-700 bg-teal-50 px-1.5 py-0.2 rounded border border-teal-100 text-[10px]">
+              +{metrics.today_patients} Today
+            </span>
+            <span className="text-[10px] text-slate-400 font-medium">Central Registry</span>
           </div>
         </div>
 
-        {/* Revenue */}
+        {/* Total Revenue */}
         <div
           onClick={() => toggleCardHighlight('revenue')}
-          className={`premium-card stat-card-emerald p-2.5 cursor-pointer select-none animate-slide-up animate-slide-up-delay-2 ${
-            highlightedCard === 'revenue' ? 'ring-2 ring-emerald-500/30' : ''
+          className={`bg-white border rounded-xl p-3 cursor-pointer select-none transition-all duration-150 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 ${
+            highlightedCard === 'revenue'
+              ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20'
+              : 'border-slate-200/90 hover:border-emerald-300'
           }`}
         >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-slate-400 text-[9.5px] font-bold uppercase tracking-wider">Total Revenue</span>
-            <div className={`p-1 rounded-md transition-colors ${highlightedCard === 'revenue' ? 'bg-emerald-500 text-white' : 'bg-emerald-50 text-emerald-600'}`}>
-              <TrendingUp className="w-3 h-3" />
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-slate-400 text-[10px] font-extrabold uppercase tracking-wider block">Total Revenue</span>
+              <div className="text-2xl font-black text-slate-900 tracking-tight leading-tight mt-0.5 count-reveal">
+                ₹{Math.round(animRevenue).toLocaleString('en-IN')}
+              </div>
+            </div>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+              highlightedCard === 'revenue' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+            }`}>
+              <TrendingUp className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-xl font-black text-slate-900 tracking-tight count-reveal">
-            ₹{Math.round(animRevenue).toLocaleString('en-IN')}
-          </div>
-          <div className="text-[10.5px] text-slate-400 mt-0.5 flex items-center gap-1 font-medium">
-            <span className="font-bold text-emerald-600">₹{Math.round(animToday).toLocaleString('en-IN')}</span> today
+          <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[10.5px]">
+            <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-100 text-[10px]">
+              ₹{Math.round(animToday).toLocaleString('en-IN')} Today
+            </span>
+            <span className="text-[10px] text-slate-400 font-medium">All Receipts</span>
           </div>
         </div>
 
-        {/* Dues */}
-        <div className="premium-card stat-card-amber p-2.5 animate-slide-up animate-slide-up-delay-3">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-slate-400 text-[9.5px] font-bold uppercase tracking-wider">Outstanding Dues</span>
-            <div className="p-1 rounded-md bg-amber-50 text-amber-600">
-              <AlertTriangle className="w-3 h-3" />
+        {/* Outstanding Dues */}
+        <div className="bg-white border border-slate-200/90 hover:border-amber-400 rounded-xl p-3 transition-all duration-150 shadow-2xs hover:shadow-xs hover:-translate-y-0.5">
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-slate-400 text-[10px] font-extrabold uppercase tracking-wider block">Outstanding Dues</span>
+              <div className="text-2xl font-black text-slate-900 tracking-tight leading-tight mt-0.5 count-reveal">
+                ₹{Math.round(animDues).toLocaleString('en-IN')}
+              </div>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center">
+              <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-xl font-black text-slate-900 tracking-tight count-reveal">
-            ₹{Math.round(animDues).toLocaleString('en-IN')}
-          </div>
-          <div className="text-[9px] text-rose-500 mt-1 font-bold uppercase tracking-wider flex items-center gap-1">
-            <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-ping" />
-            Collection pending
+          <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[10.5px]">
+            <span className="inline-flex items-center gap-1 font-bold text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-100 text-[10px] uppercase tracking-wide">
+              <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-ping" />
+              Pending Settlement
+            </span>
+            <span className="text-[10px] text-slate-400 font-medium">Billing Queue</span>
           </div>
         </div>
 
-        {/* Collections split */}
+        {/* Today's Collections Split */}
         <div
           onClick={() => toggleCardHighlight('refunds')}
-          className={`premium-card stat-card-violet p-2.5 cursor-pointer select-none animate-slide-up animate-slide-up-delay-4 ${
-            highlightedCard === 'refunds' ? 'ring-2 ring-violet-500/30' : ''
+          className={`bg-white border rounded-xl p-3 cursor-pointer select-none transition-all duration-150 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 ${
+            highlightedCard === 'refunds'
+              ? 'border-violet-500 ring-2 ring-violet-500/20 bg-violet-50/20'
+              : 'border-slate-200/90 hover:border-violet-300'
           }`}
         >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-slate-400 text-[9.5px] font-bold uppercase tracking-wider">Today's Split</span>
-            <div className={`p-1 rounded-md transition-colors ${highlightedCard === 'refunds' ? 'bg-violet-500 text-white' : 'bg-violet-50 text-violet-600'}`}>
-              <CreditCard className="w-3 h-3" />
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-slate-400 text-[10px] font-extrabold uppercase tracking-wider block">Today's Collections</span>
+              <div className="text-2xl font-black text-slate-900 tracking-tight leading-tight mt-0.5 count-reveal">
+                ₹{(metrics.cash_collection_today + metrics.online_collection_today).toLocaleString('en-IN')}
+              </div>
+            </div>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+              highlightedCard === 'refunds' ? 'bg-violet-600 text-white' : 'bg-violet-50 text-violet-600 border border-violet-100'
+            }`}>
+              <CreditCard className="w-4 h-4" />
             </div>
           </div>
-          <div className="space-y-0.5 text-[10.5px]">
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400 font-medium">Cash:</span>
-              <span className="font-bold text-slate-800">₹{metrics.cash_collection_today.toLocaleString('en-IN')}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400 font-medium">Online:</span>
-              <span className="font-bold text-slate-800">₹{metrics.online_collection_today.toLocaleString('en-IN')}</span>
-            </div>
-            <div className="flex justify-between items-center pt-0.5 border-t border-slate-100">
-              <span className="font-bold text-slate-400">Refunds:</span>
-              <span className="font-bold text-rose-500">-₹{metrics.refund_amount_today.toLocaleString('en-IN')}</span>
-            </div>
+          <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[10.5px]">
+            <span className="inline-flex items-center gap-1 font-bold text-violet-700 bg-violet-50 px-1.5 py-0.2 rounded border border-violet-100 text-[10px]">
+              Cash {cashPercent}% • Online {onlinePercent}%
+            </span>
+            {metrics.refund_amount_today > 0 ? (
+              <span className="text-[10px] text-rose-500 font-bold">-₹{metrics.refund_amount_today.toLocaleString('en-IN')} ref</span>
+            ) : (
+              <span className="text-[10px] text-slate-400 font-medium">100% Settled</span>
+            )}
           </div>
         </div>
+
       </div>
 
-      {/* ── Main Workspace Grid ──────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:flex-1 md:min-h-0">
+      {/* ── Mid Analytics Row: AI Copilot, Payment Mix & Breakdown (3 Equal Columns) ──────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 flex-shrink-0">
 
-        {/* Left Column: Charts & Insight (1/3 width) */}
-        <div className="flex flex-col gap-2.5 md:h-full md:min-h-0 md:overflow-y-auto compact-scroll">
-          {/* Pie chart */}
-          <div className="premium-card p-2.5 animate-slide-up flex-shrink-0 flex flex-col justify-between h-[165px] md:h-[175px]">
-            <div className="flex items-center gap-1.5 mb-1 flex-shrink-0">
-              <PieIcon className="w-3.5 h-3.5 text-teal-500" />
-              <h3 className="font-bold text-slate-500 text-[10px] uppercase tracking-widest">Payment Mix</h3>
-            </div>
-            <div className="flex-1 min-h-0">
-              {methodPieData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={methodPieData}
-                      cx="38%" cy="50%"
-                      innerRadius={28} outerRadius={46}
-                      paddingAngle={3} dataKey="value"
-                    >
-                      {methodPieData.map((_, idx) => (
-                        <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(v) => [`₹${v.toLocaleString('en-IN')}`, 'Revenue']}
-                      contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '10px', fontWeight: 600 }}
-                    />
-                    <Legend
-                      layout="vertical"
-                      align="right"
-                      verticalAlign="middle"
-                      iconType="circle"
-                      iconSize={7}
-                      wrapperStyle={{ fontSize: '10px', fontWeight: 700, lineHeight: '17px', paddingLeft: '4px' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center text-slate-400 text-xs font-medium">
-                  No revenue data recorded yet
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* AI Insight Card */}
-          <div className="md:flex-1 md:min-h-[220px] flex flex-col">
-            <AIInsightCard API_BASE={API_BASE} />
-          </div>
+        {/* 1. Executive AI Copilot Card */}
+        <div className="h-[170px] flex flex-col">
+          <AIInsightCard API_BASE={API_BASE} />
         </div>
 
-        {/* Right Column: Bar Chart & Ledger (2/3 width) */}
-        <div className="lg:col-span-2 flex flex-col gap-2.5 md:h-full md:min-h-0 md:overflow-y-auto compact-scroll">
-          {/* Bar chart */}
-          <div className="premium-card p-2.5 flex-shrink-0 flex flex-col h-[165px] md:h-[175px] animate-slide-up animate-slide-up-delay-1">
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-1 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <BarChart2 className="w-3.5 h-3.5 text-teal-500" />
-                <h3 className="font-bold text-slate-500 text-[10px] uppercase tracking-widest">Method Breakdown</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                {/* Toggle */}
-                <div className="bg-slate-100 p-0.5 rounded-lg flex">
-                  {['count','revenue'].map(v => (
-                    <button key={v} type="button"
-                      onClick={() => setChartView(v)}
-                      className={`text-[9px] font-extrabold px-2 py-1 rounded transition-all ${
-                        chartView === v ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                      }`}
-                    >{v === 'count' ? 'Txn Count' : 'Revenue ₹'}</button>
-                  ))}
-                </div>
-                {/* Export */}
-                <div className="flex gap-1 bg-slate-50 border border-slate-200 rounded-lg p-0.5">
-                  <button type="button" onClick={() => downloadReport('csv')} disabled={exportLoading === 'csv'}
-                    className="hover:bg-slate-200/60 p-1 rounded text-slate-600 transition-colors disabled:opacity-50" title="CSV Export">
-                    {exportLoading === 'csv'
-                      ? <div className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-                      : <FileText className="w-3.5 h-3.5" />}
-                  </button>
-                  <button type="button" onClick={() => downloadReport('excel')} disabled={exportLoading === 'excel'}
-                    className="hover:bg-emerald-100/60 p-1 rounded text-emerald-700 transition-colors disabled:opacity-50" title="Excel Export">
-                    {exportLoading === 'excel'
-                      ? <div className="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                      : <FileSpreadsheet className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
-              </div>
+        {/* 2. Payment Mix Donut Chart */}
+        <div className="bg-white border border-slate-200/90 rounded-xl p-2.5 shadow-2xs flex flex-col h-[170px]">
+          <div className="flex items-center justify-between mb-0.5 flex-shrink-0">
+            <div className="flex items-center gap-1.5">
+              <PieIcon className="w-3.5 h-3.5 text-teal-600" />
+              <h3 className="font-black text-slate-700 text-[11px] uppercase tracking-wider">Payment Mix</h3>
             </div>
-            <div className="flex-1 min-h-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={methodBarData} barGap={4}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="method" tickLine={false} axisLine={false}
-                    style={{ fontSize: '9px', fontWeight: '700', fill: '#94a3b8' }} />
-                  <YAxis tickLine={false} axisLine={false}
-                    style={{ fontSize: '9px', fontWeight: '500', fill: '#cbd5e1' }} />
-                  <Tooltip
-                    formatter={(v) => [chartView === 'revenue' ? `₹${v.toLocaleString('en-IN')}` : v,
-                      chartView === 'revenue' ? 'Revenue' : 'Count']}
-                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '10px', fontWeight: 600 }}
-                  />
-                  <Bar
-                    dataKey={chartView === 'count' ? 'Count' : 'Revenue'}
-                    fill={chartView === 'count' ? '#14b8a6' : '#8b5cf6'}
-                    radius={[4, 4, 0, 0]} maxBarSize={36}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <span className="text-[9.5px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.2 rounded-full">
+              Channel Share
+            </span>
           </div>
-
-          {/* ── Transactions Table ───────────────────────── */}
-          <div className="premium-card p-4 md:flex-1 md:min-h-[320px] md:overflow-hidden flex flex-col animate-slide-up animate-slide-up-delay-2">
-            {/* Toolbar */}
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 pb-2 border-b border-slate-100 flex-shrink-0">
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <Filter className="w-3.5 h-3.5 text-teal-500" />
-                  <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Collections Ledger</h3>
-                </div>
-                <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                  {filteredTransactions.length} txn{filteredTransactions.length !== 1 ? 's' : ''} shown
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Search */}
-                <div className="relative min-w-[150px]">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-1.5" />
-                  <input type="text"
-                    placeholder="Search patient, txn..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-7 pr-2 py-1 text-[10px] font-semibold placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all"
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)} />
-                  {searchQuery && (
-                    <button type="button" onClick={() => setSearchQuery('')}
-                      className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-600">
-                      <X className="w-2.5 h-2.5" />
-                    </button>
-                  )}
-                </div>
-                {/* Method */}
-                <select
-                  className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-600 focus:outline-none focus:border-teal-500 cursor-pointer"
-                  value={selectedMethod} onChange={e => setSelectedMethod(e.target.value)}>
-                  <option value="All">All Methods</option>
-                  {['Cash','UPI','Card','Net Banking','Wallet'].map(m => <option key={m}>{m}</option>)}
-                </select>
-                {/* Type */}
-                <select
-                  className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-600 focus:outline-none focus:border-teal-500 cursor-pointer"
-                  value={selectedType} onChange={e => setSelectedType(e.target.value)}>
-                  <option value="All">All Types</option>
-                  {['Advance','Full','Partial','Refund'].map(t => <option key={t}>{t}</option>)}
-                </select>
-                {/* Clear */}
-                {(selectedMethod !== 'All' || selectedType !== 'All' || searchQuery || highlightedCard !== 'all') && (
-                  <button type="button"
-                    onClick={() => { setSelectedMethod('All'); setSelectedType('All'); setSearchQuery(''); setHighlightedCard('all'); }}
-                    className="text-[10px] text-rose-500 hover:text-rose-700 font-bold flex items-center gap-1 bg-rose-50 px-2 py-1 rounded-lg border border-rose-100 transition-colors">
-                    <X className="w-2.5 h-2.5" /> Clear
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Active focus banner */}
-            {highlightedCard !== 'all' && (
-              <div className="bg-teal-50/70 border border-teal-200 rounded-lg p-1.5 flex justify-between items-center text-[10px] font-semibold text-teal-800 mt-2 flex-shrink-0">
-                <span className="flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-pulse" />
-                  Filtered by: <b className="uppercase ml-0.5">{highlightedCard}</b>
-                </span>
-                <button onClick={() => setHighlightedCard('all')}
-                  className="text-teal-655 hover:text-teal-900 font-extrabold uppercase text-[9px] tracking-wider">
-                  Reset
-                </button>
+          <div className="flex-1 min-h-0">
+            {methodPieData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={methodPieData}
+                    cx="40%" cy="50%"
+                    innerRadius={30} outerRadius={50}
+                    paddingAngle={4} dataKey="value"
+                  >
+                    {methodPieData.map((_, idx) => (
+                      <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(v) => [`₹${v.toLocaleString('en-IN')}`, 'Revenue']}
+                    contentStyle={{ borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '10.5px', fontWeight: 700, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                  />
+                  <Legend
+                    layout="vertical"
+                    align="right"
+                    verticalAlign="middle"
+                    iconType="circle"
+                    iconSize={7}
+                    wrapperStyle={{ fontSize: '10px', fontWeight: 700, lineHeight: '16px', paddingLeft: '6px' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-slate-400 text-xs font-medium">
+                No revenue data recorded yet
               </div>
             )}
+          </div>
+        </div>
 
-            {/* Table */}
-            <div className="overflow-x-auto rounded-xl border border-slate-100 md:flex-1 md:overflow-y-auto mt-2 min-h-0 compact-scroll">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 text-slate-400 font-bold uppercase tracking-wider text-[9px] border-b border-slate-100">
-                    {['Txn ID','Patient','Method','Type','Date/Time','Amount','Receipt'].map((h, i) => (
-                      <th key={h} className={`py-2 px-3 ${i === 6 ? 'text-center' : ''} ${i === 5 ? 'text-right' : ''}`}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {filteredTransactions.map((tx, idx) => (
-                    <tr key={tx.id}
-                      className="hover:bg-slate-50/60 transition-colors animate-slide-up"
-                      style={{ animationDelay: `${idx * 15}ms` }}>
-                      <td className="py-2 px-3 font-mono font-extrabold text-slate-800 text-[10px]">{tx.payment_id}</td>
-                      <td className="py-2 px-3 font-semibold text-slate-800">{tx.patient_name}</td>
-                      <td className="py-2 px-3">
-                        <span className="bg-slate-100 text-slate-700 text-[9px] px-1.5 py-0.5 rounded font-bold">{tx.payment_method}</span>
-                      </td>
-                      <td className="py-2 px-3">
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold border ${
-                          tx.payment_type === 'Advance' ? 'bg-sky-50 text-sky-700 border-sky-100'
-                          : tx.payment_type === 'Refund' ? 'bg-rose-50 text-rose-700 border-rose-100'
-                          : 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                        }`}>{tx.payment_type}</span>
-                      </td>
-                      <td className="py-2 px-3 text-slate-400 font-medium text-[10px]">{tx.payment_date}</td>
-                      <td className={`py-2 px-3 text-right font-extrabold ${tx.amount < 0 ? 'text-rose-500' : 'text-slate-900'}`}>
-                        {tx.amount < 0 ? '-' : ''}₹{Math.abs(tx.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                      </td>
-                      <td className="py-2 px-3 text-center">
-                        <button onClick={() => fetchReceiptDetails(tx.id)}
-                          className="text-teal-600 hover:text-teal-800 text-[10px] font-bold inline-flex items-center gap-1 bg-teal-50 hover:bg-teal-100 border border-teal-100 px-2 py-1 rounded transition-all">
-                          <Printer className="w-3 h-3" /> Print
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredTransactions.length === 0 && (
-                    <tr>
-                      <td colSpan="7" className="py-10 text-center text-slate-400 font-medium italic text-xs">
-                        No transactions match your current filters.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+        {/* 3. Method Breakdown Bar Chart */}
+        <div className="bg-white border border-slate-200/90 rounded-xl p-2.5 flex flex-col h-[170px] shadow-2xs">
+          <div className="flex justify-between items-center gap-1.5 mb-0.5 flex-shrink-0">
+            <div className="flex items-center gap-1.5">
+              <BarChart2 className="w-3.5 h-3.5 text-teal-600" />
+              <h3 className="font-black text-slate-700 text-[11px] uppercase tracking-wider">Method Breakdown</h3>
             </div>
+            <div className="flex items-center gap-1">
+              {/* Segmented view switch */}
+              <div className="bg-slate-100 p-0.5 rounded-lg flex border border-slate-200/60">
+                {['count','revenue'].map(v => (
+                  <button key={v} type="button"
+                    onClick={() => setChartView(v)}
+                    className={`text-[9.5px] font-black px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                      chartView === v ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >{v === 'count' ? 'Count' : 'Rev ₹'}</button>
+                ))}
+              </div>
+              {/* Export buttons */}
+              <div className="flex gap-0.5 bg-slate-50 border border-slate-200 rounded-lg p-0.5">
+                <button type="button" onClick={() => downloadReport('csv')} disabled={exportLoading === 'csv'}
+                  className="hover:bg-slate-200/60 p-1 rounded-md text-slate-600 transition-colors disabled:opacity-50 cursor-pointer" title="Export CSV Report">
+                  {exportLoading === 'csv'
+                    ? <div className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                    : <FileText className="w-3 h-3" />}
+                </button>
+                <button type="button" onClick={() => downloadReport('excel')} disabled={exportLoading === 'excel'}
+                  className="hover:bg-emerald-100/60 p-1 rounded-md text-emerald-700 transition-colors disabled:opacity-50 cursor-pointer" title="Export Excel Report">
+                  {exportLoading === 'excel'
+                    ? <div className="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                    : <FileSpreadsheet className="w-3 h-3" />}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="flex-1 min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={methodBarData} barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="method" tickLine={false} axisLine={false}
+                  style={{ fontSize: '9px', fontWeight: '700', fill: '#64748b' }} />
+                <YAxis tickLine={false} axisLine={false}
+                  style={{ fontSize: '9px', fontWeight: '600', fill: '#94a3b8' }} />
+                <Tooltip
+                  formatter={(v) => [chartView === 'revenue' ? `₹${v.toLocaleString('en-IN')}` : v,
+                    chartView === 'revenue' ? 'Revenue' : 'Count']}
+                  contentStyle={{ borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '10.5px', fontWeight: 700, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                />
+                <Bar
+                  dataKey={chartView === 'count' ? 'Count' : 'Revenue'}
+                  fill={chartView === 'count' ? '#0d9488' : '#7c3aed'}
+                  radius={[5, 5, 0, 0]} maxBarSize={32}
+                />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
       </div>
+
+      {/* ── Lower Workspace Row: Full Width Transactions Table ───────────────────────── */}
+      <div className="bg-white border border-slate-200/90 rounded-xl p-2.5 md:flex-1 md:min-h-0 md:overflow-hidden flex flex-col shadow-2xs">
+        {/* Toolbar */}
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1.5 pb-2 border-b border-slate-100 flex-shrink-0">
+          <div>
+            <div className="flex items-center gap-1.5">
+              <Filter className="w-3.5 h-3.5 text-teal-600" />
+              <h3 className="font-black text-slate-800 text-[11px] uppercase tracking-wider">Collections Ledger</h3>
+            </div>
+            <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+              Showing <b>{filteredTransactions.length}</b> records • Total: <b className="text-slate-800">₹{filteredTotalAmount.toLocaleString('en-IN')}</b>
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            {/* Search */}
+            <div className="relative min-w-[160px]">
+              <Search className="w-3 h-3 text-slate-400 absolute left-2 top-2" />
+              <input type="text"
+                placeholder="Search patient, txn..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-7 pr-2 py-1 text-xs font-semibold placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)} />
+              {searchQuery && (
+                <button type="button" onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-600 cursor-pointer">
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+            {/* Method */}
+            <select
+              className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 focus:outline-none focus:border-teal-500 cursor-pointer"
+              value={selectedMethod} onChange={e => setSelectedMethod(e.target.value)}>
+              <option value="All">All Methods</option>
+              {['Cash','UPI','Card','Net Banking','Wallet'].map(m => <option key={m}>{m}</option>)}
+            </select>
+            {/* Type */}
+            <select
+              className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 focus:outline-none focus:border-teal-500 cursor-pointer"
+              value={selectedType} onChange={e => setSelectedType(e.target.value)}>
+              <option value="All">All Types</option>
+              {['Advance','Full','Partial','Refund'].map(t => <option key={t}>{t}</option>)}
+            </select>
+            {/* Clear */}
+            {(selectedMethod !== 'All' || selectedType !== 'All' || searchQuery || highlightedCard !== 'all') && (
+              <button type="button"
+                onClick={() => { setSelectedMethod('All'); setSelectedType('All'); setSearchQuery(''); setHighlightedCard('all'); }}
+                className="text-xs text-rose-600 hover:text-rose-800 font-bold flex items-center gap-1 bg-rose-50 hover:bg-rose-100 px-2 py-1 rounded-lg border border-rose-200/60 transition-colors cursor-pointer"
+              >
+                <X className="w-3 h-3" /> Clear
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Active focus banner */}
+        {highlightedCard !== 'all' && (
+          <div className="bg-teal-50 border border-teal-200 rounded-lg p-1.5 flex justify-between items-center text-xs font-semibold text-teal-900 mt-1.5 flex-shrink-0">
+            <span className="flex items-center gap-1.5 text-[11px]">
+              <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-pulse" />
+              Filtered by KPI Focus: <b className="uppercase ml-0.5 font-black">{highlightedCard}</b>
+            </span>
+            <button onClick={() => setHighlightedCard('all')}
+              className="text-teal-700 hover:text-teal-950 font-black uppercase text-[9.5px] tracking-wider cursor-pointer">
+              Reset
+            </button>
+          </div>
+        )}
+
+        {/* Table */}
+        <div className="overflow-x-auto rounded-lg border border-slate-200/70 md:flex-1 md:overflow-y-auto mt-1.5 min-h-0 compact-scroll">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="sticky top-0 bg-slate-50/95 backdrop-blur-xs z-10">
+              <tr className="text-slate-500 font-bold uppercase tracking-wider text-[9px] border-b border-slate-200">
+                {['Txn ID','Patient Name','Method','Type','Date/Time','Amount','Action'].map((h, i) => (
+                  <th key={h} className={`py-1.5 px-3 ${i === 6 ? 'text-center' : ''} ${i === 5 ? 'text-right' : ''}`}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredTransactions.map((tx) => (
+                <tr key={tx.id}
+                  className="hover:bg-slate-50/80 transition-colors">
+                  <td className="py-1.5 px-3 font-mono font-black text-slate-800 text-[10.5px]">{tx.payment_id}</td>
+                  <td className="py-1.5 px-3 font-bold text-slate-800">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 font-bold text-[9px] flex items-center justify-center border border-slate-200">
+                        {tx.patient_name?.charAt(0) || 'P'}
+                      </div>
+                      <span className="text-[11px]">{tx.patient_name}</span>
+                    </div>
+                  </td>
+                  <td className="py-1.5 px-3">
+                    <span className="bg-slate-100 text-slate-700 text-[9.5px] px-1.5 py-0.5 rounded font-bold border border-slate-200/60">{tx.payment_method}</span>
+                  </td>
+                  <td className="py-1.5 px-3">
+                    <span className={`text-[9.5px] px-1.5 py-0.5 rounded font-extrabold border ${
+                      tx.payment_type === 'Advance' ? 'bg-sky-50 text-sky-700 border-sky-200'
+                      : tx.payment_type === 'Refund' ? 'bg-rose-50 text-rose-700 border-rose-200'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    }`}>{tx.payment_type}</span>
+                  </td>
+                  <td className="py-1.5 px-3 text-slate-400 font-medium text-[10px]">{tx.payment_date}</td>
+                  <td className={`py-1.5 px-3 text-right font-black text-[11px] ${tx.amount < 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                    {tx.amount < 0 ? '-' : ''}₹{Math.abs(tx.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </td>
+                  <td className="py-1.5 px-3 text-center">
+                    <button onClick={() => fetchReceiptDetails(tx.id)}
+                      className="text-teal-700 hover:text-teal-900 text-[10px] font-black inline-flex items-center gap-1 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-2 py-0.5 rounded transition-all shadow-2xs hover:scale-[1.03] active:scale-95 cursor-pointer">
+                      <Printer className="w-3 h-3 text-teal-600" />
+                      <span>Receipt</span>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {filteredTransactions.length === 0 && (
+                <tr>
+                  <td colSpan="7" className="py-8 text-center text-slate-400 font-medium italic text-xs">
+                    No transactions match your current filters.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   );
 }

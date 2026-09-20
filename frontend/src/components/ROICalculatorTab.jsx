@@ -184,48 +184,48 @@ export default function ROICalculatorTab() {
             {/* Telemetry 1: Time Saved */}
             <div className="bg-gradient-to-br from-teal-500/5 to-white border border-teal-500/20 rounded-3xl p-5 flex items-center gap-4 hover:shadow-md transition-all duration-300">
               <div className="w-12 h-12 rounded-2xl bg-teal-500/10 flex items-center justify-center shrink-0">
-                <Clock className="w-6 h-6 text-teal-655" />
+                <Clock className="w-6 h-6 text-teal-600" />
               </div>
               <div>
                 <span className="text-[9px] font-extrabold uppercase text-slate-400 tracking-wider block">Monthly Time Reclaimed</span>
                 <p className="text-2xl font-black bg-gradient-to-r from-teal-600 to-emerald-500 bg-clip-text text-transparent">{metrics.monthlyHoursSaved} Hours</p>
-                <span className="text-[10px] font-bold text-slate-450">({metrics.yearlyHoursSaved} Hours Saved/Year)</span>
+                <span className="text-[10px] font-bold text-slate-500">({metrics.yearlyHoursSaved} Hours Saved/Year)</span>
               </div>
             </div>
 
             {/* Telemetry 2: Leakage Savings */}
             <div className="bg-gradient-to-br from-emerald-500/5 to-white border border-emerald-500/20 rounded-3xl p-5 flex items-center gap-4 hover:shadow-md transition-all duration-300">
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center shrink-0">
-                <TrendingUp className="w-6 h-6 text-emerald-650" />
+                <TrendingUp className="w-6 h-6 text-emerald-600" />
               </div>
               <div>
                 <span className="text-[9px] font-extrabold uppercase text-slate-400 tracking-wider block">Revenue Leaks Prevented</span>
                 <p className="text-2xl font-black text-emerald-600">₹{metrics.monthlyLeakagePrevented.toLocaleString('en-IN')}</p>
-                <span className="text-[10px] font-bold text-slate-450">(₹{metrics.yearlyLeakagePrevented.toLocaleString('en-IN')} Saved/Year)</span>
+                <span className="text-[10px] font-bold text-slate-500">(₹{metrics.yearlyLeakagePrevented.toLocaleString('en-IN')} Saved/Year)</span>
               </div>
             </div>
 
             {/* Telemetry 3: Expected ROI */}
             <div className="bg-gradient-to-br from-violet-500/5 to-white border border-violet-500/20 rounded-3xl p-5 flex items-center gap-4 hover:shadow-md transition-all duration-300">
               <div className="w-12 h-12 rounded-2xl bg-violet-500/10 flex items-center justify-center shrink-0">
-                <Zap className="w-6 h-6 text-violet-650" />
+                <Zap className="w-6 h-6 text-violet-600" />
               </div>
               <div>
                 <span className="text-[9px] font-extrabold uppercase text-slate-400 tracking-wider block">Monthly Platform ROI</span>
                 <p className="text-2xl font-black bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">+{metrics.roiPercentage}%</p>
-                <span className="text-[10px] font-bold text-slate-450">(Based on software pricing)</span>
+                <span className="text-[10px] font-bold text-slate-500">(Based on software pricing)</span>
               </div>
             </div>
 
             {/* Telemetry 4: Payback Period */}
             <div className="bg-gradient-to-br from-amber-500/5 to-white border border-amber-500/20 rounded-3xl p-5 flex items-center gap-4 hover:shadow-md transition-all duration-300">
               <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center shrink-0">
-                <CheckCircle2 className="w-6 h-6 text-amber-650" />
+                <CheckCircle2 className="w-6 h-6 text-amber-600" />
               </div>
               <div>
                 <span className="text-[9px] font-extrabold uppercase text-slate-400 tracking-wider block">Payback Period</span>
                 <p className="text-2xl font-black text-slate-800">{metrics.paybackPeriodDays} Days</p>
-                <span className="text-[10px] font-bold text-slate-450">(Time to offset subscription)</span>
+                <span className="text-[10px] font-bold text-slate-500">(Time to offset subscription)</span>
               </div>
             </div>
 
@@ -234,7 +234,7 @@ export default function ROICalculatorTab() {
           {/* Pricing Models (Modern styled blocks) */}
           <div className="bg-white border border-slate-200/60 rounded-3xl p-6 space-y-6 shadow-sm hover:shadow-md transition-shadow duration-300">
             <h4 className="font-extrabold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-2">
-              <Layers className="w-4 h-4 text-teal-655" />
+              <Layers className="w-4 h-4 text-teal-600" />
               Dynamic SaaS Licensing Models
             </h4>
             
@@ -244,15 +244,15 @@ export default function ROICalculatorTab() {
               <div className={`rounded-2xl p-4 flex flex-col justify-between border transition-all duration-300 ${
                 metrics.selectedSaaSPrice === starterPrice 
                   ? 'border-teal-500 bg-teal-50/5 ring-1 ring-teal-500/20 shadow-md translate-y-[-2px]' 
-                  : 'border-slate-150 bg-slate-50/30 hover:border-slate-250 hover:bg-slate-50'
+                  : 'border-slate-200 bg-slate-50/30 hover:border-slate-300 hover:bg-slate-50'
               }`}>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-[8px] font-black text-teal-700 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded uppercase tracking-wider">Starter</span>
                     {metrics.selectedSaaSPrice === starterPrice && <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />}
                   </div>
-                  <h5 className="font-extrabold text-slate-850 text-xs">Single Doctor Clinic</h5>
-                  <p className="text-[9px] text-slate-450 leading-relaxed font-semibold">Ideal for small neighborhood clinics with single physicians.</p>
+                  <h5 className="font-extrabold text-slate-800 text-xs">Single Doctor Clinic</h5>
+                  <p className="text-[9px] text-slate-500 leading-relaxed font-semibold">Ideal for small neighborhood clinics with single physicians.</p>
                 </div>
                 <div className="mt-4 pt-3 border-t border-dashed border-slate-200 flex items-baseline gap-1">
                   <span className="text-lg font-black text-slate-900">₹1,999</span>
@@ -264,15 +264,15 @@ export default function ROICalculatorTab() {
               <div className={`rounded-2xl p-4 flex flex-col justify-between border transition-all duration-300 ${
                 metrics.selectedSaaSPrice === growthPrice 
                   ? 'border-violet-500 bg-violet-50/5 ring-1 ring-violet-500/20 shadow-md translate-y-[-2px]' 
-                  : 'border-slate-150 bg-slate-50/30 hover:border-slate-250 hover:bg-slate-50'
+                  : 'border-slate-200 bg-slate-50/30 hover:border-slate-300 hover:bg-slate-50'
               }`}>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-[8px] font-black text-violet-700 bg-violet-50 border border-violet-100 px-2 py-0.5 rounded uppercase tracking-wider">Growth / Pro</span>
                     {metrics.selectedSaaSPrice === growthPrice && <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />}
                   </div>
-                  <h5 className="font-extrabold text-slate-850 text-xs">OPD & Diagnostics</h5>
-                  <p className="text-[9px] text-slate-455 leading-relaxed font-semibold">Ideal for multi-specialty centers and active diagnostic laboratories.</p>
+                  <h5 className="font-extrabold text-slate-800 text-xs">OPD & Diagnostics</h5>
+                  <p className="text-[9px] text-slate-500 leading-relaxed font-semibold">Ideal for multi-specialty centers and active diagnostic laboratories.</p>
                 </div>
                 <div className="mt-4 pt-3 border-t border-dashed border-slate-200 flex items-baseline gap-1">
                   <span className="text-lg font-black text-slate-900">₹4,999</span>
@@ -281,13 +281,13 @@ export default function ROICalculatorTab() {
               </div>
 
               {/* Enterprise Tier */}
-              <div className="rounded-2xl p-4 flex flex-col justify-between border border-slate-150 bg-slate-50/30 hover:border-slate-250 hover:bg-slate-50 transition-all duration-300">
+              <div className="rounded-2xl p-4 flex flex-col justify-between border border-slate-200 bg-slate-50/30 hover:border-slate-300 hover:bg-slate-50 transition-all duration-300">
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-[8px] font-black text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded uppercase tracking-wider">Enterprise</span>
                   </div>
-                  <h5 className="font-extrabold text-slate-850 text-xs">Hospital Chain</h5>
-                  <p className="text-[9px] text-slate-450 leading-relaxed font-semibold">Multi-branch database synchronization & custom server deployment.</p>
+                  <h5 className="font-extrabold text-slate-800 text-xs">Hospital Chain</h5>
+                  <p className="text-[9px] text-slate-500 leading-relaxed font-semibold">Multi-branch database synchronization & custom server deployment.</p>
                 </div>
                 <div className="mt-4 pt-3 border-t border-dashed border-slate-200">
                   <span className="text-xs font-black text-slate-700">Custom Contract</span>
