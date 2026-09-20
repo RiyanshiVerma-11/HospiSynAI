@@ -29,21 +29,24 @@ The entire stack is containerized and orchestrates seamlessly with a single comm
 
 | # | Standout Capability | What It Does |
 | :---: | :--- | :--- |
-| 🧠 **1** | **AI-Powered Prescription Suggester** | Doctor enters patient symptoms → Groq LLM instantly generates a full clinical plan: diagnosis, medicines with BD/OD/TID dosing, pediatric & geriatric safety rules, diagnostic tests, lifestyle advice, and follow-up schedule. All embedded directly in the OPD desk. |
-| 🛡️ **2** | **Pre-Invoice AI Billing Auditor** | Before an invoice is even created, a hybrid rule engine + LLM scans every line item for duplicate tests, clinically impossible service combinations (e.g. ICU + OPD), age-inappropriate charges, and missing consultation codes — returning a `clear`, `warning`, or `critical` verdict with specific issues listed. |
-| 🌐 **3** | **Live Multilingual Patient Handout in 11 Indian Languages** | The AI converts the doctor's prescription into a patient-friendly storytelling summary (Morning / Afternoon / Night routine + warnings), then auto-translates it into any of 11 Indian languages — Hindi, Kannada, Tamil, Telugu, Bengali, Marathi, Gujarati, Malayalam, Punjabi, Odia, Urdu — the moment a language is selected from the dropdown. No extra click needed. |
-| 📊 **4** | **AI Revenue Narrative Dashboard** | Instead of just charts, the dashboard reads today's actual live transaction data and generates a paragraph-level business insight with sentiment (positive / neutral / negative), a specific financial highlight, and an actionable recommendation for the hospital admin. |
-| 🧾 **5** | **AI Test & Service Recommender** | Before billing, the system queries the hospital's own active services catalog and recommends the most relevant OPD tests based on patient age, gender, and symptoms — with clinical reasoning for each suggestion. |
-| 📄 **6** | **Customisable ReportLab PDF Receipts & Prescriptions** | A5 receipts and prescription sheets are generated server-side by ReportLab. Every branding detail — hospital name, logo, GSTIN, doctor name, contact, address — is editable via the Admin panel and reflects on every new PDF instantly, without code rebuilds. |
-| 💳 **7** | **Complete Payment Lifecycle** | Supports Cash, UPI, Card, Net Banking, and Wallet. Handles Advance deposits, Partial payments, Full settlements, and Refunds — advance amounts are automatically detected and applied to the matching invoice during checkout. |
-| 🔐 **8** | **Fine-Grained Role-Based Access Control** | Three distinct roles — `Admin`, `Accountant`, `Receptionist` — each with precisely scoped permissions enforced at every API endpoint via FastAPI's `RoleChecker` dependency injection. |
-| 📋 **9** | **Immutable System Audit Trail** | Every action — logins, patient registrations, billing edits, payments, refunds, settings changes — is automatically logged with the user identity and timestamp. The log is read-only, tamper-evident, and visible only to Admins. |
-| 📤 **10** | **One-Click Data Export** | Transaction ledgers stream directly from the server as Excel (`.xlsx`) or CSV via Pandas — no third-party BI tool needed. |
-| 🚀 **11** | **Zero-Config Docker Deployment** | The entire stack — React frontend, FastAPI backend, PostgreSQL database, and PDF engine — launches with a single command: `docker-compose up --build`. No manual database setup, no dependency conflicts. |
-| 🆓 **12** | **Fully Open-Source, Zero Licensing Cost** | Every line of code is open and auditable. No per-bed pricing, no SaaS subscription, no vendor lock-in. Deployable on any machine or cloud server. |
+| 🎙️ **1** | **Ambient Patient Voice Intake (मरीज़ की आवाज़)** | Patient speaks colloquial Hindi, Hinglish, or English (e.g., *"Mere baal bahut toot rahe hain aur dandruff bhi hai"*). Live audio visualizer captures the speech and the Groq Clinical AI Engine instantly translates it into standard clinical English terminology, working diagnoses, OPD dosing (BD/OD/TID), and essential lab tests without requiring the doctor to re-type. |
+| 🧠 **2** | **AI-Powered Prescription Suggester & Safety Engine** | Doctor enters patient symptoms → Groq LLM instantly generates a full clinical plan: diagnosis, medicines with BD/OD/TID dosing, pediatric & geriatric safety rules, diagnostic tests, lifestyle advice, and follow-up schedule. All embedded directly in the OPD desk. |
+| 🛡️ **3** | **Pre-Invoice AI Billing Auditor & Compliance Guard** | Before an invoice is created, a hybrid rule engine + LLM scans every line item for duplicate tests, clinically impossible service combinations (e.g., ICU + OPD), age-inappropriate charges, and missing consultation codes — returning a `clear`, `warning`, or `critical` verdict with specific issues listed. |
+| ⚖️ **4** | **NHA & CGHS Price Benchmark Intelligence** | Live pricing comparison against National Health Authority (NHA) & Central Government Health Scheme (CGHS) benchmark rates for OPD consultations, labs, and radiology. Flags overbilling, undercharging, and revenue leakages in real time. |
+| 🌐 **5** | **Live Multilingual Patient Handout in 11 Indian Languages** | The AI converts the doctor's prescription into a patient-friendly storytelling summary (Morning / Afternoon / Night routine + warnings), then auto-translates it into any of 11 Indian languages — Hindi, Kannada, Tamil, Telugu, Bengali, Marathi, Gujarati, Malayalam, Punjabi, Odia, Urdu — the moment a language is selected from the dropdown. No extra click needed. |
+| 🧑‍⚕️ **6** | **4 Specialized Role-Based Workspaces** | Tailored operational desks for **Doctor** (Active queue, consultation notes, voice intake, Rx generator), **Receptionist** (Speed registration, queue assignment, advance collections), **Accountant** (Invoice queue, UPI/cash settlements, refund ledger), and **Admin** (System metrics, catalog pricing, and audit logs). |
+| 💡 **7** | **Interactive Hospital Financial ROI Calculator** | Built-in financial simulation tool modeling annual hospital cost recovery from eliminated billing leakages, automated pre-invoice auditing, prevented test duplications, and reduced doctor administrative burden. |
+| 📊 **8** | **AI Revenue Narrative Dashboard** | Instead of just charts, the dashboard reads today's actual live transaction data and generates a paragraph-level business insight with sentiment (positive / neutral / negative), a specific financial highlight, and an actionable recommendation for the hospital admin. |
+| 🧾 **9** | **AI Test & Service Recommender** | Before billing, the system queries the hospital's own active services catalog and recommends the most relevant OPD tests based on patient age, gender, and symptoms — with clinical reasoning for each suggestion. |
+| 📄 **10** | **ReportLab Dynamic PDF Engine with Devanagari Font Support** | A5 receipts and prescription sheets are generated server-side by ReportLab with native Nirmala Devanagari font rendering. Every branding detail — hospital name, logo, GSTIN, doctor name, contact, address — is editable via the Admin panel and reflects on every new PDF instantly. |
+| 💳 **11** | **Complete Payment Lifecycle & Advance Adjustments** | Supports Cash, UPI, Card, Net Banking, and Wallet. Handles Advance deposits, Partial payments, Full settlements, and Refunds — advance amounts are automatically detected and applied to the matching invoice during checkout. |
+| 🔐 **12** | **Fine-Grained Role-Based Access Control (RBAC)** | Four distinct roles — `Admin`, `Doctor`, `Receptionist`, `Accountant` — each with precisely scoped permissions enforced at every API endpoint via FastAPI's `RoleChecker` dependency injection. |
+| 📋 **13** | **Immutable System Audit Trail** | Every action — logins, patient registrations, billing edits, payments, refunds, settings changes — is automatically logged with the user identity and timestamp. The log is read-only, tamper-evident, and visible only to Admins. |
+| 📤 **14** | **One-Click Data Export** | Transaction ledgers stream directly from the server as Excel (`.xlsx`) or CSV via Pandas — no third-party BI tool needed. |
+| 🚀 **15** | **Zero-Config Docker Deployment & Offline PWA** | The entire stack launches with a single command: `docker-compose up --build`. Also installable as an offline-capable Progressive Web App with Service Workers. |
 
 > [!NOTE]
-> All AI outputs (prescription suggestions, billing audit verdicts, patient handouts, revenue insights) are **assistive** — final clinical and financial decisions remain with the attending doctor and accountant respectively.
+> All AI outputs (voice clinical parsing, prescription suggestions, billing audit verdicts, patient handouts, revenue insights) are **assistive** — final clinical and financial decisions remain with the attending doctor and accountant respectively.
 
 ---
 
@@ -226,39 +229,50 @@ graph TD
 ### File Structure
 ```
 HospiSynAI/
-├── docker-compose.yml          # Multicontainer orchestration
+├── docker-compose.yml              # Multicontainer orchestration
 ├── backend/
-│   ├── Dockerfile              # Backend package compilation
-│   ├── requirements.txt        # Backend python dependencies
-│   ├── database.py             # Connection pooling configurations
-│   ├── models.py               # SQLAlchemy schemas & soft-delete relations
-│   ├── schemas.py              # Pydantic validation boundaries
-│   ├── auth.py                 # JWT, Bcrypt & RBAC logic
-│   ├── pdf_generator.py        # ReportLab customizable layout PDF engine
-│   ├── test_main.py            # Automated Pytest suite for auth & billing rules
-│   └── main.py                 # FastAPI endpoints, exports, seeder & audits
+│   ├── Dockerfile                  # Backend package compilation
+│   ├── requirements.txt            # Backend python dependencies
+│   ├── database.py                 # Connection pooling & SQLite fallback
+│   ├── models.py                   # SQLAlchemy schemas & soft-delete relations
+│   ├── schemas.py                  # Pydantic validation boundaries
+│   ├── auth.py                     # JWT, Bcrypt & RBAC logic
+│   ├── clinical_nlp.py             # Groq LLM & heuristic clinical voice engine
+│   ├── nha_cghs_rates.json         # NHA & CGHS government benchmark rates
+│   ├── pdf_generator.py            # ReportLab customizable layout PDF engine
+│   ├── test_main.py                # Automated Pytest suite for auth & billing
+│   └── main.py                     # FastAPI endpoints, exports, seeder & audits
 └── frontend/
-    ├── Dockerfile              # Vite React development build
-    ├── package.json            # React modules (lucide, recharts)
-    ├── vite.config.js          # Port 3000 mapping
-    ├── tailwind.config.js      # Teal/Charcoal typography styling
-    ├── index.html              # Custom fonts bootloader
+    ├── Dockerfile                  # Vite React development build
+    ├── package.json                # React modules (lucide, recharts)
+    ├── vite.config.js              # Port 3000 / 3001 mapping & PWA
+    ├── tailwind.config.js          # Modern glassmorphism & typography styling
+    ├── index.html                  # Custom fonts & PWA bootloader
     └── src/
-        ├── index.css           # Global directives & printable media configurations
-        ├── main.jsx            # DOM bootstrapping
-        ├── App.jsx             # Main dashboard container & router
-        └── components/         # Dashboard modular feature tabs
-            ├── DashboardTab.jsx      # KPI charts & revenue statistics
-            ├── PatientSearchTab.jsx  # Patient lookup, visits, & AI summary
-            ├── BillingTab.jsx        # Invoicing, collections, & refunds
-            ├── DoctorConsoleTab.jsx  # Doctor clinical workspace & AI prescriptions
-            ├── CatalogTab.jsx        # Medical services & standard pricing
-            ├── SettingsTab.jsx       # Branding & dynamically printed PDF settings
-            ├── ROICalculatorTab.jsx  # ROI & GST compliance financial calculator
-            ├── LandingPage.jsx       # Public-facing product landing page & demo mode
-            ├── UsersTab.jsx          # User accounts management (RBAC)
-            ├── AuditLogsTab.jsx      # Chronological system activity logger
-            └── DemoTour.jsx          # Interactive guided feature tour
+        ├── index.css               # Global styling, keyframes & print directives
+        ├── main.jsx                # DOM bootstrapping & SW registration
+        ├── App.jsx                 # Main dashboard container & router
+        ├── hooks/
+        │   └── useSpeechRecognition.js  # Web Speech API & audio level visualizer
+        ├── utils/
+        │   └── clinicalNLPClient.js     # Instant zero-latency client NLP parser
+        └── components/             # Modular feature tabs & desks
+            ├── LandingPage.jsx             # Public-facing showcase & interactive simulator
+            ├── DashboardTab.jsx            # Admin KPI charts & revenue statistics
+            ├── DoctorDashboardTab.jsx      # Doctor clinical queue & token counter
+            ├── DoctorConsoleTab.jsx        # Doctor clinical desk & Rx generator
+            ├── PatientVoiceModal.jsx       # Ambient patient voice intake modal
+            ├── VoiceVisualizer.jsx         # Real-time audio waveform visualizer
+            ├── ReceptionistDashboardTab.jsx# Receptionist quick desk & token allocator
+            ├── AccountantDashboardTab.jsx  # Accountant collections & reconciliation desk
+            ├── PatientSearchTab.jsx        # Patient lookup, visits, & AI summary
+            ├── BillingTab.jsx              # Invoicing, collections, & refunds
+            ├── CatalogTab.jsx              # Medical services & standard pricing
+            ├── SettingsTab.jsx             # Branding & ReportLab printed PDF settings
+            ├── ROICalculatorTab.jsx        # ROI & financial leakage calculator
+            ├── UsersTab.jsx                # User accounts management (RBAC)
+            ├── AuditLogsTab.jsx            # Chronological system activity logger
+            └── DemoTour.jsx                # Interactive guided feature walkthrough
 ```
 
 ---
@@ -285,12 +299,13 @@ Docker will automatically pull Postgres 15, compile the FastAPI image, pull Reac
 
 ## 🔑 Default Accounts (Development Only)
 
-On first startup, the database is automatically seeded with three accounts representing different staff roles:
+On first startup, the database is automatically seeded with four accounts representing the core operational hospital roles:
 
 | Username | Password | Role | Panel Permissions |
 | :--- | :--- | :--- | :--- |
-| **admin** | `admin123` | **Admin** | Complete system access. Audit logs, user administration, catalog editing, and hospital branding configurations. |
-| **receptionist** | `recep123` | **Receptionist** | Front Desk operations. Patient finder/registration, logging visits, receiving advance deposits, and billing creator. |
+| **admin** | `admin123` | **Admin** | Complete system access. Audit logs, user administration, catalog pricing, NHA rate configurations, and hospital branding. |
+| **doctor** | `doc123` | **Doctor** | Clinical consultation desk, active OPD patient queue, ambient voice intake, AI prescription generator, and diagnostic orders. |
+| **receptionist** | `recep123` | **Receptionist** | Front Desk operations. Patient finder/registration, visit queue allocation, advance deposit collections, and invoice creator. |
 | **accountant** | `acct123` | **Accountant** | Financial desk. Invoice queue payment processing, receipts preview/printing, refund processing, dashboard reports, and CSV/Excel downloads. |
 
 > [!WARNING]

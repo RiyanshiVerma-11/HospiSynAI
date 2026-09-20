@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, 
   HelpCircle, 
@@ -14,11 +14,31 @@ import {
   Play
 } from 'lucide-react';
 
-export default function DemoTour({ API_BASE, onSeedSuccess, setActiveTab, setSelectedPatientById }) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function DemoTour({ 
+  API_BASE, 
+  onSeedSuccess, 
+  setActiveTab, 
+  setSelectedPatientById,
+  isOpen: controlledIsOpen,
+  setIsOpen: controlledSetIsOpen
+}) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
+  const setIsOpen = controlledSetIsOpen !== undefined ? controlledSetIsOpen : setInternalIsOpen;
   const [isSeeding, setIsSeeding] = useState(false);
   const [seedDone, setSeedDone] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+
+  // Close tour on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, setIsOpen]);
 
   const steps = [
     {
@@ -95,25 +115,10 @@ export default function DemoTour({ API_BASE, onSeedSuccess, setActiveTab, setSel
     }
   };
 
-  return (
-    <div className="fixed bottom-4 right-4 z-50 print:hidden font-sans">
-      
-      {/* Collapsed floating button */}
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="flex items-center gap-2 bg-slate-900/40 backdrop-blur-md border border-slate-700/40 text-slate-300 opacity-60 hover:opacity-100 hover:bg-[#090d1a] hover:border-teal-500/50 hover:text-white rounded-2xl px-3.5 py-2.5 shadow-lg hover:shadow-2xl active:scale-95 transition-all group cursor-pointer"
-        >
-          <div className="relative">
-            <Sparkles className="w-3.5 h-3.5 text-teal-400 opacity-80 group-hover:opacity-100 group-hover:animate-pulse" />
-            <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-teal-400 rounded-full animate-ping" />
-          </div>
-          <span className="text-[11px] font-bold uppercase tracking-wider">SIPS Evaluation Tour</span>
-        </button>
-      )}
+  if (!isOpen) return null;
 
-      {/* Expanded panel */}
-      {isOpen && (
+  return (
+    <div className="fixed bottom-6 right-6 z-50 print:hidden font-sans">
         <div 
           className="bg-[#090d1a] border border-teal-500/30 text-white w-80 max-w-sm rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
           style={{ boxShadow: '0 20px 50px -15px rgba(20, 184, 166, 0.3)' }}
@@ -126,7 +131,8 @@ export default function DemoTour({ API_BASE, onSeedSuccess, setActiveTab, setSel
             </div>
             <button 
               onClick={() => setIsOpen(false)}
-              className="text-slate-400 hover:text-white p-1 hover:bg-slate-900 rounded-lg transition-colors"
+              className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+              title="Close Walkthrough (Esc)"
             >
               <X className="w-4 h-4" />
             </button>
@@ -183,7 +189,7 @@ export default function DemoTour({ API_BASE, onSeedSuccess, setActiveTab, setSel
               ) : (
                 <button
                   onClick={steps[currentStep].action}
-                  className="w-full bg-slate-900 border border-slate-800 text-slate-200 hover:text-white hover:bg-slate-850 py-2 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                  className="w-full bg-slate-900 border border-slate-800 text-slate-200 hover:text-white hover:bg-slate-800 py-2 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
                 >
                   <Play className="w-3 h-3 fill-current" />
                   <span>{steps[currentStep].actionLabel}</span>
@@ -198,7 +204,7 @@ export default function DemoTour({ API_BASE, onSeedSuccess, setActiveTab, setSel
             <button
               onClick={handlePrev}
               disabled={currentStep === 0}
-              className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-all flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider"
+              className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-all flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider"
             >
               <ChevronLeft className="w-3 h-3" /> Prev
             </button>
@@ -208,15 +214,13 @@ export default function DemoTour({ API_BASE, onSeedSuccess, setActiveTab, setSel
             <button
               onClick={handleNext}
               disabled={currentStep === steps.length - 1}
-              className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-all flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider"
+              className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-all flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider"
             >
               Next <ChevronRight className="w-3 h-3" />
             </button>
           </div>
 
         </div>
-      )}
-
     </div>
   );
 }

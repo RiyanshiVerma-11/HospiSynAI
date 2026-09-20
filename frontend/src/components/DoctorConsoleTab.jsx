@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Users,
   Search,
@@ -15,8 +15,15 @@ import {
   AlertTriangle,
   Download,
   CheckCircle,
-  Clock
+  Clock,
+  Mic,
+  MicOff,
+  Volume2,
+  X
 } from 'lucide-react';
+import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
+import VoiceVisualizer from './VoiceVisualizer';
+import PatientVoiceModal from './PatientVoiceModal';
 
 const MEDICINE_DATASTORE = [
   { name: 'Dolo 650mg (Paracetamol)', dosage: 'Once Daily (OD), After Meals for 3 Days' },
@@ -98,6 +105,157 @@ export default function DoctorConsoleTab({
   const [prescTiming, setPrescTiming] = useState('After Meals');
   const [prescFrequency, setPrescFrequency] = useState('Twice Daily (BD)');
   const [prescDuration, setPrescDuration] = useState('3 Days');
+
+  // Voice Consultation Scribe & Inline Dictation States
+  const [showAmbientScribe, setShowAmbientScribe] = useState(false);
+  const [ambientScribeParsing, setAmbientScribeParsing] = useState(false);
+  const [showPatientVoiceModal, setShowPatientVoiceModal] = useState(false);
+  const [patientVerbatimQuote, setPatientVerbatimQuote] = useState('');
+  const [activeFieldMic, setActiveFieldMic] = useState(null);
+
+  const ambientVoice = useSpeechRecognition({ defaultLang: 'en-IN' });
+  const fieldVoice = useSpeechRecognition({ defaultLang: 'en-IN' });
+
+  // Handle auto-populating consultation form from patient's natural voice
+  const handlePopulateFromPatientVoice = (parsed) => {
+    if (!parsed) return;
+    setActiveWorkspaceTab('clinical');
+    setSummaryForm(prev => ({
+      ...prev,
+      chief_complaints: parsed.chief_complaints || prev.chief_complaints,
+      diagnosis: parsed.diagnosis || prev.diagnosis,
+      medicines_list: parsed.medicines_list || prev.medicines_list,
+      tests_list: parsed.tests_list || prev.tests_list,
+      advice: parsed.advice || prev.advice,
+      follow_up_date: parsed.follow_up_date || prev.follow_up_date
+    }));
+    if (parsed.patient_verbatim) {
+      setPatientVerbatimQuote(parsed.patient_verbatim);
+    }
+  };
+
+  const fieldBaseTextRef = useRef('');
+
+  // Handle live dictation into specific field without duplicate compounding
+  useEffect(() => {
+    if (activeFieldMic && fieldVoice.transcript) {
+      const spokenText = fieldVoice.transcript.trim();
+      const base = fieldBaseTextRef.current ? fieldBaseTextRef.current.trim() : '';
+      setSummaryForm(prev => {
+        if (!base) {
+          return { ...prev, [activeFieldMic]: spokenText };
+        }
+        const separator = (activeFieldMic === 'chief_complaints' || activeFieldMic === 'advice') ? ', ' : '\n';
+        return { ...prev, [activeFieldMic]: `${base}${separator}${spokenText}` };
+      });
+    }
+  }, [fieldVoice.transcript, activeFieldMic]);
+
+  const handleToggleFieldMic = (fieldName) => {
+    if (activeFieldMic === fieldName) {
+      fieldVoice.stopListening();
+      setActiveFieldMic(null);
+      fieldBaseTextRef.current = '';
+      showToast(`Finished dictating into ${fieldName.replace('_', ' ')}.`);
+    } else {
+      if (ambientVoice.isListening) ambientVoice.stopListening();
+      fieldVoice.stopListening();
+      setActiveFieldMic(fieldName);
+      fieldBaseTextRef.current = summaryForm[fieldName] || '';
+      fieldVoice.resetTranscript();
+      fieldVoice.startListening();
+      showToast(`🎙️ Dictating into ${fieldName.replace('_', ' ')}... Speak now.`);
+    }
+  };
+
+  const clientHeuristicParseConsultation = (text) => {
+    const lower = text.toLowerCase();
+    const clean = text.trim();
+    const complaints = [];
+    for (const comp of ['fever', 'cough', 'sore throat', 'dry cough', 'productive cough', 'headache', 'body pain', 'stomach ache', 'vomiting', 'loose motions', 'chest pain', 'weakness', 'chills', 'running nose']) {
+      if (lower.includes(comp)) complaints.push(comp.charAt(0).toUpperCase() + comp.slice(1));
+    }
+    let dx = '';
+    const dxMatch = text.match(/(?:diagnosis|impression|assessment|suspected)\s*(?:is|as)?\s*[:\-]?\s*([^.,\n]+)/i);
+    if (dxMatch) dx = dxMatch[1].trim();
+    else if (lower.includes('fever') && lower.includes('cough')) dx = 'Acute Upper Respiratory Tract Infection (URTI)';
+    else if (lower.includes('fever')) dx = 'Acute Febrile Illness';
+    
+    const meds = [];
+    if (lower.includes('dolo') || lower.includes('paracetamol')) meds.push('1. Dolo 650mg — Thrice Daily (TID), After Meals for 3 Days (SOS)');
+    if (lower.includes('augmentin') || lower.includes('amoxicillin')) meds.push(`${meds.length + 1}. Augmentin 625mg — Twice Daily (BD), After Meals for 5 Days`);
+    if (lower.includes('azee') || lower.includes('azithromycin')) meds.push(`${meds.length + 1}. Azee 500mg — Once Daily (OD), Empty Stomach for 3 Days`);
+    if (lower.includes('pan') || lower.includes('pantocid')) meds.push(`${meds.length + 1}. Pan 40mg — Once Daily (OD), Empty Stomach for 10 Days`);
+    if (lower.includes('montair') || lower.includes('levocet')) meds.push(`${meds.length + 1}. Montair LC — Once Daily (OD), At Bedtime (HS) for 7 Days`);
+
+    const tests = [];
+    if (lower.includes('cbc') || lower.includes('blood count')) tests.push('1. CBC (Complete Blood Count)');
+    if (lower.includes('x-ray') || lower.includes('xray')) tests.push(`${tests.length + 1}. Chest X-Ray PA View`);
+    if (lower.includes('sugar') || lower.includes('glucose')) tests.push(`${tests.length + 1}. Blood Sugar (Fasting & PP)`);
+    if (lower.includes('urine')) tests.push(`${tests.length + 1}. Urine RE/ME`);
+    if (lower.includes('dengue')) tests.push(`${tests.length + 1}. Dengue NS1 Antigen & Serology`);
+
+    return {
+      chief_complaints: complaints.length > 0 ? complaints.join(', ') : clean.slice(0, 80),
+      diagnosis: dx || 'Acute Febrile Illness',
+      medicines_list: meds.length > 0 ? meds.join('\n') : '1. Dolo 650mg — Thrice Daily (TID), After Meals for 3 Days (SOS)',
+      tests_list: tests.length > 0 ? tests.join('\n') : '1. CBC (Complete Blood Count)',
+      advice: '1. Drink warm fluids frequently\n2. Complete bed rest for 2-3 days\n3. Warm saline gargles',
+      follow_up_date: 'Review after 3 days or if fever > 102°F persists'
+    };
+  };
+
+  const handleParseAmbientScribe = async (customText) => {
+    const textToParse = (customText || ambientVoice.fullText).trim();
+    if (!textToParse) {
+      showToast('Please speak consultation or click a demo sample chip first.', 'warning');
+      return;
+    }
+
+    setAmbientScribeParsing(true);
+    ambientVoice.stopListening();
+
+    try {
+      const res = await fetch(`${API_BASE}/visits/ai-parse-consultation`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          transcript: textToParse,
+          age: selectedVisit?.patient?.age,
+          gender: selectedVisit?.patient?.gender
+        })
+      });
+
+      let parsed = null;
+      if (res.ok) {
+        parsed = await res.json();
+      } else {
+        parsed = clientHeuristicParseConsultation(textToParse);
+      }
+
+      if (parsed) {
+        setSummaryForm(prev => ({
+          ...prev,
+          chief_complaints: parsed.chief_complaints || prev.chief_complaints,
+          diagnosis: parsed.diagnosis || prev.diagnosis,
+          medicines_list: parsed.medicines_list || prev.medicines_list,
+          tests_list: parsed.tests_list || prev.tests_list,
+          advice: parsed.advice || prev.advice,
+          follow_up_date: parsed.follow_up_date || prev.follow_up_date
+        }));
+        showToast('🎙️ Clinical consultation parsed! Fields auto-populated. Review and adjust details.');
+      }
+    } catch (err) {
+      console.warn('Consultation parse fetch fallback:', err);
+      const parsed = clientHeuristicParseConsultation(textToParse);
+      if (parsed) {
+        setSummaryForm(prev => ({ ...prev, ...parsed }));
+        showToast('Consultation processed! Please review details.');
+      }
+    } finally {
+      setAmbientScribeParsing(false);
+    }
+  };
 
   const INDIAN_LANGUAGES = [
     { code: 'Hindi', label: 'Hindi (हिंदी)' },
@@ -379,7 +537,7 @@ export default function DoctorConsoleTab({
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
             <input
               type="text"
-              className="w-full bg-white border border-slate-250 rounded-lg pl-8 pr-2.5 py-1.5 text-xs placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all"
+              className="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-2.5 py-1.5 text-xs placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all"
               placeholder="Search Queue..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -581,34 +739,177 @@ export default function DoctorConsoleTab({
                         <FileText className="w-4 h-4 text-teal-600" />
                         Clinical Records
                       </span>
-                      <button
-                        type="button"
-                        onClick={handleAiSuggestTreatment}
-                        disabled={aiPrescribeLoading}
-                        className={`text-[11px] font-bold text-white px-2.5 py-1 rounded-lg shadow-xs transition-all flex items-center gap-1.5 ${
-                          aiPrescribeLoading
-                            ? 'bg-violet-400 cursor-not-allowed'
-                            : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700'
-                        }`}
-                      >
-                        {aiPrescribeLoading ? (
-                          <>
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            AI Prescribing...
-                          </>
-                        ) : (
-                          <>
-                            <Brain className="w-3.5 h-3.5 text-violet-100" />
-                            AI Suggest Treatment
-                          </>
-                        )}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowPatientVoiceModal(true)}
+                          className="text-[11px] font-extrabold px-3 py-1 rounded-lg shadow-xs transition-all flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white cursor-pointer active:scale-95"
+                          title="Patient speaks natural complaints in Hindi/Hinglish -> AI extracts clinical OPD plan"
+                        >
+                          <Mic className="w-3.5 h-3.5 text-white" />
+                          <span>🎙️ मरीज़ की आवाज़ (Patient Voice)</span>
+                          <span className="bg-white/20 text-white text-[9px] px-1.5 py-0.2 rounded-full font-bold">AI</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAmbientScribe(prev => !prev);
+                            if (!showAmbientScribe) {
+                              ambientVoice.resetTranscript();
+                            } else {
+                              ambientVoice.stopListening();
+                            }
+                          }}
+                          className={`text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-xs transition-all flex items-center gap-1.5 ${
+                            showAmbientScribe
+                              ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                              : 'bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100'
+                          }`}
+                        >
+                          {showAmbientScribe ? <X className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5 text-teal-600" />}
+                          {showAmbientScribe ? 'Close Scribe' : '🎙️ Doctor Scribe'}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleAiSuggestTreatment}
+                          disabled={aiPrescribeLoading}
+                          className={`text-[11px] font-bold text-white px-2.5 py-1 rounded-lg shadow-xs transition-all flex items-center gap-1.5 ${
+                            aiPrescribeLoading
+                              ? 'bg-violet-400 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700'
+                          }`}
+                        >
+                          {aiPrescribeLoading ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              AI Prescribing...
+                            </>
+                          ) : (
+                            <>
+                              <Brain className="w-3.5 h-3.5 text-violet-100" />
+                              AI Suggest Treatment
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Ambient Voice Consultation Scribe Module */}
+                    {showAmbientScribe && (
+                      <div className="bg-slate-900 rounded-2xl p-3.5 text-white shadow-xl animate-in fade-in slide-in-from-top-2 duration-200 space-y-2.5 border border-slate-800">
+                        <VoiceVisualizer
+                          isListening={ambientVoice.isListening}
+                          audioLevel={ambientVoice.audioLevel}
+                          transcript={ambientVoice.transcript}
+                          interimTranscript={ambientVoice.interimTranscript}
+                          onStart={() => ambientVoice.startListening()}
+                          onStop={() => {
+                            ambientVoice.stopListening();
+                            if (ambientVoice.fullText) handleParseAmbientScribe(ambientVoice.fullText);
+                          }}
+                          onReset={() => ambientVoice.resetTranscript()}
+                          onSelectSample={(sample) => {
+                            ambientVoice.setTranscript(sample);
+                            handleParseAmbientScribe(sample);
+                          }}
+                          placeholder="Speak complete consultation (complaints, diagnosis, medicines, lab tests, advice)..."
+                          sampleGuide="Symptoms/Complaints ➔ Working Diagnosis ➔ Medicines + Dosing ➔ Tests ➔ Advice"
+                          sampleChips={[
+                            {
+                              label: "Acute Bronchitis (Augmentin + Dolo)",
+                              text: "Patient has high fever and productive cough for 3 days. Working diagnosis acute bronchitis. Prescribe Augmentin 625 twice daily after food for 5 days and Dolo 650 SOS. Order CBC and Chest X-ray. Advise saline gargle and complete rest."
+                            },
+                            {
+                              label: "Acute Pharyngitis (Azithromycin)",
+                              text: "Patient reports severe throat pain and fever for 2 days. Working diagnosis acute pharyngitis. Prescribe Azee 500 once daily before food for 3 days and Dolo 650 TID. Recommend CBC. Advise warm salt water gargle."
+                            },
+                            {
+                              label: "Gastroenteritis (Stomach Pain)",
+                              text: "Patient presents with acute stomach ache, nausea and loose motions. Suspected acute gastroenteritis. Prescribe Pan 40 once daily empty stomach and ORS fluids. Order KFT and Stool examination. Advise light diet."
+                            }
+                          ]}
+                        />
+
+                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800">
+                          <div className="text-[11px] text-slate-400 font-medium">
+                            {ambientScribeParsing ? (
+                              <span className="flex items-center gap-1.5 text-teal-400 font-bold">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                AI parsing consultation note...
+                              </span>
+                            ) : ambientVoice.fullText ? (
+                              <span className="text-emerald-400 font-bold flex items-center gap-1">
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                Dictation captured. Ready to auto-populate!
+                              </span>
+                            ) : (
+                              <span>Microphone ready. Continuous listening enabled.</span>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleParseAmbientScribe()}
+                            disabled={ambientScribeParsing || !ambientVoice.fullText.trim()}
+                            className="bg-teal-500 hover:bg-teal-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 font-extrabold text-xs px-3 py-1.5 rounded-xl shadow-sm transition-all flex items-center gap-1.5"
+                          >
+                            {ambientScribeParsing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-teal-950" />}
+                            ⚡ Auto-Populate Clinical Desk
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                       <div>
+                        {patientVerbatimQuote && (
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-2 text-xs text-amber-900 flex items-start justify-between gap-2 animate-in fade-in">
+                            <div className="flex-1">
+                              <span className="font-bold text-amber-800 text-[10px] uppercase tracking-wider block">🗣️ Spoken Patient Statement:</span>
+                              <p className="italic font-medium text-[11px] text-amber-950 mt-0.5">{patientVerbatimQuote}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setPatientVerbatimQuote('')}
+                              className="text-amber-500 hover:text-amber-700 text-xs font-bold shrink-0 p-0.5"
+                              title="Dismiss"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
                         <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex justify-between items-center">
-                          <span>Chief Complaints</span>
+                          <span className="flex items-center gap-1.5">
+                            Chief Complaints
+                            {activeFieldMic === 'chief_complaints' && (
+                              <span className="text-[9px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">Listening...</span>
+                            )}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setShowPatientVoiceModal(true)}
+                              className="text-[10px] font-bold text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-2 py-0.5 rounded-md flex items-center gap-1 transition-all cursor-pointer"
+                              title="Capture patient complaints directly in Hindi/Hinglish"
+                            >
+                              <Mic className="w-3 h-3 text-teal-600" />
+                              <span>मरीज़ की आवाज़ से भरें</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleFieldMic('chief_complaints')}
+                              className={`p-1 rounded-md transition-all ${
+                                activeFieldMic === 'chief_complaints'
+                                  ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                                  : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
+                              }`}
+                              title={activeFieldMic === 'chief_complaints' ? 'Stop mic' : '🎙️ Dictate Chief Complaints'}
+                            >
+                              {activeFieldMic === 'chief_complaints' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
                         </label>
                         <div className="flex flex-wrap gap-1 mb-1.5 max-h-[46px] overflow-y-auto pb-0.5 compact-scroll">
                           {COMMON_COMPLAINTS.map((tag) => {
@@ -638,7 +939,26 @@ export default function DoctorConsoleTab({
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Diagnosis</label>
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex justify-between items-center">
+                          <span className="flex items-center gap-1.5">
+                            Diagnosis
+                            {activeFieldMic === 'diagnosis' && (
+                              <span className="text-[9px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">Listening...</span>
+                            )}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleFieldMic('diagnosis')}
+                            className={`p-1 rounded-md transition-all ${
+                              activeFieldMic === 'diagnosis'
+                                ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                                : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
+                            }`}
+                            title={activeFieldMic === 'diagnosis' ? 'Stop mic' : '🎙️ Dictate Diagnosis'}
+                          >
+                            {activeFieldMic === 'diagnosis' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                          </button>
+                        </label>
                         <textarea
                           className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 font-medium transition-all h-26 resize-none"
                           placeholder="e.g. Upper Respiratory Tract Infection (URTI)"
@@ -650,8 +970,27 @@ export default function DoctorConsoleTab({
 
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex justify-between items-center">
-                        <span>Prescribe Medicines</span>
-                        <span className="text-[10px] text-teal-700 font-bold bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">Prescription Builder</span>
+                        <span className="flex items-center gap-1.5">
+                          Prescribe Medicines
+                          {activeFieldMic === 'medicines_list' && (
+                            <span className="text-[9px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">Listening...</span>
+                          )}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleFieldMic('medicines_list')}
+                            className={`p-1 rounded-md transition-all ${
+                              activeFieldMic === 'medicines_list'
+                                ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                                : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
+                            }`}
+                            title={activeFieldMic === 'medicines_list' ? 'Stop mic' : '🎙️ Dictate Medicines'}
+                          >
+                            {activeFieldMic === 'medicines_list' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                          </button>
+                          <span className="text-[10px] text-teal-700 font-bold bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">Prescription Builder</span>
+                        </div>
                       </label>
                       
                       <div className="bg-slate-50/80 p-2.5 rounded-lg border border-slate-200 mb-2 space-y-2 text-xs">
@@ -765,7 +1104,24 @@ export default function DoctorConsoleTab({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                       <div>
                         <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex justify-between items-center">
-                          <span>Recommend Tests</span>
+                          <span className="flex items-center gap-1.5">
+                            Recommend Tests
+                            {activeFieldMic === 'tests_list' && (
+                              <span className="text-[9px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">Listening...</span>
+                            )}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleFieldMic('tests_list')}
+                            className={`p-1 rounded-md transition-all ${
+                              activeFieldMic === 'tests_list'
+                                ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                                : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
+                            }`}
+                            title={activeFieldMic === 'tests_list' ? 'Stop mic' : '🎙️ Dictate Tests'}
+                          >
+                            {activeFieldMic === 'tests_list' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                          </button>
                         </label>
                         <div className="flex flex-wrap gap-1 mb-1.5 max-h-[46px] overflow-y-auto pb-0.5 compact-scroll">
                           {COMMON_TESTS.map((tag) => {
@@ -796,7 +1152,24 @@ export default function DoctorConsoleTab({
 
                       <div>
                         <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex justify-between items-center">
-                          <span>Lifestyle Advice</span>
+                          <span className="flex items-center gap-1.5">
+                            Lifestyle Advice
+                            {activeFieldMic === 'advice' && (
+                              <span className="text-[9px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">Listening...</span>
+                            )}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleFieldMic('advice')}
+                            className={`p-1 rounded-md transition-all ${
+                              activeFieldMic === 'advice'
+                                ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                                : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
+                            }`}
+                            title={activeFieldMic === 'advice' ? 'Stop mic' : '🎙️ Dictate Advice'}
+                          >
+                            {activeFieldMic === 'advice' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                          </button>
                         </label>
                         <div className="flex flex-wrap gap-1 mb-1.5 max-h-[46px] overflow-y-auto pb-0.5 compact-scroll">
                           {COMMON_ADVICE.map((tag) => {
@@ -1008,6 +1381,22 @@ export default function DoctorConsoleTab({
           </div>
         )}
       </div>
+
+      {/* Patient Natural Voice Intake Modal (Hindi / Hinglish / English) */}
+      <PatientVoiceModal
+        isOpen={showPatientVoiceModal}
+        onClose={() => setShowPatientVoiceModal(false)}
+        onPopulate={handlePopulateFromPatientVoice}
+        patientContext={{
+          name: selectedVisit?.patient?.name,
+          age: selectedVisit?.patient?.age,
+          gender: selectedVisit?.patient?.gender,
+          visitId: selectedVisit?.visit_id
+        }}
+        API_BASE={API_BASE}
+        getHeaders={getHeaders}
+        showToast={showToast}
+      />
 
     </div>
   );

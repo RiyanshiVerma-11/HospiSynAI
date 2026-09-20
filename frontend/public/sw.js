@@ -38,11 +38,17 @@ self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
-  // Bypass cache for API calls, Docker health checks, and non-GET requests
+  // Bypass cache for API calls, dynamic receipts, Docker health checks, dev modules, and non-GET requests
   if (
     request.method !== 'GET' ||
     url.pathname.includes('/api/') ||
+    url.pathname.includes('/receipts/') ||
     url.pathname.includes('/health') ||
+    url.pathname.includes('/@') ||
+    url.pathname.includes('/src/') ||
+    url.pathname.includes('/node_modules/') ||
+    url.search.includes('import') ||
+    url.search.includes('t=') ||
     url.origin !== self.location.origin
   ) {
     return;

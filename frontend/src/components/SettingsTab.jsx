@@ -107,7 +107,7 @@ export default function SettingsTab({
           </form>
 
           {/* Live PDF Receipt Preview */}
-          <div className="mt-5 pt-5 border-t border-slate-150">
+          <div className="mt-5 pt-5 border-t border-slate-200">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Live Receipt Template Preview</h4>
@@ -248,7 +248,7 @@ export default function SettingsTab({
           </div>
         </div>
 
-        <div className="border-t border-slate-150 pt-3">
+        <div className="border-t border-slate-200 pt-3">
           {editingDoctor ? (
             <div className="border border-slate-200 rounded-xl p-3 space-y-3">
               <h4 className="font-bold text-slate-900 text-xs">Edit Doctor Details</h4>
@@ -310,7 +310,7 @@ export default function SettingsTab({
                   <button
                     type="button"
                     onClick={() => setEditingDoctor(null)}
-                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-655 font-bold text-xs py-1.5 rounded transition-colors"
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-1.5 rounded transition-colors"
                   >
                     Cancel
                   </button>

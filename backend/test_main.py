@@ -156,3 +156,36 @@ def test_mocked_ai_suggestions():
     assert "Throat swab" in suggest.tests_list
     assert suggest.advice == "1. Warm saline gargles"
     assert suggest.follow_up_date == "Review in 3 days"
+
+
+def test_ai_insight_response_sentiment():
+    """Verify AIInsightResponse contains and serializes the sentiment field."""
+    insight = schemas.AIInsightResponse(
+        insight="Hospital revenue healthy.",
+        action="Maintain current operations.",
+        metric_highlight="₹50,000",
+        sentiment="positive"
+    )
+    assert insight.sentiment == "positive"
+    dumped = insight.model_dump() if hasattr(insight, "model_dump") else insight.dict()
+    assert dumped["sentiment"] == "positive"
+
+
+def test_bill_item_create_custom_service_name():
+    """Verify BillItemCreate can be instantiated with custom service_name and no service_id."""
+    item = schemas.BillItemCreate(
+        service_id=None,
+        service_name="Custom Pediatric Dressing",
+        amount=150.0
+    )
+    assert item.service_id is None
+    assert item.service_name == "Custom Pediatric Dressing"
+    assert item.amount == 150.0
+
+
+def test_receptionist_allowed_on_payments():
+    """Verify RoleChecker allows Receptionist role on payments endpoint."""
+    payment_checker = auth.RoleChecker(["Admin", "Accountant", "Receptionist"])
+    receptionist_user = auth.models.User(username="recep_test", role="Receptionist", name="Counter Staff")
+    # Should not raise any HTTPException
+    assert payment_checker(receptionist_user) == receptionist_user

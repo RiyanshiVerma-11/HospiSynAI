@@ -30,11 +30,16 @@ import {
   Check,
   Copy,
   Brain,
+  Stethoscope,
+  Sparkles,
   PanelLeft,
   PanelLeftClose,
   Menu
 } from 'lucide-react';
 import DashboardTab from './components/DashboardTab';
+import ReceptionistDashboardTab from './components/ReceptionistDashboardTab';
+import AccountantDashboardTab from './components/AccountantDashboardTab';
+import DoctorDashboardTab from './components/DoctorDashboardTab';
 import PatientSearchTab from './components/PatientSearchTab';
 import BillingTab from './components/BillingTab';
 
@@ -67,10 +72,22 @@ function App() {
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [viewMode, setViewMode] = useState('landing');
 
-  // Navigation State
-  const [activeTab, setActiveTab] = useState('dashboard');
+  // Navigation State (Persisted across browser refreshes, role-aware default)
+  const [activeTab, setActiveTab] = useState(() => {
+    const savedTab = sessionStorage.getItem('activeTab');
+    return savedTab || 'dashboard';
+  });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [deskVoiceIntakeRequested, setDeskVoiceIntakeRequested] = useState(false);
+  const [isTourOpen, setIsTourOpen] = useState(false);
+
+  // Keep activeTab synced to sessionStorage so refresh never loses position
+  useEffect(() => {
+    if (activeTab) {
+      sessionStorage.setItem('activeTab', activeTab);
+    }
+  }, [activeTab]);
 
   // Command Palette State
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
@@ -290,7 +307,7 @@ function App() {
 
       // Route to correct tab
       if (data.role === 'Receptionist') {
-        setActiveTab('search_register');
+        setActiveTab('dashboard');
       } else if (data.role === 'Accountant') {
         setActiveTab('dashboard');
       } else {
@@ -313,9 +330,6 @@ function App() {
   };
 
   const fetchDashboardMetrics = async () => {
-    // Read directly from sessionStorage to avoid stale closure issues
-    const currentRole = sessionStorage.getItem('role') || userRole;
-    if (currentRole === 'Receptionist') return; // Receptionist doesn't have access to financials
     try {
       setMetricsError(null);
       const res = await fetch(`${API_BASE}/dashboard/metrics`, { headers: getHeaders() });
@@ -568,16 +582,29 @@ function App() {
   };
 
   const handleSelectPatient = async (patientId) => {
+    if (!patientId) {
+      setSelectedPatient(null);
+      setPatientHistory([]);
+      return;
+    }
     const patient = patients.find(p => p.id === patientId);
+    if (!patient) {
+      setSelectedPatient(null);
+      return;
+    }
     setSelectedPatient(patient);
     
     // Fetch visits
-    const resVis = await fetch(`${API_BASE}/patients/${patientId}/visits`, { headers: getHeaders() });
-    const visits = resVis.ok ? await resVis.json() : [];
-    
-    // Add visits list to selectedPatient
-    setSelectedPatient(prev => ({ ...prev, visits }));
-    fetchPatientBillingHistory(patientId);
+    try {
+      const resVis = await fetch(`${API_BASE}/patients/${patientId}/visits`, { headers: getHeaders() });
+      const visits = resVis.ok ? await resVis.json() : [];
+      
+      // Add visits list to selectedPatient only if this patient is still selected
+      setSelectedPatient(prev => (prev && prev.id === patientId ? { ...prev, visits } : prev));
+      fetchPatientBillingHistory(patientId);
+    } catch (err) {
+      console.warn("Error fetching patient visits:", err);
+    }
   };
 
   const addBillItem = () => {
@@ -696,7 +723,11 @@ function App() {
       return;
     }
     try {
-      const itemsIn = billItems.map(item => ({ service_id: item.service_id, amount: item.amount }));
+      const itemsIn = billItems.map(item => ({ 
+        service_id: item.service_id || null, 
+        service_name: item.service_name,
+        amount: parseFloat(item.amount) 
+      }));
       const res = await fetch(`${API_BASE}/bills`, {
         method: 'POST',
         headers: getHeaders(),
@@ -1047,8 +1078,10 @@ function App() {
             {/* Quick demo login buttons */}
             <div className="mb-6">
               <p className="text-slate-500 text-[10px] uppercase tracking-widest text-center mb-3">⚡ Quick Demo Login</p>
-              <div className="grid grid-cols-3 gap-2">
-                {[['Receptionist','recep123','bg-teal-500/10 border-teal-500/20 text-teal-300 hover:bg-teal-500/20'],
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  ['Receptionist','recep123','bg-teal-500/10 border-teal-500/20 text-teal-300 hover:bg-teal-500/20'],
+                  ['Doctor','doc123','bg-emerald-500/10 border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20'],
                   ['Accountant','acct123','bg-violet-500/10 border-violet-500/20 text-violet-300 hover:bg-violet-500/20'],
                   ['Admin','admin123','bg-amber-500/10 border-amber-500/20 text-amber-300 hover:bg-amber-500/20']
                 ].map(([role, pass, cls]) => (
@@ -1074,7 +1107,7 @@ function App() {
                 <input type="text"
                   className="w-full rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all text-sm font-medium"
                   style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)'}}
-                  placeholder="receptionist / accountant / admin"
+                  placeholder="receptionist / doctor / accountant / admin"
                   value={loginForm.username}
                   onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
                   required />
@@ -1259,6 +1292,7 @@ function App() {
                   <span className={`inline-block px-1.5 py-0.2 rounded-full text-[8.5px] font-bold uppercase tracking-wider ${
                     userRole === 'Admin' ? 'bg-amber-500/15 text-amber-400'
                     : userRole === 'Accountant' ? 'bg-violet-500/15 text-violet-400'
+                    : userRole === 'Doctor' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                     : 'bg-teal-500/15 text-teal-400'
                   }`}>{userRole}</span>
                 </div>
@@ -1278,11 +1312,44 @@ function App() {
           {/* Nav Items */}
           <nav className="px-2.5 py-2 space-y-2">
             {/* SECTION 1: CLINICAL WORKSPACE */}
-            {['Admin', 'Receptionist', 'Accountant'].includes(userRole) && (
+            {['Admin', 'Receptionist', 'Accountant', 'Doctor'].includes(userRole) && (
               <div>
                 <p className="px-2 pb-1 text-slate-500 text-[9.5px] font-extrabold uppercase tracking-wider">Clinical Workspace</p>
                 <div className="space-y-0.5">
-                  {['Admin', 'Receptionist', 'Accountant'].includes(userRole) && (
+                  {['Admin', 'Receptionist', 'Accountant', 'Doctor'].includes(userRole) && (
+                    <button
+                      onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
+                        activeTab === 'dashboard' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      style={activeTab === 'dashboard' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
+                    >
+                      {userRole === 'Doctor' ? (
+                        <Stethoscope className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'dashboard' ? 'text-emerald-400' : ''}`} />
+                      ) : (
+                        <Grid className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'dashboard' ? 'text-teal-400' : ''}`} />
+                      )}
+                      {userRole === 'Receptionist' ? 'Front-Desk Overview' : userRole === 'Accountant' ? 'Financial Overview' : userRole === 'Doctor' ? 'Doctor OPD Overview' : 'Overview Dashboard'}
+                      {activeTab === 'dashboard' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                    </button>
+                  )}
+
+                  {/* Dedicated Doctor OPD Board for Admin */}
+                  {userRole === 'Admin' && (
+                    <button
+                      onClick={() => { setActiveTab('doctor_dashboard'); setMobileMenuOpen(false); }}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
+                        activeTab === 'doctor_dashboard' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      style={activeTab === 'doctor_dashboard' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
+                    >
+                      <Stethoscope className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'doctor_dashboard' ? 'text-emerald-400' : ''}`} />
+                      Doctor OPD Board
+                      {activeTab === 'doctor_dashboard' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                    </button>
+                  )}
+
+                  {['Admin', 'Receptionist', 'Accountant', 'Doctor'].includes(userRole) && (
                     <button
                       onClick={() => { setActiveTab('search_register'); setMobileMenuOpen(false); }}
                       className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
@@ -1291,14 +1358,16 @@ function App() {
                       style={activeTab === 'search_register' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
                     >
                       <Search className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'search_register' ? 'text-teal-400' : ''}`} />
-                      Patient Search & Desk
-                      <span className="ml-auto flex items-center gap-1 bg-violet-500/15 text-violet-300 text-[8.5px] font-bold px-1.5 py-0.2 rounded-full">
-                        <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" />AI
-                      </span>
+                      {userRole === 'Doctor' ? 'Patient Medical Records' : 'Patient Search & Desk'}
+                      {userRole !== 'Doctor' && (
+                        <span className="ml-auto flex items-center gap-1 bg-violet-500/15 text-violet-300 text-[8.5px] font-bold px-1.5 py-0.2 rounded-full">
+                          <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" />AI
+                        </span>
+                      )}
                     </button>
                   )}
 
-                  {['Admin', 'Receptionist'].includes(userRole) && (
+                  {['Admin', 'Receptionist', 'Doctor'].includes(userRole) && (
                     <button
                       onClick={() => { setActiveTab('doctor_console'); setMobileMenuOpen(false); }}
                       className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
@@ -1307,7 +1376,7 @@ function App() {
                       style={activeTab === 'doctor_console' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
                     >
                       <Brain className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'doctor_console' ? 'text-teal-400' : ''}`} />
-                      Doctor's Desk
+                      Doctor's Desk & Scribe
                       <span className="ml-auto flex items-center gap-1 bg-violet-500/15 text-violet-300 text-[8.5px] font-bold px-1.5 py-0.2 rounded-full">
                         <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" />AI
                       </span>
@@ -1352,7 +1421,7 @@ function App() {
             )}
 
             {/* SECTION 3: ANALYTICS & INSIGHTS */}
-            {userRole !== 'Receptionist' && (
+            {userRole === 'Admin' && (
               <div>
                 <p className="px-2 pb-1 text-slate-500 text-[9.5px] font-extrabold uppercase tracking-wider">Analytics & Performance</p>
                 <div className="space-y-0.5">
@@ -1411,6 +1480,21 @@ function App() {
           </nav>
         </div>
 
+        {/* SIPS Guided Evaluation Tour Sidebar Trigger */}
+        <div className="px-3 pb-2 pt-1" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+          <button
+            type="button"
+            onClick={() => setIsTourOpen(true)}
+            className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl bg-gradient-to-r from-teal-500/15 via-cyan-500/10 to-transparent hover:from-teal-500/25 hover:to-cyan-500/20 border border-teal-500/30 text-teal-300 hover:text-white text-xs font-extrabold transition-all group shadow-sm cursor-pointer"
+          >
+            <span className="flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-teal-400 group-hover:rotate-12 group-hover:scale-110 transition-all" />
+              <span>SIPS Pitch Tour</span>
+            </span>
+            <span className="text-[9px] bg-teal-500/20 text-teal-300 border border-teal-500/30 px-1.5 py-0.5 rounded font-mono font-bold">5 Steps</span>
+          </button>
+        </div>
+
         {/* User Footer Profile */}
         <div className="px-3.5 py-2.5" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
           <div className="flex items-center justify-between">
@@ -1451,8 +1535,14 @@ function App() {
 
             <div className="min-w-0">
               <h1 className="text-sm font-black text-slate-900 tracking-tight leading-tight truncate">
-              {activeTab === 'dashboard' && 'Dashboard Overview'}
-              {activeTab === 'search_register' && 'Patient Desk'}
+              {activeTab === 'dashboard' && (
+                userRole === 'Receptionist' ? 'Front-Desk Operations' :
+                userRole === 'Accountant' ? 'Financial Overview' :
+                userRole === 'Doctor' ? 'Doctor OPD Command Center' :
+                'Dashboard Overview'
+              )}
+              {activeTab === 'doctor_dashboard' && 'Doctor OPD Command Center'}
+              {activeTab === 'search_register' && (userRole === 'Doctor' ? 'Patient Medical Records' : 'Patient Desk')}
               {activeTab === 'doctor_console' && 'Doctor\'s Workspace'}
               {activeTab === 'billing_history' && 'Billing Operations'}
               {activeTab === 'roi_calculator' && 'ROI & Business Model'}
@@ -1462,8 +1552,17 @@ function App() {
               {activeTab === 'settings' && 'Hospital Settings'}
             </h1>
             <p className="text-slate-400 text-[10px] font-medium leading-none truncate mt-0.5">
-              {activeTab === 'dashboard' && 'Real-time financial summary • AI-powered insights'}
-              {activeTab === 'search_register' && 'Search, register patients, log visits, AI clinical assistant'}
+              {activeTab === 'dashboard' && (
+                userRole === 'Receptionist' ? 'OPD footfall, live token queue, doctor chambers & counter triage' :
+                userRole === 'Accountant' ? 'Revenue collections, outstanding patient receivables & payment reconciliation' :
+                userRole === 'Doctor' ? 'Live patient consultation queue, clinical triage, Voice Scribe dictation, and prescription manager' :
+                'Real-time financial summary • AI-powered insights'
+              )}
+              {activeTab === 'doctor_dashboard' && 'Live patient consultation queue, clinical triage, Voice Scribe dictation, and prescription manager'}
+              {activeTab === 'search_register' && (
+                userRole === 'Doctor' ? 'Search patient directory, past doctor consultations, diagnostic tests & prescriptions' :
+                'Search, register patients, log visits, AI clinical assistant'
+              )}
               {activeTab === 'doctor_console' && 'Clinical consultation, prescription builder, multi-lingual summary & AI insights'}
               {activeTab === 'billing_history' && 'Process bills, clear balances, manage advances'}
               {activeTab === 'roi_calculator' && 'Interactive product ROI, GST tax compliance, and SaaS configurations'}
@@ -1476,6 +1575,17 @@ function App() {
         </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* SIPS Evaluation Walkthrough Header Trigger */}
+            <button
+              type="button"
+              onClick={() => setIsTourOpen(true)}
+              className="flex items-center gap-1.5 bg-gradient-to-r from-teal-700 via-cyan-700 to-teal-800 hover:from-teal-600 hover:to-cyan-600 text-white border border-teal-400/40 text-[11px] font-black px-3 py-1.5 rounded-lg shadow-sm hover:shadow-teal-500/20 transition-all cursor-pointer group"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-cyan-200 group-hover:rotate-12 transition-transform" />
+              <span className="hidden sm:inline">Guided Evaluation Walkthrough</span>
+              <span className="sm:hidden">SIPS Tour</span>
+            </button>
+
             {/* Quick Command Palette trigger button */}
             <button
               type="button"
@@ -1501,14 +1611,85 @@ function App() {
         <div className="flex-1 overflow-y-auto md:overflow-hidden p-0 min-h-0">
 
         {/* ----------------------------------------------------
-            TAB 1: DASHBOARD
+            TAB 1: DASHBOARD (Role-Aware: Receptionist, Accountant, Doctor, Admin)
             ---------------------------------------------------- */}
         {activeTab === 'dashboard' && (
-          <DashboardTab
-            metrics={metrics}
-            metricsError={metricsError}
+          userRole === 'Receptionist' ? (
+            <ReceptionistDashboardTab
+              API_BASE={API_BASE}
+              getHeaders={getHeaders}
+              showToast={showToast}
+              patients={patients}
+              doctors={doctors}
+              unpaidBills={unpaidBills}
+              setActiveTab={setActiveTab}
+              handleSelectPatient={handleSelectPatient}
+              setShowVisitModal={setShowVisitModal}
+              setNewVisit={setNewVisit}
+              setNewVisitDoctorId={setNewVisitDoctorId}
+              openVoiceIntakeOnPatientDesk={() => {
+                setActiveTab('search_register');
+                if (handleSelectPatient) handleSelectPatient(null);
+                setDeskVoiceIntakeRequested(true);
+              }}
+            />
+          ) : userRole === 'Accountant' ? (
+            <AccountantDashboardTab
+              API_BASE={API_BASE}
+              getHeaders={getHeaders}
+              showToast={showToast}
+              metrics={metrics}
+              unpaidBills={unpaidBills}
+              patients={patients}
+              setActiveTab={setActiveTab}
+              setActiveBillForPayment={setActiveBillForPayment}
+              setPaymentForm={setPaymentForm}
+              fetchReceiptDetails={fetchReceiptDetails}
+              handleSelectPatient={handleSelectPatient}
+              fetchUnpaidBills={fetchUnpaidBills}
+              fetchDashboardMetrics={fetchDashboardMetrics}
+              triggerSyncSimulation={triggerSyncSimulation}
+            />
+          ) : userRole === 'Doctor' ? (
+            <DoctorDashboardTab
+              API_BASE={API_BASE}
+              getHeaders={getHeaders}
+              showToast={showToast}
+              patients={patients}
+              doctors={doctors}
+              setActiveTab={setActiveTab}
+              handleSelectPatient={handleSelectPatient}
+              openDoctorVisitInConsole={(vis) => {
+                if (vis?.patient && handleSelectPatient) handleSelectPatient(vis.patient);
+                setActiveTab('doctor_console');
+              }}
+            />
+          ) : (
+            <DashboardTab
+              metrics={metrics}
+              metricsError={metricsError}
+              API_BASE={API_BASE}
+              fetchReceiptDetails={fetchReceiptDetails}
+            />
+          )
+        )}
+
+        {/* ----------------------------------------------------
+            TAB 1A: DOCTOR OPD COMMAND CENTER BOARD (Direct Tab for Admin/Doctor)
+            ---------------------------------------------------- */}
+        {activeTab === 'doctor_dashboard' && (
+          <DoctorDashboardTab
             API_BASE={API_BASE}
-            fetchReceiptDetails={fetchReceiptDetails}
+            getHeaders={getHeaders}
+            showToast={showToast}
+            patients={patients}
+            doctors={doctors}
+            setActiveTab={setActiveTab}
+            handleSelectPatient={handleSelectPatient}
+            openDoctorVisitInConsole={(vis) => {
+              if (vis?.patient && handleSelectPatient) handleSelectPatient(vis.patient);
+              setActiveTab('doctor_console');
+            }}
           />
         )}
 
@@ -1584,6 +1765,8 @@ function App() {
             setActiveTab={setActiveTab}
             fetchReceiptDetails={fetchReceiptDetails}
             fetchAiRecommendations={fetchAiRecommendations}
+            deskVoiceIntakeRequested={deskVoiceIntakeRequested}
+            setDeskVoiceIntakeRequested={setDeskVoiceIntakeRequested}
             addRecommendedItem={addRecommendedItem}
             addBillItem={addBillItem}
             removeBillItem={removeBillItem}
@@ -1702,7 +1885,7 @@ function App() {
                 </button>
                 <button
                   onClick={() => setViewingPayment(null)}
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-650 text-xs font-bold px-3 py-2 rounded-xl transition-colors"
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold px-3 py-2 rounded-xl transition-colors"
                 >
                   Close
                 </button>
@@ -1765,7 +1948,7 @@ function App() {
                           onClick={() => {
                             navigator.clipboard.writeText(viewingPayment.payment_id);
                           }}
-                          className="text-slate-400 hover:text-slate-600 p-0.5 rounded hover:bg-slate-150 transition-colors"
+                          className="text-slate-400 hover:text-slate-600 p-0.5 rounded hover:bg-slate-200 transition-colors"
                           title="Copy Payment ID"
                         >
                           <Copy className="w-2.5 h-2.5" />
@@ -1912,7 +2095,7 @@ function App() {
                 <button
                   type="button"
                   onClick={() => setShowVisitModal(false)}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-650 font-bold py-3.5 rounded-xl transition-all"
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-xl transition-all"
                 >
                   Cancel
                 </button>
@@ -1954,9 +2137,10 @@ function App() {
                 <p className="px-3 pb-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Navigation & Views</p>
                 <div className="space-y-1">
                   {[
-                    { id: 'dashboard', label: 'Executive Dashboard Overview', icon: Grid, category: 'Analytics', roles: ['Admin', 'Accountant'] },
-                    { id: 'doctor_console', label: 'Doctor Clinical Workspace & AI Assistant', icon: Brain, category: 'Clinical', roles: ['Admin', 'Receptionist'] },
-                    { id: 'search_register', label: 'Patient Desk & Registration', icon: Search, category: 'Clinical', roles: ['Admin', 'Receptionist', 'Accountant'] },
+                    { id: 'dashboard', label: 'Executive Dashboard Overview', icon: Grid, category: 'Analytics', roles: ['Admin', 'Accountant', 'Receptionist', 'Doctor'] },
+                    { id: 'doctor_dashboard', label: 'Doctor OPD Command Center & Live Queue', icon: Stethoscope, category: 'Clinical', roles: ['Admin', 'Doctor'] },
+                    { id: 'doctor_console', label: 'Doctor Clinical Workspace & AI Assistant', icon: Brain, category: 'Clinical', roles: ['Admin', 'Doctor', 'Receptionist'] },
+                    { id: 'search_register', label: 'Patient Desk & Registration', icon: Search, category: 'Clinical', roles: ['Admin', 'Receptionist', 'Accountant', 'Doctor'] },
                     { id: 'billing_history', label: 'Billing Operations & Settlement Queue', icon: CreditCard, category: 'Financial', roles: ['Admin', 'Accountant'] },
                     { id: 'catalog', label: 'Services & Diagnostic Test Catalog', icon: FileText, category: 'Financial', roles: ['Admin'] },
                     { id: 'roi_calculator', label: 'ROI & SaaS Pricing Calculator', icon: TrendingUp, category: 'Analytics', roles: ['Admin', 'Accountant'] },
@@ -1998,6 +2182,28 @@ function App() {
               <div>
                 <p className="px-3 pb-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Quick Shortcuts</p>
                 <div className="space-y-1">
+                  {['Admin', 'Receptionist', 'Doctor'].includes(userRole) && (
+                    <button
+                      onClick={() => {
+                        setActiveTab('doctor_console');
+                        setCmdPaletteOpen(false);
+                        setCmdSearch('');
+                      }}
+                      className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl hover:bg-violet-50 text-slate-700 hover:text-violet-900 transition-all text-left group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center text-violet-600">
+                          <Brain className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="text-sm font-bold block">Launch AI Consultation Assistant</span>
+                          <span className="text-[10px] text-slate-400 font-medium">Prescription builder with multi-lingual voice summary</span>
+                        </div>
+                      </div>
+                      <span className="text-xs font-semibold text-violet-600 opacity-0 group-hover:opacity-100 transition-opacity">Launch →</span>
+                    </button>
+                  )}
+
                   <button
                     onClick={() => {
                       setActiveTab('search_register');
@@ -2050,10 +2256,12 @@ function App() {
           </div>
         </div>
       )}
-      {/* SIPS DEMO & EVALUATION TOUR FLOATING CONTROL */}
+      {/* SIPS DEMO & EVALUATION TOUR CONTROL */}
       {token && (
         <DemoTour
           API_BASE={API_BASE}
+          isOpen={isTourOpen}
+          setIsOpen={setIsTourOpen}
           onSeedSuccess={(msg) => {
             showToast(msg, 'success');
             fetchDashboardMetrics();

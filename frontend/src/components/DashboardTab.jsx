@@ -108,17 +108,32 @@ function AIInsightCard({ API_BASE }) {
 
   useEffect(() => { fetchInsight(); }, []);
 
-  const sentimentColor = {
-    positive: 'text-emerald-300',
-    negative: 'text-rose-300',
-    neutral: 'text-slate-300'
-  }[insight?.sentiment] || 'text-slate-300';
+  const isDuesOrDebt = /due|outstanding|pending|unpaid|balance|deficit/i.test(insight?.metric_highlight || '');
 
-  const sentimentIcon = {
-    positive: <TrendingUp className="w-4 h-4 text-emerald-400" />,
-    negative: <TrendingDown className="w-4 h-4 text-rose-400" />,
-    neutral: <Zap className="w-4 h-4 text-amber-400" />
-  }[insight?.sentiment] || null;
+  const sentimentColor = (() => {
+    if (isDuesOrDebt) {
+      return insight?.sentiment === 'positive' ? 'text-emerald-300' : 'text-rose-300';
+    }
+    return {
+      positive: 'text-emerald-300',
+      negative: 'text-rose-300',
+      neutral: 'text-amber-300'
+    }[insight?.sentiment] || 'text-slate-300';
+  })();
+
+  const sentimentIcon = (() => {
+    if (isDuesOrDebt) {
+      if (insight?.sentiment === 'positive') {
+        return <CheckCircle2 className="w-4 h-4 text-emerald-400" />;
+      }
+      return <AlertTriangle className="w-4 h-4 text-rose-400" />;
+    }
+    return {
+      positive: <TrendingUp className="w-4 h-4 text-emerald-400" />,
+      negative: <TrendingDown className="w-4 h-4 text-rose-400" />,
+      neutral: <Zap className="w-4 h-4 text-amber-400" />
+    }[insight?.sentiment] || null;
+  })();
 
   return (
     <div className="ai-insight-card animate-pulse-violet p-3 animate-slide-up animate-slide-up-delay-4 md:h-full md:min-h-0 flex flex-col justify-between overflow-hidden">
@@ -251,6 +266,10 @@ export default function DashboardTab({ metrics, metricsError, API_BASE, fetchRec
     } finally {
       setExportLoading(null);
     }
+  };
+
+  const handleExportCSV = (scope = 'all') => {
+    downloadReport('csv');
   };
 
   // ── Error state ──
@@ -605,7 +624,7 @@ export default function DashboardTab({ metrics, metricsError, API_BASE, fetchRec
                   Filtered by: <b className="uppercase ml-0.5">{highlightedCard}</b>
                 </span>
                 <button onClick={() => setHighlightedCard('all')}
-                  className="text-teal-655 hover:text-teal-900 font-extrabold uppercase text-[9px] tracking-wider">
+                  className="text-teal-600 hover:text-teal-900 font-extrabold uppercase text-[9px] tracking-wider">
                   Reset
                 </button>
               </div>

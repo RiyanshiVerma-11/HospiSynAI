@@ -3,6 +3,7 @@ import io
 import datetime
 import json
 import httpx
+import re
 from typing import List, Optional, Dict
 
 from fastapi import FastAPI, Depends, HTTPException, status, Query, BackgroundTasks
@@ -20,6 +21,7 @@ import schemas
 import auth
 import pdf_generator
 import anakin_client
+import clinical_nlp
 
 NHA_RATES_FILE = os.path.join(os.path.dirname(__file__), "nha_cghs_rates.json")
 NHA_BENCHMARKS = []
@@ -45,11 +47,13 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "https://hospi-syn-ai.vercel.app"
     ],
-    allow_origin_regex=r"https?://.*",
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$|^https://.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -119,7 +123,8 @@ def on_startup():
         users_to_seed = [
             ("admin", "admin123", "Admin", "System Administrator"),
             ("receptionist", "recep123", "Receptionist", "Front Desk Receptionist"),
-            ("accountant", "acct123", "Accountant", "Chief Accountant")
+            ("accountant", "acct123", "Accountant", "Chief Accountant"),
+            ("doctor", "doc123", "Doctor", "Dr. Shweta Grover")
         ]
         for username, password, role, name in users_to_seed:
             existing_user = db.query(models.User).filter(models.User.username == username).first()
@@ -262,15 +267,19 @@ def generate_unique_id(db: Session, prefix: str, table_model, id_column) -> str:
     return f"{id_prefix}{new_counter:05d}"
 
 def log_action(db: Session, user_id: Optional[int], action: str, target_table: str, target_id: str, details: str):
-    log = models.AuditLog(
-        user_id=user_id,
-        action=action,
-        target_table=target_table,
-        target_id=target_id,
-        details=details
-    )
-    db.add(log)
-    db.commit()
+    try:
+        log = models.AuditLog(
+            user_id=user_id,
+            action=action,
+            target_table=target_table,
+            target_id=target_id,
+            details=details
+        )
+        db.add(log)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Warning: Failed to persist audit log: {e}")
 
 
 # ----------------------------------------------------
@@ -363,7 +372,7 @@ def register_patient(
 def search_patients(
     query: Optional[str] = Query(None, description="Search by Patient ID, Name, Mobile, Bill No or Receipt No"),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant"]))
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant", "Doctor"]))
 ):
     q = db.query(models.Patient).options(
         joinedload(models.Patient.visits).joinedload(models.Visit.bills),
@@ -404,7 +413,7 @@ def search_patients(
 def get_patient(
     id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant"]))
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant", "Doctor"]))
 ):
     patient = db.query(models.Patient).filter(models.Patient.id == id, models.Patient.is_active == True).first()
     if not patient:
@@ -461,7 +470,7 @@ def create_visit(
 def get_patient_visits(
     id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant"]))
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant", "Doctor"]))
 ):
     return db.query(models.Visit).filter(models.Visit.patient_id == id, models.Visit.is_active == True).order_by(models.Visit.visit_date.desc()).all()
 
@@ -469,7 +478,7 @@ def get_patient_visits(
 @app.get("/api/visits", response_model=List[schemas.VisitResponse])
 def get_all_visits(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant"]))
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant", "Doctor"]))
 ):
     return db.query(models.Visit).filter(models.Visit.is_active == True).order_by(models.Visit.visit_date.desc()).all()
 
@@ -481,7 +490,7 @@ async def update_visit_summary(
     generate_ai_summary: bool = Query(False),
     target_language: str = Query("Hindi"),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant"]))
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant", "Doctor"]))
 ):
     db_visit = db.query(models.Visit).filter(models.Visit.id == id, models.Visit.is_active == True).first()
     if not db_visit:
@@ -737,15 +746,26 @@ def get_visit_prescription_pdf(
 async def ai_suggest_treatment(
     req: schemas.AISuggestRequest,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant"]))
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant", "Doctor"]))
 ):
     api_key = os.getenv("GROQ_API_KEY")
-    model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
-    if not api_key:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Groq API key is not configured. Please set GROQ_API_KEY in your .env file."
+    model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    if model == "openai/gpt-oss-120b":
+        model = "llama-3.3-70b-versatile"
+
+    def fallback_to_heuristics():
+        text_for_nlp = f"{req.chief_complaints or ''}. {req.diagnosis or ''}".strip()
+        h = clinical_nlp.heuristic_parse_patient_voice(text_for_nlp, age=req.age, gender=req.gender)
+        return schemas.AISuggestResponse(
+            diagnosis=h.get("diagnosis", req.diagnosis or "Clinical Consultation"),
+            medicines_list=h.get("medicines_list", ""),
+            tests_list=h.get("tests_list", ""),
+            advice=h.get("advice", ""),
+            follow_up_date=h.get("follow_up_date", "")
         )
+
+    if not api_key:
+        return fallback_to_heuristics()
 
     # CHAIN-OF-THOUGHT prescription prompt with differential diagnosis
     prompt = f"""You are an expert Indian clinical prescribing assistant with 20 years of OPD experience.
@@ -807,14 +827,11 @@ JSON schema:
     }
 
     try:
-        async with httpx.AsyncClient(timeout=28.0) as client:
+        async with httpx.AsyncClient(timeout=20.0) as client:
             response = await client.post(url, headers=groq_headers, json=payload)
             if response.status_code != 200:
-                print("GROQ API ERROR RESPONSE:", response.status_code, response.text)
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Failed to communicate with Groq AI API ({response.status_code}): {response.text}"
-                )
+                print("GROQ API ERROR RESPONSE, falling back to heuristics:", response.status_code, response.text)
+                return fallback_to_heuristics()
             result = response.json()
         
         content = result["choices"][0]["message"]["content"].strip()
@@ -827,18 +844,301 @@ JSON schema:
             advice=parsed_data.get("advice", ""),
             follow_up_date=parsed_data.get("follow_up_date", "")
         )
-    except HTTPException:
-        raise
-    except json.JSONDecodeError as je:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to parse AI prescription suggestions: {str(je)}"
-        )
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to communicate with Groq AI API: {str(e)}"
-        )
+        print(f"ai_suggest_treatment error ({e}), falling back to heuristics.")
+        return fallback_to_heuristics()
+
+
+# ----------------------------------------------------
+# VOICE INTELLIGENCE & CLINICAL SCRIBE ROUTERS
+# ----------------------------------------------------
+
+def heuristic_parse_voice_intake(text: str) -> dict:
+    """Fallback rule/regex parser to extract patient registration fields from spoken text."""
+    clean = text.strip()
+    result = {
+        "name": None,
+        "age": None,
+        "gender": None,
+        "mobile_number": None,
+        "address": None,
+        "chief_complaints": None
+    }
+    
+    segments = [s.strip() for s in re.split(r'[,;]', clean) if s.strip()]
+    
+    # 1. Mobile Number: 10-digit number starting with 6-9
+    phone_match = re.search(r'\b(?:mobile(?:\s*number)?|phone(?:\s*number)?|contact)?\s*([6-9]\d{9})\b', clean, re.IGNORECASE)
+    if not phone_match:
+        phone_match = re.search(r'\b([6-9]\d{4}\s*\d{5})\b', clean)
+    if phone_match:
+        phone_str = re.sub(r'\s+', '', phone_match.group(1))
+        result["mobile_number"] = phone_str
+        clean = clean.replace(phone_match.group(0), " ")
+
+    # 2. Age: e.g. "32 years old", "32 yrs", "age 32", "32 saal"
+    age_match = re.search(r'\b(?:age\s*)?(\d{1,3})\s*(?:years?(?:\s*old)?|yrs?(?:\s*old)?|saal)?\b', clean, re.IGNORECASE)
+    if age_match:
+        val = int(age_match.group(1))
+        if 0 < val <= 120:
+            result["age"] = val
+            clean = re.sub(re.escape(age_match.group(0)), " ", clean, count=1)
+
+    # 3. Gender
+    gender_match = re.search(r'\b(female|females|mahila|woman|girl|aurat|male|males|purush|man|boy|other)\b', clean, re.IGNORECASE)
+    if gender_match:
+        g = gender_match.group(1).lower()
+        if g in ['female', 'females', 'mahila', 'woman', 'girl', 'aurat']:
+            result["gender"] = "Female"
+        elif g in ['male', 'males', 'purush', 'man', 'boy']:
+            result["gender"] = "Male"
+        else:
+            result["gender"] = "Other"
+        clean = re.sub(r'\b' + re.escape(gender_match.group(0)) + r'\b', " ", clean, flags=re.IGNORECASE)
+
+    # 4. Chief Complaints / Reason for Visit
+    complaint_match = re.search(r'(?:complaints?|complaining of|suffering from|problem(?: of)?|issues?(?: with)?|takleef|reason(?:\s*for\s*visit)?|symptoms?)\s*[:\-]?\s*(.+)$', clean, re.IGNORECASE)
+    if complaint_match:
+        result["chief_complaints"] = complaint_match.group(1).strip(" .,-")
+        clean = clean[:complaint_match.start()].strip()
+    else:
+        symptom_kws = ['fever', 'cough', 'cold', 'headache', 'stomach pain', 'chest pain', 'vomiting', 'loose motions', 'diarrhea', 'throat pain', 'body ache', 'weakness', 'dizziness', 'bp check', 'bukhar', 'dard']
+        found_symptoms = [kw.title() for kw in symptom_kws if re.search(r'\b' + re.escape(kw) + r'\b', clean, re.IGNORECASE)]
+        if found_symptoms:
+            result["chief_complaints"] = ", ".join(found_symptoms)
+            for kw in symptom_kws:
+                clean = re.sub(r'\b' + re.escape(kw) + r'\b', ' ', clean, flags=re.IGNORECASE)
+
+    # 5. Address with proper word boundaries
+    addr_match = re.search(r'\b(?:address|from|living in|residing in|at)\b\s*[:\-]?\s*([^,\.]+)', clean, re.IGNORECASE)
+    if addr_match:
+        addr = addr_match.group(1).strip(" .,-")
+        if addr and len(addr) > 2:
+            result["address"] = addr.title()
+            clean = clean.replace(addr_match.group(0), " ")
+
+    # If comma-separated segments were provided (user spoke in natural chunks)
+    if len(segments) >= 2:
+        for seg in segments:
+            cand = re.sub(r'\b(?:register(?:\s*patient)?|new\s*patient|patient(?:\s*name)?|name(?:\s*is)?|mr\.?|mrs\.?|ms\.?|shri|smt)\b', ' ', seg, flags=re.IGNORECASE).strip()
+            # Clean of digits/symbols
+            cand_clean = re.sub(r'[^A-Za-z\s]', ' ', cand).strip()
+            if not cand_clean:
+                continue
+            is_noise = any(k in cand.lower() for k in ['male', 'female', 'years', 'yrs', 'saal', 'phone', 'mobile', 'fever', 'pain', 'cough', 'vomiting', 'complaint'])
+            if not result["name"] and not is_noise and len(cand_clean.split()) in [1, 2, 3]:
+                result["name"] = cand_clean.title()
+            elif result["name"] and not result["address"] and not is_noise:
+                if cand.strip().title() != result["name"]:
+                    result["address"] = cand.strip().title()
+
+    # 6. Fallback Name
+    if not result["name"]:
+        clean_name = re.sub(r'\b(?:register(?:\s*patient)?|new\s*patient|patient(?:\s*name)?|name(?:\s*is)?|mr\.?|mrs\.?|ms\.?|shri|smt)\b', ' ', clean, flags=re.IGNORECASE)
+        clean_name = re.sub(r'[^a-zA-Z\s]', ' ', clean_name)
+        name_tokens = [t.strip().title() for t in clean_name.split() if len(t.strip()) > 1 and t.lower() not in ['years', 'year', 'old', 'saal', 'male', 'female', 'phone', 'mobile', 'address', 'patient', 'register', 'new', 'for', 'with', 'and', 'the']]
+        if name_tokens:
+            result["name"] = " ".join(name_tokens[:2])
+            if not result["address"] and len(name_tokens) > 2:
+                result["address"] = " ".join(name_tokens[2:])
+    
+    return result
+
+
+def heuristic_parse_consultation(text: str) -> dict:
+    """Fallback rule parser to extract structured prescription from natural clinical dictation."""
+    lower = text.lower()
+    clean = text.strip()
+    
+    # Complaints
+    complaints = []
+    for comp in ["fever", "cough", "sore throat", "dry cough", "productive cough", "running nose", "headache", "body pain", "body ache", "stomach ache", "stomach pain", "vomiting", "loose motions", "chest pain", "shortness of breath", "weakness", "high bp", "chills", "nausea"]:
+        if comp in lower:
+            complaints.append(comp.title())
+    
+    # Diagnosis
+    dx = ""
+    dx_match = re.search(r'(?:diagnosis|impression|assessment|suspected|suffering from)\s*(?:is|as)?\s*[:\-]?\s*([^.,\n]+)', text, re.IGNORECASE)
+    if dx_match:
+        dx = dx_match.group(1).strip().title()
+    elif "fever" in lower and "cough" in lower:
+        dx = "Acute Upper Respiratory Tract Infection (URTI)"
+    elif "stomach" in lower or "vomiting" in lower or "motion" in lower:
+        dx = "Acute Gastroenteritis"
+    elif "fever" in lower:
+        dx = "Acute Febrile Illness"
+    
+    # Medicines
+    meds = []
+    med_rules = [
+        ("dolo 650", "Dolo 650mg (Paracetamol)", "Thrice Daily (TID), After Meals for 3 Days (SOS)"),
+        ("crocin", "Crocin 500mg (Paracetamol)", "Thrice Daily (TID), After Meals for 3 Days"),
+        ("calpol", "Calpol 650mg (Paracetamol)", "Thrice Daily (TID), After Meals for 3 Days"),
+        ("augmentin 625", "Augmentin 625mg (Amoxicillin + Clavulanate)", "Twice Daily (BD), After Meals for 5 Days"),
+        ("azee 500", "Azee 500mg (Azithromycin)", "Once Daily (OD), Empty Stomach for 3 Days"),
+        ("azithromycin", "Azee 500mg (Azithromycin)", "Once Daily (OD), Empty Stomach for 3 Days"),
+        ("pan 40", "Pan 40mg (Pantoprazole)", "Once Daily (OD), Empty Stomach for 10 Days"),
+        ("pantocid", "Pantocid 40mg (Pantoprazole)", "Once Daily (OD), Empty Stomach for 14 Days"),
+        ("combiflam", "Combiflam (Ibuprofen + Paracetamol)", "Twice Daily (BD), After Meals for 3 Days"),
+        ("zerodol", "Zerodol-P (Aceclofenac + Paracetamol)", "Twice Daily (BD), After Meals for 3 Days"),
+        ("levocet", "Levocet 5mg (Levocetirizine)", "Once Daily (OD), At Bedtime (HS) for 5 Days"),
+        ("montair", "Montair LC (Montelukast + Levocetirizine)", "Once Daily (OD), At Bedtime (HS) for 7 Days"),
+        ("glycomet", "Glycomet 500mg (Metformin)", "Twice Daily (BD), After Meals"),
+        ("telma", "Telma 40mg (Telmisartan)", "Once Daily (OD), In Morning"),
+    ]
+    for key, name, dose in med_rules:
+        if key in lower:
+            meds.append(f"{len(meds)+1}. {name} - {dose}")
+            
+    # Tests
+    tests = []
+    test_rules = [
+        ("cbc", "CBC (Complete Blood Count)"),
+        ("blood count", "CBC (Complete Blood Count)"),
+        ("x-ray", "Chest X-Ray PA View"),
+        ("xray", "Chest X-Ray PA View"),
+        ("blood sugar", "Blood Sugar (Fasting & PP)"),
+        ("glucose", "Blood Sugar (Fasting & PP)"),
+        ("hba1c", "HbA1c"),
+        ("lft", "LFT (Liver Function)"),
+        ("liver", "LFT (Liver Function)"),
+        ("kft", "KFT (Kidney Function)"),
+        ("kidney", "KFT (Kidney Function)"),
+        ("lipid", "Lipid Profile"),
+        ("thyroid", "Thyroid Profile (T3/T4/TSH)"),
+        ("urine", "Urine RE/ME"),
+        ("dengue", "Dengue NS1 Antigen & Serology"),
+    ]
+    for key, name in test_rules:
+        if key in lower and name not in tests:
+            tests.append(f"{len(tests)+1}. {name}")
+            
+    # Advice
+    advice = []
+    if "water" in lower or "fluid" in lower:
+        advice.append("Drink plenty of warm water and ORS fluids frequently")
+    if "rest" in lower:
+        advice.append("Take complete bed rest for 2-3 days")
+    if "gargle" in lower:
+        advice.append("Warm saline gargles 3-4 times a day")
+    if "diet" in lower or "oily" in lower or "food" in lower:
+        advice.append("Avoid oily, spicy, and cold foods; take light diet")
+    if not advice:
+        advice.append("Maintain adequate hydration and rest; review if symptoms worsen")
+
+    return {
+        "chief_complaints": ", ".join(complaints) if complaints else clean[:80],
+        "diagnosis": dx or "Acute Febrile Illness",
+        "medicines_list": "\n".join(meds) if meds else "1. Dolo 650mg (Paracetamol) - Thrice Daily (TID), After Meals for 3 Days (SOS)",
+        "tests_list": "\n".join(tests) if tests else "1. CBC (Complete Blood Count)",
+        "advice": "\n".join(f"{i+1}. {a}" for i, a in enumerate(advice)),
+        "follow_up_date": "Review after 3 days or immediately if fever > 102°F persists"
+    }
+
+
+@app.post("/api/ai/parse-voice-intake", response_model=schemas.VoiceIntakeParseResponse)
+async def parse_voice_intake(
+    req: schemas.VoiceIntakeParseRequest,
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Parses spoken voice intake into structured patient registration fields."""
+    transcript = req.transcript.strip()
+    if not transcript:
+        return schemas.VoiceIntakeParseResponse()
+
+    api_key = os.getenv("GROQ_API_KEY")
+    model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+
+    if api_key:
+        prompt = f"""You are an expert Indian hospital reception assistant.
+Extract patient registration details from this spoken registration phrase:
+"{transcript}"
+
+Rules:
+1. "name": Patient's full name (Title Case).
+2. "age": Integer age (in years) or null.
+3. "gender": Exactly "Male", "Female", or "Other" or null.
+4. "mobile_number": 10-digit Indian phone number (digits only, e.g. "9876543210") or null.
+5. "address": Residential location/city/area or null.
+6. "chief_complaints": Short reason for visit or primary symptoms (e.g. "Fever and headache") or null.
+
+Return ONLY a valid JSON object matching:
+{{
+  "name": "...",
+  "age": 32,
+  "gender": "Female",
+  "mobile_number": "9876543210",
+  "address": "...",
+  "chief_complaints": "..."
+}}"""
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                res = await client.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json={
+                        "model": model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.1,
+                        "response_format": {"type": "json_object"}
+                    }
+                )
+                if res.status_code == 200:
+                    data = json.loads(res.json()["choices"][0]["message"]["content"])
+                    return schemas.VoiceIntakeParseResponse(
+                        name=data.get("name"),
+                        age=int(data["age"]) if data.get("age") and str(data["age"]).isdigit() else None,
+                        gender=data.get("gender") if data.get("gender") in ["Male", "Female", "Other"] else None,
+                        mobile_number=str(data["mobile_number"]).replace(" ", "") if data.get("mobile_number") else None,
+                        address=data.get("address"),
+                        chief_complaints=data.get("chief_complaints"),
+                        confidence="high",
+                        source="ai"
+                    )
+        except Exception as e:
+            print(f"Groq voice intake parse fallback to heuristic: {e}")
+
+    # Fallback to local heuristic parser
+    h = heuristic_parse_voice_intake(transcript)
+    return schemas.VoiceIntakeParseResponse(
+        name=h.get("name"),
+        age=h.get("age"),
+        gender=h.get("gender"),
+        mobile_number=h.get("mobile_number"),
+        address=h.get("address"),
+        chief_complaints=h.get("chief_complaints"),
+        confidence="medium",
+        source="heuristic"
+    )
+
+
+@app.post("/api/visits/ai-parse-consultation", response_model=schemas.VoiceConsultationParseResponse)
+async def parse_consultation_dictation(
+    req: schemas.VoiceConsultationParseRequest,
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Parses natural patient complaints (Hindi/Hinglish/English) or doctor dictation into structured clinical OPD fields."""
+    transcript = req.transcript.strip()
+    if not transcript:
+        return schemas.VoiceConsultationParseResponse()
+
+    parsed = await clinical_nlp.parse_consultation_ai(
+        transcript=transcript,
+        age=req.age,
+        gender=req.gender,
+        mode=req.mode or "patient_voice"
+    )
+    return schemas.VoiceConsultationParseResponse(
+        chief_complaints=parsed.get("chief_complaints"),
+        diagnosis=parsed.get("diagnosis"),
+        medicines_list=parsed.get("medicines_list"),
+        tests_list=parsed.get("tests_list"),
+        advice=parsed.get("advice"),
+        follow_up_date=parsed.get("follow_up_date"),
+        patient_verbatim=parsed.get("patient_verbatim"),
+        detected_language=parsed.get("detected_language"),
+        source=parsed.get("source", "ai")
+    )
 
 
 # ----------------------------------------------------
@@ -885,10 +1185,12 @@ def get_prescription_suggested_items(
             return []
         tokens = []
         ignore_placeholders = {"none", "n/a", "na", "nil", "no tests", "none required", "-", "...", "no test"}
-        for line in text.strip().split("\n"):
-            # Strip numbering like "1. ", "2. ", etc.
-            cleaned = line.strip()
+        brand_rx = r'(?:combiflam|combiflame|crocin|calpol|augmentin|pantocid|pan-d|pan\s*40|azee|azithromycin|cefixime|taxim|montair|montek|levocet|cetirizine|ascoril|glycomet|metformin|telma|telmisartan|atorva|atorvastatin|zerodol|meftal|emeset|ondansetron|digene|sporlac|allegra|ofloxacin|norfloxacin|betadine|volini|ibuprofen|amoxicillin)'
+        split_rx = r'(?:[\n,;]+|\s+(?:and|aur|\+|&)\s+|(?<=[a-zA-Z0-9])\s+(?=' + brand_rx + r'\b))'
+        for part in __import__("re").split(split_rx, text.strip(), flags=__import__("re").I):
+            cleaned = part.strip()
             cleaned = __import__("re").sub(r"^\d+\.\s*", "", cleaned).strip()
+            cleaned = cleaned.rstrip(".")
             if cleaned and cleaned.lower() not in ignore_placeholders:
                 tokens.append(cleaned)
         return tokens
@@ -907,23 +1209,35 @@ def get_prescription_suggested_items(
     def fuzzy_score(token: str, service_name: str) -> float:
         """
         Return a similarity score (0.0–1.0) between a prescription token
-        and a service catalog name using multi-strategy keyword overlap.
+        and a service catalog name using multi-strategy keyword overlap,
+        Levenshtein-ratio phonetic matching, and substring alignment.
         """
+        import difflib, re
         # Clean token by stripping trailing dosage details after dash/em-dash
-        token_clean = __import__("re").sub(r"\s*[—\-–].*$", "", token).strip()
-        token_lower = token_clean.lower()
+        token_clean = re.sub(r"\s*[—\-–].*$", "", token).strip()
+        token_lower = token_clean.lower().rstrip(".")
         svc_lower = service_name.lower()
 
         # 1. Exact substring match (highest priority)
         if token_lower in svc_lower or svc_lower in token_lower:
-            return 0.95
+            return 0.98
 
-        # 2. Word-level intersection score
-        token_words = set(__import__("re").findall(r"[a-z0-9]+", token_lower))
-        svc_words = set(__import__("re").findall(r"[a-z0-9]+", svc_lower))
+        # 2. SequenceMatcher word-level similarity (handles speech variants like 'combiflame' -> 'combiflam')
+        tok_words_raw = re.findall(r"[a-z0-9]+", token_lower)
+        svc_words_raw = re.findall(r"[a-z0-9]+", svc_lower)
+        for tw in tok_words_raw:
+            for sw in svc_words_raw:
+                if len(tw) >= 4 and len(sw) >= 4:
+                    sim = difflib.SequenceMatcher(None, tw, sw).ratio()
+                    if sim >= 0.85:
+                        return 0.93
+
+        # 3. Word-level intersection score
+        token_words = set(tok_words_raw)
+        svc_words = set(svc_words_raw)
         
         # Remove common noise words
-        noise = {"the", "a", "an", "and", "or", "for", "of", "in", "at", "test", "with", "per", "day"}
+        noise = {"the", "a", "an", "and", "or", "for", "of", "in", "at", "test", "with", "per", "day", "tablet", "tablets", "mg"}
         token_words -= noise
         svc_words -= noise
 
@@ -936,9 +1250,8 @@ def get_prescription_suggested_items(
 
         jaccard = len(intersection) / len(token_words | svc_words)
         
-        # 3. Boost score for acronym/abbreviation matches (e.g. "CBC" → "Complete Blood Count (CBC)")
-        # Extract acronyms from service name (words in parentheses or all-caps words)
-        svc_acronyms = set(__import__("re").findall(r"\(([A-Z]+)\)", service_name))
+        # 4. Boost score for acronym/abbreviation matches (e.g. "CBC" → "Complete Blood Count (CBC)")
+        svc_acronyms = set(re.findall(r"\(([A-Z]+)\)", service_name))
         svc_acronyms.update(w for w in service_name.split() if w.isupper() and len(w) >= 2)
         
         token_upper = token.upper().strip()
@@ -1330,7 +1643,9 @@ async def check_bill_anomaly(
     )
     
     api_key = os.getenv("GROQ_API_KEY")
-    model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+    model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    if model == "openai/gpt-oss-120b":
+        model = "llama-3.3-70b-versatile"
     
     if not api_key:
         # Fall back completely to local checks if Groq is not configured
@@ -1515,7 +1830,7 @@ async def verify_external_rates(
 @app.get("/api/dashboard/ai-insight", response_model=schemas.AIInsightResponse)
 async def get_ai_dashboard_insight(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Accountant"]))
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Accountant", "Receptionist"]))
 ):
     api_key = os.getenv("GROQ_API_KEY")
     model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
@@ -1695,18 +2010,31 @@ def create_bill(
     # Process items and calculate grand total
     for item in bill_in.items:
         service_name = ""
-        if item.service_id:
-            service = db.query(models.Service).filter(models.Service.id == item.service_id).first()
+        service_id = item.service_id
+        if service_id:
+            service = db.query(models.Service).filter(models.Service.id == service_id).first()
             if not service:
-                raise HTTPException(status_code=400, detail=f"Service ID {item.service_id} not found")
+                raise HTTPException(status_code=400, detail=f"Service ID {service_id} not found")
             service_name = service.name
+        elif item.service_name:
+            # Try to match service by name from catalog
+            svc_match = db.query(models.Service).filter(
+                func.lower(models.Service.name) == item.service_name.strip().lower(),
+                models.Service.is_active == True
+            ).first()
+            if svc_match:
+                service_id = svc_match.id
+                service_name = svc_match.name
+            else:
+                service_id = None
+                service_name = item.service_name.strip()
         else:
-            raise HTTPException(status_code=400, detail="Each item must have a valid Service ID")
+            raise HTTPException(status_code=400, detail="Each item must have a valid Service ID or Service Name")
             
         grand_total += item.amount
         bill_items_to_create.append(
             models.BillItem(
-                service_id=item.service_id,
+                service_id=service_id,
                 service_name=service_name,
                 amount=item.amount
             )
@@ -1866,7 +2194,7 @@ def record_payment(
     bill_id: Optional[int] = Query(None, description="Record a payment for an existing bill"),
     visit_id: Optional[int] = Query(None, description="Record an advance payment for a visit"),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Accountant"]))
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Accountant", "Receptionist"]))
 ):
     if not bill_id and not visit_id:
         raise HTTPException(status_code=400, detail="Must provide either bill_id or visit_id")
@@ -2092,7 +2420,7 @@ def refund_payment(
 @app.get("/api/doctors", response_model=List[schemas.DoctorResponse])
 def get_doctors(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant"]))
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant", "Doctor"]))
 ):
     return db.query(models.Doctor).filter(models.Doctor.is_active == True).order_by(models.Doctor.name).all()
 
@@ -2159,7 +2487,7 @@ def delete_doctor(
 @app.get("/api/settings", response_model=List[schemas.SettingResponse])
 def get_settings(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant"]))
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant", "Doctor"]))
 ):
     return db.query(models.Setting).order_by(models.Setting.key).all()
 
@@ -2209,7 +2537,7 @@ def get_audit_logs(
 @app.get("/api/dashboard/metrics", response_model=schemas.DashboardMetrics)
 def get_dashboard_metrics(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Accountant"]))
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Accountant", "Receptionist", "Doctor"]))
 ):
     today = datetime.date.today()
     start_of_today = datetime.datetime.combine(today, datetime.time.min)
@@ -2318,9 +2646,9 @@ def get_dashboard_metrics(
     recent_txs = []
     for pay in recent_pays:
         pat_name = "N/A"
-        if pay.bill:
+        if pay.bill and pay.bill.visit and pay.bill.visit.patient:
             pat_name = pay.bill.visit.patient.name
-        elif pay.visit:
+        elif pay.visit and pay.visit.patient:
             pat_name = pay.visit.patient.name
             
         recent_txs.append({
@@ -2355,15 +2683,15 @@ def get_dashboard_audit_stats(
 ):
     total_audits = db.query(models.AuditLog).filter(
         models.AuditLog.action.in_(["UPDATE_VISIT_SUMMARY", "CREATE_BILL", "RECORD_BILL_PAYMENT"])
-    ).count() or 42
+    ).count()
     
     leakages_stopped = db.query(models.AuditLog).filter(
         models.AuditLog.action == "UPDATE_VISIT_SUMMARY"
-    ).count() or 18
+    ).count()
     
     gst_compliance_checked = db.query(models.AuditLog).filter(
         models.AuditLog.action.in_(["CREATE_BILL", "RECORD_BILL_PAYMENT"])
-    ).count() or 25
+    ).count()
     
     verified_abha_profiles = db.query(models.Patient).filter(
         models.Patient.abha_id != None,
@@ -2391,7 +2719,7 @@ def get_financial_report_data(db: Session) -> pd.DataFrame:
         bill_id = ""
         visit_id = ""
         
-        if pay.bill:
+        if pay.bill and pay.bill.visit:
             bill_id = pay.bill.bill_id
             pat = pay.bill.visit.patient
             visit_id = pay.bill.visit.visit_id
@@ -2593,14 +2921,54 @@ def seed_demo_data(db: Session = Depends(get_db)):
     created_by = admin_user.id if admin_user else 1
     
     historical_data = [
-        ("Nisha Patel", 29, "Female", "9900011122", 1200.0, 1200.0, "UPI", "Paid"),
-        ("Vikram Singh", 67, "Male", "9900011133", 4500.0, 3000.0, "Cash", "Partial Paid"),
-        ("Sanjay Gupta", 52, "Male", "9900011144", 8000.0, 0.0, "Cash", "Pending"),
-        ("Dr. Priya Rao", 34, "Female", "9900011155", 150.0, 150.0, "Card", "Paid"),
-        ("Amit Verma", 41, "Male", "9900011166", 2400.0, 2400.0, "UPI", "Paid")
+        (
+            "Nisha Patel", 29, "Female", "9900011122", 1200.0, 1200.0, "UPI", "Paid",
+            "Mild Iron Deficiency Anemia & Fatigue",
+            "Generalized fatigue, dizziness, and mild headache for 2 weeks",
+            "1. Autrin Iron Supplement — 1 tab OD after meals for 30 days\n2. Vitamin C 500mg (Limcee) — 1 tab OD after breakfast for 15 days",
+            "1. Complete Blood Count (CBC)\n2. Serum Ferritin",
+            "1. Increase dietary intake of green leafy vegetables and dates\n2. Adequate hydration and 8 hours sleep",
+            "Review with repeat CBC report after 4 weeks"
+        ),
+        (
+            "Vikram Singh", 67, "Male", "9900011133", 4500.0, 3000.0, "Cash", "Partial Paid",
+            "Essential Hypertension with Type 2 Diabetes Follow-up",
+            "Routine diabetic & blood pressure check-up, mild morning fatigue",
+            "1. Telmisartan 40mg — 1 tab OD morning after breakfast\n2. Metformin 500mg SR — 1 tab BD after meals",
+            "1. Fasting Blood Sugar (FBS)\n2. HbA1c\n3. Lipid Profile Panel",
+            "1. Daily 30-min brisk morning walk\n2. Restrict dietary sodium (< 2g/day) and refined sugars",
+            "Review in 2 weeks with Fasting Blood Sugar and HbA1c reports"
+        ),
+        (
+            "Sanjay Gupta", 52, "Male", "9900011144", 8000.0, 0.0, "Cash", "Pending",
+            "Acute Gastroenteritis with Mild Dehydration",
+            "Loose motions and abdominal cramps since yesterday",
+            "1. ORS Sachet — Dissolve 1 pack in 1L water, sip throughout the day\n2. Ofloxacin 200mg + Ornidazole 500mg (O2) — 1 tab BD for 3 days\n3. Econorm 250mg sachet — 1 sachet BD for 3 days",
+            "1. Stool Routine Examination",
+            "1. Strict light khichdi/banana/curd diet\n2. Avoid oily/spicy street food",
+            "Review in 2 days or SOS if dehydration increases"
+        ),
+        (
+            "Dr. Priya Rao", 34, "Female", "9900011155", 150.0, 150.0, "Card", "Paid",
+            "Allergic Rhinitis & Seasonal Sneezing",
+            "Frequent morning sneezing and watery eyes for 5 days",
+            "1. Montek-LC (Montelukast 10mg + Levocetirizine 5mg) — 1 tab HS for 7 days\n2. Fluticasone nasal spray — 1 puff in each nostril OD morning",
+            "1. Absolute Eosinophil Count (AEC)",
+            "1. Avoid direct exposure to dust, pollen, and sudden temperature shifts\n2. Steam inhalation before sleep",
+            "Review as needed (SOS)"
+        ),
+        (
+            "Amit Verma", 41, "Male", "9900011166", 2400.0, 2400.0, "UPI", "Paid",
+            "Viral upper respiratory tract infection (common cold)",
+            "Fever, Running Nose, Body Pain for 3 days",
+            "1. Dolo 650mg — 1 tab TID after meals for 3 days\n2. Montek LC — 1 tab HS for 5 days",
+            "1. Complete Blood Count (CBC)",
+            "1. Drink plenty of warm fluids and maintain hydration\n2. Rest and avoid strenuous activity\n3. Warm saline gargles",
+            "Review in 3 days or sooner if fever persists beyond 101°F"
+        )
     ]
     
-    for p_name, p_age, p_gender, p_mob, total_amt, paid_amt, p_method, p_status in historical_data:
+    for p_name, p_age, p_gender, p_mob, total_amt, paid_amt, p_method, p_status, diag, complaints, meds, tests, advice, follow_up in historical_data:
         hist_p = models.Patient(
             patient_id=generate_unique_id(db, "PAT", models.Patient, models.Patient.patient_id),
             name=p_name, age=p_age, gender=p_gender, mobile_number=p_mob, address="Meerut"
@@ -2610,7 +2978,16 @@ def seed_demo_data(db: Session = Depends(get_db)):
         
         hist_v = models.Visit(
             visit_id=generate_unique_id(db, "VIS", models.Visit, models.Visit.visit_id),
-            patient_id=hist_p.id, doctor_id=doctor_id, reason="General Consult / Diagnostics"
+            patient_id=hist_p.id,
+            doctor_id=doctor_id,
+            reason="General Consult / Diagnostics",
+            status="Completed",
+            diagnosis=diag,
+            chief_complaints=complaints,
+            medicines_list=meds,
+            tests_list=tests,
+            advice=advice,
+            follow_up_date=follow_up
         )
         db.add(hist_v)
         db.commit()
@@ -2649,14 +3026,21 @@ def seed_demo_data(db: Session = Depends(get_db)):
             db.add(hist_pay)
             db.commit()
             
+            receipt_id = generate_unique_id(db, "REC", models.Receipt, models.Receipt.receipt_id)
+            pdf_filename = f"{receipt_id}.pdf"
+            pdf_path = os.path.join(RECEIPTS_DIR, pdf_filename)
             hist_rec = models.Receipt(
-                receipt_id=generate_unique_id(db, "REC", models.Receipt, models.Receipt.receipt_id),
+                receipt_id=receipt_id,
                 payment_id=hist_pay.id,
                 receipt_type="Payment Settlement",
-                pdf_path=f"/receipts/receipt_{hist_pay.payment_id}.pdf"
+                pdf_path=f"/receipts/{pdf_filename}"
             )
             db.add(hist_rec)
             db.commit()
+            try:
+                pdf_generator.generate_receipt_pdf(hist_pay, db, pdf_path)
+            except Exception as e:
+                print(f"Warning: Could not generate seeded receipt PDF: {e}")
 
     return {
         "message": "SIPS Evaluation Demo Data Seeded Successfully",
