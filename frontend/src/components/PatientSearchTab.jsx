@@ -222,6 +222,8 @@ export default function PatientSearchTab({
   showToast,
   adminSettingsForm,
   userRole,
+  sidebarCollapsed,
+  setSidebarCollapsed,
   searchQuery,
   setSearchQuery,
   patients = [],
@@ -288,7 +290,7 @@ export default function PatientSearchTab({
   const [summaryGenerating, setSummaryGenerating] = React.useState(false);
   const [summarySaving, setSummarySaving] = React.useState(false);
   const [summaryError, setSummaryError] = React.useState('');
-  const [selectedLanguage, setSelectedLanguage] = React.useState('Hindi');
+  const [selectedLanguage, setSelectedLanguage] = React.useState('');
   const [viewMode, setViewMode] = React.useState('en'); // 'en' | 'native' | 'pdf'
   const [pdfPreviewUrl, setPdfPreviewUrl] = React.useState('');
   const [pdfLoading, setPdfLoading] = React.useState(false);
@@ -980,6 +982,7 @@ export default function PatientSearchTab({
   };
 
   const handleOpenSummary = (visit) => {
+    if (setSidebarCollapsed) setSidebarCollapsed(true);
     setSelectedVisit(visit);
     setSummaryTab('clinical');
     setSummaryForm({
@@ -1028,6 +1031,10 @@ export default function PatientSearchTab({
   };
 
   const handleGenerateAiSummary = async () => {
+    if (!selectedLanguage) {
+      showToast('कृपया पहले भाषा चुनें (Please select target language first)', 'warning');
+      return;
+    }
     setSummaryGenerating(true);
     setSummaryError('');
     try {
@@ -2653,133 +2660,186 @@ export default function PatientSearchTab({
                   </button>
                 </h4>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1 flex justify-between items-center">
-                      <span className="flex items-center gap-1.5">
-                        <span>Chief Complaints</span>
-                        {activeClinicalFieldMic === 'chief_complaints' && (
-                          <span className="text-[9px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">Listening...</span>
-                        )}
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleClinicalFieldMic('chief_complaints')}
-                          className={`p-1 rounded-md transition-all cursor-pointer ${
-                            activeClinicalFieldMic === 'chief_complaints'
-                              ? 'bg-rose-500 text-white animate-pulse shadow-xs'
-                              : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
-                          }`}
-                          title={activeClinicalFieldMic === 'chief_complaints' ? 'Stop mic' : '🎙️ Dictate Chief Complaints'}
-                        >
-                          {activeClinicalFieldMic === 'chief_complaints' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-                        </button>
-                        <span className="text-[9px] text-slate-400 font-semibold italic">click to toggle</span>
+                {/* CLINICAL RECORD SECTIONS — COLOR-CODED & CLEARLY DIVIDED FOR DOCTOR */}
+                <div className="space-y-3.5">
+                  {/* ROW 1: CHIEF COMPLAINTS & WORKING DIAGNOSIS */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {/* CARD 1: CHIEF COMPLAINTS (Warm Amber / Rose Theme) */}
+                    <div className="border border-amber-300/80 bg-gradient-to-br from-amber-50/50 via-orange-50/20 to-white rounded-xl p-3 shadow-xs border-l-4 border-l-amber-500 flex flex-col justify-between">
+                      <div>
+                        <label className="block mb-1.5 flex justify-between items-center">
+                          <span className="flex items-center gap-1.5 text-amber-900 font-extrabold text-xs uppercase tracking-wider">
+                            <span className="w-5 h-5 rounded-md bg-amber-500/20 text-amber-800 flex items-center justify-center font-bold text-[10px]">🩺</span>
+                            <span>Chief Complaints</span>
+                            {activeClinicalFieldMic === 'chief_complaints' && (
+                              <span className="text-[9px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">Listening...</span>
+                            )}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleClinicalFieldMic('chief_complaints')}
+                              className={`p-1 rounded-md transition-all cursor-pointer ${
+                                activeClinicalFieldMic === 'chief_complaints'
+                                  ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                                  : 'text-amber-700 hover:bg-amber-100'
+                              }`}
+                              title={activeClinicalFieldMic === 'chief_complaints' ? 'Stop mic' : '🎙️ Dictate Chief Complaints'}
+                            >
+                              {activeClinicalFieldMic === 'chief_complaints' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                            </button>
+                            <span className="text-[9px] text-amber-800/70 font-semibold italic">mic</span>
+                          </div>
+                        </label>
+                        
+                        {/* Quick Complaints Tags */}
+                        <div className="flex flex-wrap gap-1 mb-2 max-h-[46px] overflow-y-auto pb-0.5 compact-scroll">
+                          {COMMON_COMPLAINTS.map((tag) => {
+                            const isSelected = (summaryForm.chief_complaints || '').includes(tag);
+                            return (
+                              <button
+                                key={tag}
+                                type="button"
+                                onClick={() => handleToggleTag('chief_complaints', tag)}
+                                className={`text-[9.5px] px-2 py-0.5 rounded-md border transition-all font-bold ${
+                                  isSelected 
+                                    ? 'bg-amber-600 text-white border-amber-600 shadow-2xs' 
+                                    : 'bg-white/80 text-amber-900 border-amber-200/90 hover:bg-amber-100/70'
+                                }`}
+                              >
+                                {tag}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </label>
-                    
-                    {/* Quick Complaints Tags */}
-                    <div className="flex flex-wrap gap-1 mb-2 max-h-[50px] overflow-y-auto pb-1">
-                      {COMMON_COMPLAINTS.map((tag) => {
-                        const isSelected = (summaryForm.chief_complaints || '').includes(tag);
-                        return (
-                          <button
-                            key={tag}
-                            type="button"
-                            onClick={() => handleToggleTag('chief_complaints', tag)}
-                            className={`text-[9px] px-1.5 py-0.5 rounded-full border transition-all font-semibold ${
-                              isSelected 
-                                ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
-                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200'
-                            }`}
-                          >
-                            {tag}
-                          </button>
-                        );
-                      })}
-                    </div>
 
-                    <textarea
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-20 resize-none"
-                      placeholder="e.g. Chronic cough for 3 weeks, mild chest congestion, low-grade fever..."
-                      value={summaryForm.chief_complaints}
-                      onChange={(e) => setSummaryForm({ ...summaryForm, chief_complaints: e.target.value })}
-                    />
+                      <textarea
+                        className="w-full bg-white/90 border border-amber-200 focus:border-amber-500 focus:ring-1 focus:ring-amber-400 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 placeholder-amber-900/30 focus:outline-none font-medium transition-all h-20 resize-none shadow-2xs"
+                        placeholder="e.g. Chronic cough for 3 weeks, mild chest congestion, low-grade fever..."
+                        value={summaryForm.chief_complaints}
+                        onChange={(e) => setSummaryForm({ ...summaryForm, chief_complaints: e.target.value })}
+                      />
+                    </div>
+     
+                    {/* CARD 2: WORKING DIAGNOSIS (Indigo / Blue Theme) */}
+                    <div className="border border-indigo-200/90 bg-gradient-to-br from-indigo-50/50 via-blue-50/20 to-white rounded-xl p-3 shadow-xs border-l-4 border-l-indigo-600 flex flex-col justify-between">
+                      <div>
+                        <label className="block mb-1.5 flex justify-between items-center">
+                          <span className="flex items-center gap-1.5 text-indigo-900 font-extrabold text-xs uppercase tracking-wider">
+                            <span className="w-5 h-5 rounded-md bg-indigo-500/20 text-indigo-800 flex items-center justify-center font-bold text-[10px]">🧠</span>
+                            <span>Working Diagnosis</span>
+                            {activeClinicalFieldMic === 'diagnosis' && (
+                              <span className="text-[9px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">Listening...</span>
+                            )}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleClinicalFieldMic('diagnosis')}
+                            className={`p-1 rounded-md transition-all cursor-pointer ${
+                              activeClinicalFieldMic === 'diagnosis'
+                                ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                                : 'text-indigo-700 hover:bg-indigo-100'
+                            }`}
+                            title={activeClinicalFieldMic === 'diagnosis' ? 'Stop mic' : '🎙️ Dictate Diagnosis'}
+                          >
+                            {activeClinicalFieldMic === 'diagnosis' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                          </button>
+                        </label>
+
+                        {/* Quick Common Diagnosis Tags */}
+                        <div className="flex flex-wrap gap-1 mb-2 max-h-[46px] overflow-y-auto pb-0.5 compact-scroll">
+                          {['URTI', 'Acute Bronchitis', 'Pharyngitis', 'Acute Gastritis', 'Viral Pyrexia', 'Hypertension', 'T2 Diabetes'].map((diag) => {
+                            const isSelected = (summaryForm.diagnosis || '').includes(diag);
+                            return (
+                              <button
+                                key={diag}
+                                type="button"
+                                onClick={() => {
+                                  const current = summaryForm.diagnosis || '';
+                                  if (current.includes(diag)) {
+                                    setSummaryForm({ ...summaryForm, diagnosis: current.replace(diag, '').replace(/,\s*,/g, ',').trim() });
+                                  } else {
+                                    setSummaryForm({ ...summaryForm, diagnosis: current ? `${current}, ${diag}` : diag });
+                                  }
+                                }}
+                                className={`text-[9.5px] px-2 py-0.5 rounded-md border transition-all font-bold ${
+                                  isSelected 
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs' 
+                                    : 'bg-white/80 text-indigo-900 border-indigo-200/90 hover:bg-indigo-100/70'
+                                }`}
+                              >
+                                {diag}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <textarea
+                        className="w-full bg-white/90 border border-indigo-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-400 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 placeholder-indigo-900/30 focus:outline-none font-medium transition-all h-20 resize-none shadow-2xs"
+                        placeholder="e.g. Acute Bronchitis secondary to viral infection"
+                        value={summaryForm.diagnosis}
+                        onChange={(e) => setSummaryForm({ ...summaryForm, diagnosis: e.target.value })}
+                      />
+                    </div>
                   </div>
- 
-                  <div>
-                    <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1.5 flex justify-between items-center">
-                      <span className="flex items-center gap-1.5">
-                        <span>Diagnosis</span>
-                        {activeClinicalFieldMic === 'diagnosis' && (
-                          <span className="text-[9px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">Listening...</span>
-                        )}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleClinicalFieldMic('diagnosis')}
-                        className={`p-1 rounded-md transition-all cursor-pointer ${
-                          activeClinicalFieldMic === 'diagnosis'
-                            ? 'bg-rose-500 text-white animate-pulse shadow-xs'
-                            : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
-                        }`}
-                        title={activeClinicalFieldMic === 'diagnosis' ? 'Stop mic' : '🎙️ Dictate Diagnosis'}
-                      >
-                        {activeClinicalFieldMic === 'diagnosis' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-                      </button>
-                    </label>
-                    <textarea
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-28 resize-none"
-                      placeholder="e.g. Acute Bronchitis secondary to viral infection"
-                      value={summaryForm.diagnosis}
-                      onChange={(e) => setSummaryForm({ ...summaryForm, diagnosis: e.target.value })}
-                    />
+
+                  {/* SECTION SEPARATOR LINE WITH BADGE */}
+                  <div className="flex items-center gap-3 my-1">
+                    <div className="h-px bg-gradient-to-r from-emerald-300 to-transparent flex-1" />
+                    <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest bg-emerald-50 border border-emerald-300 px-3 py-0.5 rounded-full flex items-center gap-1.5 shadow-2xs">
+                      <span>💊</span>
+                      <span>Rx Prescription & Dosing Schedule</span>
+                    </span>
+                    <div className="h-px bg-gradient-to-r from-transparent to-emerald-300 flex-1" />
                   </div>
-                </div>
- 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="relative">
-                    <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1 flex justify-between items-center">
-                      <span className="flex items-center gap-1.5">
-                        <span>Prescribed Medicines</span>
+
+                  {/* CARD 3: PRESCRIBE MEDICINES (Emerald / Teal Medical Theme) */}
+                  <div className="border border-emerald-300/90 bg-gradient-to-br from-emerald-50/40 via-teal-50/20 to-white rounded-xl p-3.5 shadow-xs border-l-4 border-l-emerald-600">
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="flex items-center gap-1.5 text-emerald-900 font-extrabold text-xs uppercase tracking-wider">
+                        <span className="w-5 h-5 rounded-md bg-emerald-500/20 text-emerald-800 flex items-center justify-center font-bold text-[10px]">Rx</span>
+                        <span>Prescription Dosing Builder</span>
                         {activeClinicalFieldMic === 'medicines_list' && (
                           <span className="text-[9px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">Listening...</span>
                         )}
-                      </span>
-                      <div className="flex items-center gap-1.5">
+                      </label>
+                      <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => handleToggleClinicalFieldMic('medicines_list')}
                           className={`p-1 rounded-md transition-all cursor-pointer ${
                             activeClinicalFieldMic === 'medicines_list'
                               ? 'bg-rose-500 text-white animate-pulse shadow-xs'
-                              : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
+                              : 'text-emerald-700 hover:bg-emerald-100'
                           }`}
                           title={activeClinicalFieldMic === 'medicines_list' ? 'Stop mic' : '🎙️ Dictate Medicines'}
                         >
                           {activeClinicalFieldMic === 'medicines_list' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
                         </button>
-                        <span className="text-[10px] text-teal-600 font-bold lowercase bg-teal-50 px-1.5 py-0.5 rounded border border-teal-100">(autocomplete & builder active)</span>
+                        <span className="text-[9.5px] text-emerald-700 font-bold bg-emerald-100/80 px-2 py-0.5 rounded border border-emerald-300">
+                          Catalog Linked
+                        </span>
                       </div>
-                    </label>
+                    </div>
                     
                     {/* Prescription Builder Row */}
-                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-300 mb-2 space-y-1.5 shadow-sm">
-                      <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-200/90 mb-2.5 space-y-2 text-xs shadow-2xs">
+                      <div className="grid grid-cols-2 gap-2.5">
                         {/* Timing Selector */}
                         <div>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Timing</span>
+                          <span className="text-[9.5px] text-emerald-900 font-extrabold uppercase tracking-wider block mb-1">Timing</span>
                           <div className="flex gap-1">
                             {['After Meals', 'Empty Stomach'].map((t) => (
                               <button
                                 key={t}
                                 type="button"
                                 onClick={() => setPrescTiming(t)}
-                                className={`flex-1 text-[9px] py-1 rounded font-bold border transition-all ${
+                                className={`flex-1 text-[10px] py-1 rounded-md font-bold border transition-all ${
                                   prescTiming === t 
-                                    ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
-                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' 
+                                    : 'bg-white text-slate-700 border-slate-300 hover:bg-emerald-50'
                                 }`}
                               >
                                 {t === 'After Meals' ? 'Pc (Khane ke Baad)' : 'Ac (Khali Pet)'}
@@ -2789,11 +2849,11 @@ export default function PatientSearchTab({
                         </div>
                         {/* Frequency Selector */}
                         <div>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Frequency</span>
+                          <span className="text-[9.5px] text-emerald-900 font-extrabold uppercase tracking-wider block mb-1">Frequency</span>
                           <select
                             value={prescFrequency}
                             onChange={(e) => setPrescFrequency(e.target.value)}
-                            className="w-full bg-white border border-slate-200 rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:border-teal-500 font-bold text-slate-700"
+                            className="w-full bg-white border border-slate-300 rounded-md px-2 py-1 text-[11px] font-bold text-slate-800 focus:outline-none focus:border-emerald-500 shadow-2xs"
                           >
                             <option value="Once Daily (OD)">OD (Once Daily)</option>
                             <option value="Twice Daily (BD)">BD (Twice Daily)</option>
@@ -2804,14 +2864,14 @@ export default function PatientSearchTab({
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-2 items-center">
+                      <div className="grid grid-cols-2 gap-2.5 items-center">
                         {/* Duration Selector */}
                         <div>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Duration</span>
+                          <span className="text-[9.5px] text-emerald-900 font-extrabold uppercase tracking-wider block mb-1">Duration</span>
                           <select
                             value={prescDuration}
                             onChange={(e) => setPrescDuration(e.target.value)}
-                            className="w-full bg-white border border-slate-200 rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:border-teal-500 font-bold text-slate-700"
+                            className="w-full bg-white border border-slate-300 rounded-md px-2 py-1 text-[11px] font-bold text-slate-800 focus:outline-none focus:border-emerald-500 shadow-2xs"
                           >
                             <option value="3 Days">3 Days</option>
                             <option value="5 Days">5 Days</option>
@@ -2824,7 +2884,7 @@ export default function PatientSearchTab({
                         </div>
                         {/* Quick Medicine Dropdown select */}
                         <div>
-                          <span className="text-[9px] text-teal-600 font-bold uppercase tracking-wider block mb-0.5">Quick Add</span>
+                          <span className="text-[9.5px] text-emerald-900 font-extrabold uppercase tracking-wider block mb-1">Quick Select Medicine</span>
                           <select
                             onChange={(e) => {
                               if (e.target.value) {
@@ -2833,9 +2893,9 @@ export default function PatientSearchTab({
                                 e.target.value = '';
                               }
                             }}
-                            className="w-full bg-white border border-teal-200 rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:border-teal-500 font-bold text-teal-800"
+                            className="w-full bg-white border border-emerald-300 rounded-md px-2 py-1 text-[11px] font-bold text-emerald-950 focus:outline-none focus:border-emerald-500 shadow-2xs"
                           >
-                            <option value="">-- Add Med --</option>
+                            <option value="">-- Click to Select Common Drug --</option>
                             {MEDICINE_DATASTORE.map((m, idx) => (
                               <option key={idx} value={m.name}>{m.name}</option>
                             ))}
@@ -2848,8 +2908,8 @@ export default function PatientSearchTab({
                     <div className="relative mb-2">
                       <input
                         type="text"
-                        placeholder="🔍 Search medicine name (e.g. Dolo, Pan, Azee...)"
-                        className="w-full bg-teal-50/40 border border-teal-100 rounded-lg px-2.5 py-1.5 text-xs placeholder-teal-600/40 focus:outline-none focus:bg-white focus:border-teal-500 font-semibold transition-all text-slate-800"
+                        placeholder="🔍 Type medicine name to autocomplete (e.g. Dolo, Pan, Azee, Augmentin...)"
+                        className="w-full bg-white border border-emerald-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-400 rounded-lg px-2.5 py-1.5 text-xs placeholder-slate-400 focus:outline-none font-semibold transition-all text-slate-800 shadow-2xs"
                         value={medicineSearch}
                         onChange={(e) => setMedicineSearch(e.target.value)}
                         onKeyDown={(e) => {
@@ -2864,16 +2924,16 @@ export default function PatientSearchTab({
                       
                       {/* Floating suggestions dropdown */}
                       {medicineSuggestions.length > 0 && (
-                        <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto divide-y divide-slate-100 animate-in fade-in slide-in-from-top-1 duration-150">
+                        <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-slate-300 rounded-xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100 animate-in fade-in slide-in-from-top-1 duration-150">
                           {medicineSuggestions.map((med, idx) => (
                             <button
                               key={idx}
                               type="button"
                               onClick={() => handleAddMedicineFromSuggest(med)}
-                              className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-teal-50 hover:text-teal-900 transition-colors font-semibold flex justify-between items-center"
+                              className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-emerald-50 hover:text-emerald-950 transition-colors font-semibold flex justify-between items-center"
                             >
                               <span>{med.name}</span>
-                              <span className="text-[10px] text-teal-600 bg-teal-50/60 px-1.5 py-0.5 rounded font-normal shrink-0">{med.dosage.split(' for')[0]}</span>
+                              <span className="text-[10px] text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded font-bold shrink-0">{med.dosage.split(' for')[0]}</span>
                             </button>
                           ))}
                         </div>
@@ -2881,131 +2941,165 @@ export default function PatientSearchTab({
                     </div>
  
                     <textarea
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-28 resize-none"
+                      className="w-full bg-white/95 border border-emerald-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-400 rounded-lg px-2.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none font-mono transition-all h-24 resize-none shadow-2xs"
                       placeholder="e.g. 1. Paracetamol 650mg (TID for 3 days)&#10;2. Levocetirizine 5mg (HS for 5 days)"
                       value={summaryForm.medicines_list}
                       onChange={(e) => setSummaryForm({ ...summaryForm, medicines_list: e.target.value })}
                     />
                   </div>
- 
-                  <div>
-                    <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1 flex justify-between items-center">
-                      <span className="flex items-center gap-1.5">
-                        <span>Recommended Tests</span>
-                        {activeClinicalFieldMic === 'tests_list' && (
-                          <span className="text-[9px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">Listening...</span>
-                        )}
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleClinicalFieldMic('tests_list')}
-                          className={`p-1 rounded-md transition-all cursor-pointer ${
-                            activeClinicalFieldMic === 'tests_list'
-                              ? 'bg-rose-500 text-white animate-pulse shadow-xs'
-                              : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
-                          }`}
-                          title={activeClinicalFieldMic === 'tests_list' ? 'Stop mic' : '🎙️ Dictate Tests'}
-                        >
-                          {activeClinicalFieldMic === 'tests_list' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-                        </button>
-                        <span className="text-[9px] text-slate-400 font-semibold italic">click to toggle</span>
+
+                  {/* SECTION SEPARATOR LINE WITH BADGE */}
+                  <div className="flex items-center gap-3 my-1">
+                    <div className="h-px bg-gradient-to-r from-cyan-300 to-transparent flex-1" />
+                    <span className="text-[10px] font-black text-cyan-800 uppercase tracking-widest bg-cyan-50 border border-cyan-300 px-3 py-0.5 rounded-full flex items-center gap-1.5 shadow-2xs">
+                      <span>🔬</span>
+                      <span>Diagnostics & Lifestyle Guidelines</span>
+                    </span>
+                    <div className="h-px bg-gradient-to-r from-transparent to-cyan-300 flex-1" />
+                  </div>
+
+                  {/* ROW 3: RECOMMENDED TESTS & LIFESTYLE ADVICE */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {/* CARD 4: RECOMMENDED TESTS (Cyan / Sky Theme) */}
+                    <div className="border border-cyan-200/90 bg-gradient-to-br from-cyan-50/50 via-sky-50/20 to-white rounded-xl p-3 shadow-xs border-l-4 border-l-cyan-600 flex flex-col justify-between">
+                      <div>
+                        <label className="block mb-1.5 flex justify-between items-center">
+                          <span className="flex items-center gap-1.5 text-cyan-900 font-extrabold text-xs uppercase tracking-wider">
+                            <span className="w-5 h-5 rounded-md bg-cyan-500/20 text-cyan-800 flex items-center justify-center font-bold text-[10px]">🧪</span>
+                            <span>Recommended Tests</span>
+                            {activeClinicalFieldMic === 'tests_list' && (
+                              <span className="text-[9px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">Listening...</span>
+                            )}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleClinicalFieldMic('tests_list')}
+                              className={`p-1 rounded-md transition-all cursor-pointer ${
+                                activeClinicalFieldMic === 'tests_list'
+                                  ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                                  : 'text-cyan-700 hover:bg-cyan-100'
+                              }`}
+                              title={activeClinicalFieldMic === 'tests_list' ? 'Stop mic' : '🎙️ Dictate Tests'}
+                            >
+                              {activeClinicalFieldMic === 'tests_list' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                            </button>
+                            <span className="text-[9px] text-cyan-800/70 font-semibold italic">mic</span>
+                          </div>
+                        </label>
+                        
+                        {/* Quick Tests Tags */}
+                        <div className="flex flex-wrap gap-1 mb-2 max-h-[46px] overflow-y-auto pb-0.5 compact-scroll">
+                          {COMMON_TESTS.map((tag) => {
+                            const isSelected = (summaryForm.tests_list || '').toLowerCase().includes(tag.toLowerCase());
+                            return (
+                              <button
+                                key={tag}
+                                type="button"
+                                onClick={() => handleToggleTag('tests_list', tag)}
+                                className={`text-[9.5px] px-2 py-0.5 rounded-md border transition-all font-bold ${
+                                  isSelected 
+                                    ? 'bg-cyan-600 text-white border-cyan-600 shadow-2xs' 
+                                    : 'bg-white/80 text-cyan-900 border-cyan-200/90 hover:bg-cyan-100/70'
+                                }`}
+                              >
+                                {tag.split(' (')[0]}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </label>
-                    
-                    {/* Quick Tests Tags */}
-                    <div className="flex flex-wrap gap-1 mb-2 max-h-[50px] overflow-y-auto pb-1">
-                      {COMMON_TESTS.map((tag) => {
-                        const isSelected = (summaryForm.tests_list || '').toLowerCase().includes(tag.toLowerCase());
-                        return (
-                          <button
-                            key={tag}
-                            type="button"
-                            onClick={() => handleToggleTag('tests_list', tag)}
-                            className={`text-[9px] px-1.5 py-0.5 rounded-full border transition-all font-semibold ${
-                              isSelected 
-                                ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
-                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200'
-                            }`}
-                          >
-                            {tag.split(' (')[0]}
-                          </button>
-                        );
-                      })}
+
+                      <textarea
+                        className="w-full bg-white/90 border border-cyan-200 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-400 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 placeholder-cyan-900/30 focus:outline-none font-medium transition-all h-20 resize-none shadow-2xs"
+                        placeholder="e.g. CBC (Complete Blood Count), Chest X-Ray PA View"
+                        value={summaryForm.tests_list}
+                        onChange={(e) => setSummaryForm({ ...summaryForm, tests_list: e.target.value })}
+                      />
                     </div>
 
-                    <textarea
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-28 resize-none"
-                      placeholder="e.g. CBC (Complete Blood Count), Chest X-Ray PA View"
-                      value={summaryForm.tests_list}
-                      onChange={(e) => setSummaryForm({ ...summaryForm, tests_list: e.target.value })}
+                    {/* CARD 5: LIFESTYLE & DIETARY ADVICE (Violet / Purple Theme) */}
+                    <div className="border border-purple-200/90 bg-gradient-to-br from-purple-50/50 via-violet-50/20 to-white rounded-xl p-3 shadow-xs border-l-4 border-l-purple-600 flex flex-col justify-between">
+                      <div>
+                        <label className="block mb-1.5 flex justify-between items-center">
+                          <span className="flex items-center gap-1.5 text-purple-900 font-extrabold text-xs uppercase tracking-wider">
+                            <span className="w-5 h-5 rounded-md bg-purple-500/20 text-purple-800 flex items-center justify-center font-bold text-[10px]">🌱</span>
+                            <span>Clinical Advice & Guidelines</span>
+                            {activeClinicalFieldMic === 'advice' && (
+                              <span className="text-[9px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">Listening...</span>
+                            )}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleClinicalFieldMic('advice')}
+                              className={`p-1 rounded-md transition-all cursor-pointer ${
+                                activeClinicalFieldMic === 'advice'
+                                  ? 'bg-rose-500 text-white animate-pulse shadow-xs'
+                                  : 'text-purple-700 hover:bg-purple-100'
+                              }`}
+                              title={activeClinicalFieldMic === 'advice' ? 'Stop mic' : '🎙️ Dictate Advice'}
+                            >
+                              {activeClinicalFieldMic === 'advice' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                            </button>
+                            <span className="text-[9px] text-purple-800/70 font-semibold italic">mic</span>
+                          </div>
+                        </label>
+                        
+                        {/* Quick Advice Tags */}
+                        <div className="flex flex-wrap gap-1 mb-2 max-h-[46px] overflow-y-auto pb-0.5 compact-scroll">
+                          {COMMON_ADVICE.map((tag) => {
+                            const isSelected = (summaryForm.advice || '').includes(tag);
+                            return (
+                              <button
+                                key={tag}
+                                type="button"
+                                onClick={() => handleToggleTag('advice', tag)}
+                                className={`text-[9.5px] px-2 py-0.5 rounded-md border transition-all font-bold ${
+                                  isSelected 
+                                    ? 'bg-purple-600 text-white border-purple-600 shadow-2xs' 
+                                    : 'bg-white/80 text-purple-900 border-purple-200/90 hover:bg-purple-100/70'
+                                }`}
+                              >
+                                {tag.length > 18 ? `${tag.slice(0, 16)}...` : tag}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <textarea
+                        className="w-full bg-white/90 border border-purple-200 focus:border-purple-500 focus:ring-1 focus:ring-purple-400 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 placeholder-purple-900/30 focus:outline-none font-medium transition-all h-20 resize-none shadow-2xs"
+                        placeholder="e.g. Warm saline gargles thrice daily. Drink plenty of warm water. Avoid cold drinks."
+                        value={summaryForm.advice}
+                        onChange={(e) => setSummaryForm({ ...summaryForm, advice: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  {/* SECTION SEPARATOR LINE WITH BADGE */}
+                  <div className="flex items-center gap-3 my-1">
+                    <div className="h-px bg-slate-200 flex-1" />
+                    <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider bg-slate-100 px-2.5 py-0.5 rounded-full">
+                      Follow-Up & Confirmation
+                    </span>
+                    <div className="h-px bg-slate-200 flex-1" />
+                  </div>
+
+                  {/* CARD 6: FOLLOW-UP INSTRUCTIONS (Slate / Dark Theme) */}
+                  <div className="border border-slate-300/80 bg-slate-50/90 rounded-xl p-3 shadow-xs border-l-4 border-l-slate-800">
+                    <label className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-slate-600" />
+                      <span>Follow-up Date / Instructions</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full bg-white border border-slate-300 focus:border-teal-500 focus:ring-1 focus:ring-teal-400 rounded-lg px-2.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none font-semibold transition-all shadow-2xs"
+                      placeholder="e.g. In 5 days or if symptoms worsen"
+                      value={summaryForm.follow_up_date}
+                      onChange={(e) => setSummaryForm({ ...summaryForm, follow_up_date: e.target.value })}
                     />
                   </div>
-                </div>
- 
-                <div>
-                  <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1 flex justify-between items-center">
-                    <span className="flex items-center gap-1.5">
-                      <span>Clinical Advice / Lifestyle Instructions</span>
-                      {activeClinicalFieldMic === 'advice' && (
-                        <span className="text-[9px] text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded font-bold border border-rose-200 animate-pulse">Listening...</span>
-                      )}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleClinicalFieldMic('advice')}
-                        className={`p-1 rounded-md transition-all cursor-pointer ${
-                          activeClinicalFieldMic === 'advice'
-                            ? 'bg-rose-500 text-white animate-pulse shadow-xs'
-                            : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
-                        }`}
-                        title={activeClinicalFieldMic === 'advice' ? 'Stop mic' : '🎙️ Dictate Advice'}
-                      >
-                        {activeClinicalFieldMic === 'advice' ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-                      </button>
-                      <span className="text-[9px] text-slate-400 font-semibold italic">click to toggle</span>
-                    </div>
-                  </label>
-                  
-                  {/* Quick Advice Tags */}
-                  <div className="flex flex-wrap gap-1 mb-2 max-h-[50px] overflow-y-auto pb-1">
-                    {COMMON_ADVICE.map((tag) => {
-                      const isSelected = (summaryForm.advice || '').includes(tag);
-                      return (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => handleToggleTag('advice', tag)}
-                          className={`text-[9px] px-1.5 py-0.5 rounded-full border transition-all font-semibold ${
-                            isSelected 
-                              ? 'bg-teal-600 text-white border-teal-600 shadow-sm' 
-                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200'
-                          }`}
-                        >
-                          {tag.length > 25 ? `${tag.slice(0, 23)}...` : tag}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <textarea
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-medium transition-all h-20 resize-none"
-                    placeholder="e.g. Warm saline gargles thrice daily. Drink plenty of warm water. Avoid cold drinks."
-                    value={summaryForm.advice}
-                    onChange={(e) => setSummaryForm({ ...summaryForm, advice: e.target.value })}
-                  />
-                </div>
- 
-                <div>
-                  <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1.5">Follow-up Date / Instructions</label>
-                  <input
-                    type="text"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 font-semibold transition-all"
-                    placeholder="e.g. In 5 days or if symptoms worsen"
-                    value={summaryForm.follow_up_date}
-                    onChange={(e) => setSummaryForm({ ...summaryForm, follow_up_date: e.target.value })}
-                  />
                 </div>
               </div>
 
@@ -3180,9 +3274,7 @@ export default function PatientSearchTab({
                                 const newLang = e.target.value;
                                 setSelectedLanguage(newLang);
                                 // Auto-regenerate immediately if a summary already exists
-                                if (summaryForm.patient_summary) {
-                                  // We need to call with the new language value directly
-                                  // since selectedLanguage state update is async
+                                if (newLang && summaryForm.patient_summary) {
                                   setSummaryGenerating(true);
                                   setSummaryError('');
                                   fetch(`${API_BASE}/visits/${selectedVisit.id}/summary?generate_ai_summary=true&target_language=${newLang}`, {
@@ -3209,6 +3301,7 @@ export default function PatientSearchTab({
                               }}
                               className="bg-transparent text-[10px] font-bold text-slate-700 focus:outline-none cursor-pointer"
                             >
+                              <option value="">-- Select Language --</option>
                               {INDIAN_LANGUAGES.map(lang => (
                                 <option key={lang.code} value={lang.code}>{lang.label}</option>
                               ))}
@@ -3299,6 +3392,7 @@ export default function PatientSearchTab({
                           onChange={(e) => setSelectedLanguage(e.target.value)}
                           className="bg-transparent text-[10px] font-bold text-slate-800 focus:outline-none cursor-pointer"
                         >
+                          <option value="">-- Select Language --</option>
                           {INDIAN_LANGUAGES.map(lang => (
                             <option key={lang.code} value={lang.code}>{lang.label}</option>
                           ))}

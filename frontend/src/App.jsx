@@ -587,6 +587,8 @@ function App() {
       setPatientHistory([]);
       return;
     }
+    // Auto-collapse sidebar to compact symbols mode when viewing patient records so doctor gets max workspace
+    setSidebarCollapsed(true);
     const patient = patients.find(p => p.id === patientId);
     if (!patient) {
       setSelectedPatient(null);
@@ -1273,64 +1275,85 @@ function App() {
         ></div>
       )}
 
-      {/* Sidebar Navigation — Premium Version */}
-      <aside className={`fixed inset-y-0 left-0 z-40 w-56 flex flex-col justify-between flex-shrink-0 transition-all duration-300 transform ${
-        sidebarCollapsed ? 'hidden md:hidden' : 'md:static md:translate-x-0 md:h-screen md:max-h-screen md:w-56'
+      {/* Sidebar Navigation — Premium Version with Compact Symbols Mode */}
+      <aside className={`fixed inset-y-0 left-0 z-40 flex flex-col justify-between flex-shrink-0 transition-all duration-200 transform ${
+        sidebarCollapsed 
+          ? 'hidden md:flex md:w-16 md:static md:translate-x-0 md:h-screen md:max-h-screen' 
+          : 'w-56 md:static md:translate-x-0 md:h-screen md:max-h-screen md:w-56'
       } ${
         mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
       }`} style={{background:'#080d1a', borderRight:'1px solid rgba(255,255,255,0.06)'}}>
         <div>
           {/* Logo & Header */}
-          <div className="px-4 py-3.5 flex items-center justify-between gap-3" style={{borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center animate-pulse-teal flex-shrink-0" style={{background:'linear-gradient(135deg,#14b8a6,#34d399)'}}>
+          <div className={`py-3.5 flex items-center justify-between gap-2 ${sidebarCollapsed ? 'px-2 justify-center' : 'px-4'}`} style={{borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+            <div className={`flex items-center gap-2.5 min-w-0 ${sidebarCollapsed ? 'justify-center w-full' : ''}`}>
+              <div 
+                onClick={() => sidebarCollapsed && setSidebarCollapsed(false)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center animate-pulse-teal flex-shrink-0 cursor-pointer" 
+                style={{background:'linear-gradient(135deg,#14b8a6,#34d399)'}}
+                title={sidebarCollapsed ? "HospiSynAI - Click to expand sidebar" : "HospiSynAI"}
+              >
                 <Activity className="w-4.5 h-4.5 text-white" />
               </div>
-              <div className="min-w-0">
-                <h2 className="text-white font-black text-sm tracking-tight truncate">HospiSyn<span className="gradient-text-teal">AI</span></h2>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className={`inline-block px-1.5 py-0.2 rounded-full text-[8.5px] font-bold uppercase tracking-wider ${
-                    userRole === 'Admin' ? 'bg-amber-500/15 text-amber-400'
-                    : userRole === 'Accountant' ? 'bg-violet-500/15 text-violet-400'
-                    : userRole === 'Doctor' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                    : 'bg-teal-500/15 text-teal-400'
-                  }`}>{userRole}</span>
+              {!sidebarCollapsed && (
+                <div className="min-w-0">
+                  <h2 className="text-white font-black text-sm tracking-tight truncate">HospiSyn<span className="gradient-text-teal">AI</span></h2>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className={`inline-block px-1.5 py-0.2 rounded-full text-[8.5px] font-bold uppercase tracking-wider ${
+                      userRole === 'Admin' ? 'bg-amber-500/15 text-amber-400'
+                      : userRole === 'Accountant' ? 'bg-violet-500/15 text-violet-400'
+                      : userRole === 'Doctor' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-teal-500/15 text-teal-400'
+                    }`}>{userRole}</span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
-            {/* Collapse Sidebar button */}
-            <button
-              type="button"
-              onClick={() => setSidebarCollapsed(true)}
-              className="hidden md:flex text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors flex-shrink-0"
-              title="Hide Sidebar"
-            >
-              <PanelLeftClose className="w-4 h-4" />
-            </button>
+            {!sidebarCollapsed && (
+              <button
+                type="button"
+                onClick={() => setSidebarCollapsed(true)}
+                className="hidden md:flex text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors flex-shrink-0"
+                title="Collapse to symbols only"
+              >
+                <PanelLeftClose className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* Nav Items */}
-          <nav className="px-2.5 py-2 space-y-2">
+          <nav className={`py-2 space-y-2 ${sidebarCollapsed ? 'px-2' : 'px-2.5'}`}>
             {/* SECTION 1: CLINICAL WORKSPACE */}
             {['Admin', 'Receptionist', 'Accountant', 'Doctor'].includes(userRole) && (
               <div>
-                <p className="px-2 pb-1 text-slate-500 text-[9.5px] font-extrabold uppercase tracking-wider">Clinical Workspace</p>
+                {!sidebarCollapsed ? (
+                  <p className="px-2 pb-1 text-slate-500 text-[9.5px] font-extrabold uppercase tracking-wider">Clinical Workspace</p>
+                ) : (
+                  <div className="my-1 border-t border-white/5" />
+                )}
                 <div className="space-y-0.5">
                   {['Admin', 'Receptionist', 'Accountant', 'Doctor'].includes(userRole) && (
                     <button
                       onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
+                      title={userRole === 'Receptionist' ? 'Front-Desk Overview' : userRole === 'Accountant' ? 'Financial Overview' : userRole === 'Doctor' ? 'Doctor OPD Overview' : 'Overview Dashboard'}
+                      className={`w-full flex items-center gap-2.5 rounded-lg text-xs font-semibold transition-all group ${
+                        sidebarCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-1.5'
+                      } ${
                         activeTab === 'dashboard' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
                       }`}
-                      style={activeTab === 'dashboard' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
+                      style={activeTab === 'dashboard' ? (sidebarCollapsed ? {background:'rgba(20,184,166,0.22)', border:'1px solid rgba(20,184,166,0.4)'} : {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'}) : {}}
                     >
                       {userRole === 'Doctor' ? (
-                        <Stethoscope className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'dashboard' ? 'text-emerald-400' : ''}`} />
+                        <Stethoscope className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'dashboard' ? 'text-emerald-400' : ''}`} />
                       ) : (
-                        <Grid className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'dashboard' ? 'text-teal-400' : ''}`} />
+                        <Grid className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'dashboard' ? 'text-teal-400' : ''}`} />
                       )}
-                      {userRole === 'Receptionist' ? 'Front-Desk Overview' : userRole === 'Accountant' ? 'Financial Overview' : userRole === 'Doctor' ? 'Doctor OPD Overview' : 'Overview Dashboard'}
-                      {activeTab === 'dashboard' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                      {!sidebarCollapsed && (
+                        <>
+                          <span>{userRole === 'Receptionist' ? 'Front-Desk Overview' : userRole === 'Accountant' ? 'Financial Overview' : userRole === 'Doctor' ? 'Doctor OPD Overview' : 'Overview Dashboard'}</span>
+                          {activeTab === 'dashboard' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                        </>
+                      )}
                     </button>
                   )}
 
@@ -1338,31 +1361,45 @@ function App() {
                   {userRole === 'Admin' && (
                     <button
                       onClick={() => { setActiveTab('doctor_dashboard'); setMobileMenuOpen(false); }}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
+                      title="Doctor OPD Board"
+                      className={`w-full flex items-center gap-2.5 rounded-lg text-xs font-semibold transition-all group ${
+                        sidebarCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-1.5'
+                      } ${
                         activeTab === 'doctor_dashboard' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
                       }`}
-                      style={activeTab === 'doctor_dashboard' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
+                      style={activeTab === 'doctor_dashboard' ? (sidebarCollapsed ? {background:'rgba(20,184,166,0.22)', border:'1px solid rgba(20,184,166,0.4)'} : {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'}) : {}}
                     >
-                      <Stethoscope className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'doctor_dashboard' ? 'text-emerald-400' : ''}`} />
-                      Doctor OPD Board
-                      {activeTab === 'doctor_dashboard' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                      <Stethoscope className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'doctor_dashboard' ? 'text-emerald-400' : ''}`} />
+                      {!sidebarCollapsed && (
+                        <>
+                          <span>Doctor OPD Board</span>
+                          {activeTab === 'doctor_dashboard' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                        </>
+                      )}
                     </button>
                   )}
 
                   {['Admin', 'Receptionist', 'Accountant', 'Doctor'].includes(userRole) && (
                     <button
                       onClick={() => { setActiveTab('search_register'); setMobileMenuOpen(false); }}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
+                      title={userRole === 'Doctor' ? 'Patient Medical Records' : 'Patient Search & Desk'}
+                      className={`w-full flex items-center gap-2.5 rounded-lg text-xs font-semibold transition-all group ${
+                        sidebarCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-1.5'
+                      } ${
                         activeTab === 'search_register' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
                       }`}
-                      style={activeTab === 'search_register' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
+                      style={activeTab === 'search_register' ? (sidebarCollapsed ? {background:'rgba(20,184,166,0.22)', border:'1px solid rgba(20,184,166,0.4)'} : {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'}) : {}}
                     >
-                      <Search className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'search_register' ? 'text-teal-400' : ''}`} />
-                      {userRole === 'Doctor' ? 'Patient Medical Records' : 'Patient Search & Desk'}
-                      {userRole !== 'Doctor' && (
-                        <span className="ml-auto flex items-center gap-1 bg-violet-500/15 text-violet-300 text-[8.5px] font-bold px-1.5 py-0.2 rounded-full">
-                          <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" />AI
-                        </span>
+                      <Search className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'search_register' ? 'text-teal-400' : ''}`} />
+                      {!sidebarCollapsed && (
+                        <>
+                          <span>{userRole === 'Doctor' ? 'Patient Medical Records' : 'Patient Search & Desk'}</span>
+                          {userRole !== 'Doctor' && (
+                            <span className="ml-auto flex items-center gap-1 bg-violet-500/15 text-violet-300 text-[8.5px] font-bold px-1.5 py-0.2 rounded-full">
+                              <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" />AI
+                            </span>
+                          )}
+                        </>
                       )}
                     </button>
                   )}
@@ -1370,16 +1407,23 @@ function App() {
                   {['Admin', 'Receptionist', 'Doctor'].includes(userRole) && (
                     <button
                       onClick={() => { setActiveTab('doctor_console'); setMobileMenuOpen(false); }}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
+                      title="Doctor's Desk & Voice Scribe"
+                      className={`w-full flex items-center gap-2.5 rounded-lg text-xs font-semibold transition-all group ${
+                        sidebarCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-1.5'
+                      } ${
                         activeTab === 'doctor_console' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
                       }`}
-                      style={activeTab === 'doctor_console' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
+                      style={activeTab === 'doctor_console' ? (sidebarCollapsed ? {background:'rgba(20,184,166,0.22)', border:'1px solid rgba(20,184,166,0.4)'} : {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'}) : {}}
                     >
-                      <Brain className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'doctor_console' ? 'text-teal-400' : ''}`} />
-                      Doctor's Desk & Scribe
-                      <span className="ml-auto flex items-center gap-1 bg-violet-500/15 text-violet-300 text-[8.5px] font-bold px-1.5 py-0.2 rounded-full">
-                        <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" />AI
-                      </span>
+                      <Brain className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'doctor_console' ? 'text-teal-400' : ''}`} />
+                      {!sidebarCollapsed && (
+                        <>
+                          <span>Doctor's Desk & Scribe</span>
+                          <span className="ml-auto flex items-center gap-1 bg-violet-500/15 text-violet-300 text-[8.5px] font-bold px-1.5 py-0.2 rounded-full">
+                            <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" />AI
+                          </span>
+                        </>
+                      )}
                     </button>
                   )}
                 </div>
@@ -1389,31 +1433,49 @@ function App() {
             {/* SECTION 2: FINANCIAL & BILLING */}
             {['Admin', 'Accountant'].includes(userRole) && (
               <div>
-                <p className="px-2 pb-1 text-slate-500 text-[9.5px] font-extrabold uppercase tracking-wider">Financial & Billing</p>
+                {!sidebarCollapsed ? (
+                  <p className="px-2 pb-1 text-slate-500 text-[9.5px] font-extrabold uppercase tracking-wider">Financial & Billing</p>
+                ) : (
+                  <div className="my-1 border-t border-white/5" />
+                )}
                 <div className="space-y-0.5">
                   <button
                     onClick={() => { setActiveTab('billing_history'); setMobileMenuOpen(false); }}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
+                    title="Billing Queue & Invoices"
+                    className={`w-full flex items-center gap-2.5 rounded-lg text-xs font-semibold transition-all group ${
+                      sidebarCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-1.5'
+                    } ${
                       activeTab === 'billing_history' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
                     }`}
-                    style={activeTab === 'billing_history' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
+                    style={activeTab === 'billing_history' ? (sidebarCollapsed ? {background:'rgba(20,184,166,0.22)', border:'1px solid rgba(20,184,166,0.4)'} : {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'}) : {}}
                   >
-                    <CreditCard className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'billing_history' ? 'text-teal-400' : ''}`} />
-                    Billing Queue
-                    {activeTab === 'billing_history' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                    <CreditCard className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'billing_history' ? 'text-teal-400' : ''}`} />
+                    {!sidebarCollapsed && (
+                      <>
+                        <span>Billing Queue</span>
+                        {activeTab === 'billing_history' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                      </>
+                    )}
                   </button>
 
                   {userRole === 'Admin' && (
                     <button
                       onClick={() => { setActiveTab('catalog'); setMobileMenuOpen(false); }}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
+                      title="Services Catalog"
+                      className={`w-full flex items-center gap-2.5 rounded-lg text-xs font-semibold transition-all group ${
+                        sidebarCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-1.5'
+                      } ${
                         activeTab === 'catalog' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
                       }`}
-                      style={activeTab === 'catalog' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
+                      style={activeTab === 'catalog' ? (sidebarCollapsed ? {background:'rgba(20,184,166,0.22)', border:'1px solid rgba(20,184,166,0.4)'} : {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'}) : {}}
                     >
-                      <FileText className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'catalog' ? 'text-teal-400' : ''}`} />
-                      Services Catalog
-                      {activeTab === 'catalog' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                      <FileText className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'catalog' ? 'text-teal-400' : ''}`} />
+                      {!sidebarCollapsed && (
+                        <>
+                          <span>Services Catalog</span>
+                          {activeTab === 'catalog' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                        </>
+                      )}
                     </button>
                   )}
                 </div>
@@ -1423,30 +1485,48 @@ function App() {
             {/* SECTION 3: ANALYTICS & INSIGHTS */}
             {userRole === 'Admin' && (
               <div>
-                <p className="px-2 pb-1 text-slate-500 text-[9.5px] font-extrabold uppercase tracking-wider">Analytics & Performance</p>
+                {!sidebarCollapsed ? (
+                  <p className="px-2 pb-1 text-slate-500 text-[9.5px] font-extrabold uppercase tracking-wider">Analytics & Performance</p>
+                ) : (
+                  <div className="my-1 border-t border-white/5" />
+                )}
                 <div className="space-y-0.5">
                   <button
                     onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
+                    title="Executive Dashboard"
+                    className={`w-full flex items-center gap-2.5 rounded-lg text-xs font-semibold transition-all group ${
+                      sidebarCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-1.5'
+                    } ${
                       activeTab === 'dashboard' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
                     }`}
-                    style={activeTab === 'dashboard' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
+                    style={activeTab === 'dashboard' ? (sidebarCollapsed ? {background:'rgba(20,184,166,0.22)', border:'1px solid rgba(20,184,166,0.4)'} : {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'}) : {}}
                   >
-                    <Grid className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'dashboard' ? 'text-teal-400' : ''}`} />
-                    Executive Dashboard
-                    {activeTab === 'dashboard' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                    <Grid className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'dashboard' ? 'text-teal-400' : ''}`} />
+                    {!sidebarCollapsed && (
+                      <>
+                        <span>Executive Dashboard</span>
+                        {activeTab === 'dashboard' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                      </>
+                    )}
                   </button>
 
                   <button
                     onClick={() => { setActiveTab('roi_calculator'); setMobileMenuOpen(false); }}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
+                    title="ROI & Business Model"
+                    className={`w-full flex items-center gap-2.5 rounded-lg text-xs font-semibold transition-all group ${
+                      sidebarCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-1.5'
+                    } ${
                       activeTab === 'roi_calculator' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
                     }`}
-                    style={activeTab === 'roi_calculator' ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
+                    style={activeTab === 'roi_calculator' ? (sidebarCollapsed ? {background:'rgba(20,184,166,0.22)', border:'1px solid rgba(20,184,166,0.4)'} : {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'}) : {}}
                   >
-                    <TrendingUp className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'roi_calculator' ? 'text-teal-400' : ''}`} />
-                    ROI & Business Model
-                    {activeTab === 'roi_calculator' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                    <TrendingUp className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'roi_calculator' ? 'text-teal-400' : ''}`} />
+                    {!sidebarCollapsed && (
+                      <>
+                        <span>ROI & Business Model</span>
+                        {activeTab === 'roi_calculator' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -1455,7 +1535,11 @@ function App() {
             {/* SECTION 4: ADMINISTRATION */}
             {userRole === 'Admin' && (
               <div>
-                <p className="px-2 pb-1 text-slate-500 text-[9.5px] font-extrabold uppercase tracking-wider">Administration</p>
+                {!sidebarCollapsed ? (
+                  <p className="px-2 pb-1 text-slate-500 text-[9.5px] font-extrabold uppercase tracking-wider">Administration</p>
+                ) : (
+                  <div className="my-1 border-t border-white/5" />
+                )}
                 <div className="space-y-0.5">
                   {[
                     ['users','Staff Accounts', UserPlus],
@@ -1464,14 +1548,21 @@ function App() {
                   ].map(([tab, label, Icon]) => (
                     <button key={tab}
                       onClick={() => { setActiveTab(tab); setMobileMenuOpen(false); }}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
+                      title={label}
+                      className={`w-full flex items-center gap-2.5 rounded-lg text-xs font-semibold transition-all group ${
+                        sidebarCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-1.5'
+                      } ${
                         activeTab === tab ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
                       }`}
-                      style={activeTab === tab ? {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'} : {}}
+                      style={activeTab === tab ? (sidebarCollapsed ? {background:'rgba(20,184,166,0.22)', border:'1px solid rgba(20,184,166,0.4)'} : {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'}) : {}}
                     >
-                      <Icon className={`w-3.5 h-3.5 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === tab ? 'text-teal-400' : ''}`} />
-                      {label}
-                      {activeTab === tab && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                      <Icon className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === tab ? 'text-teal-400' : ''}`} />
+                      {!sidebarCollapsed && (
+                        <>
+                          <span>{label}</span>
+                          {activeTab === tab && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />}
+                        </>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -1481,40 +1572,64 @@ function App() {
         </div>
 
         {/* SIPS Guided Evaluation Tour Sidebar Trigger */}
-        <div className="px-3 pb-2 pt-1" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+        <div className={`py-1.5 ${sidebarCollapsed ? 'px-2' : 'px-3 pb-2 pt-1'}`} style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
           <button
             type="button"
             onClick={() => setIsTourOpen(true)}
-            className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl bg-gradient-to-r from-teal-500/15 via-cyan-500/10 to-transparent hover:from-teal-500/25 hover:to-cyan-500/20 border border-teal-500/30 text-teal-300 hover:text-white text-xs font-extrabold transition-all group shadow-sm cursor-pointer"
+            title="SIPS Pitch Tour (5 Steps)"
+            className={`w-full flex items-center rounded-xl bg-gradient-to-r from-teal-500/15 via-cyan-500/10 to-transparent hover:from-teal-500/25 hover:to-cyan-500/20 border border-teal-500/30 text-teal-300 hover:text-white transition-all group shadow-sm cursor-pointer ${
+              sidebarCollapsed ? 'justify-center p-2.5' : 'justify-between px-2.5 py-2 text-xs font-extrabold'
+            }`}
           >
             <span className="flex items-center gap-2">
-              <Sparkles className="w-3.5 h-3.5 text-teal-400 group-hover:rotate-12 group-hover:scale-110 transition-all" />
-              <span>SIPS Pitch Tour</span>
+              <Sparkles className="w-4 h-4 text-teal-400 group-hover:rotate-12 group-hover:scale-110 transition-all" />
+              {!sidebarCollapsed && <span>SIPS Pitch Tour</span>}
             </span>
-            <span className="text-[9px] bg-teal-500/20 text-teal-300 border border-teal-500/30 px-1.5 py-0.5 rounded font-mono font-bold">5 Steps</span>
+            {!sidebarCollapsed && (
+              <span className="text-[9px] bg-teal-500/20 text-teal-300 border border-teal-500/30 px-1.5 py-0.5 rounded font-mono font-bold">5 Steps</span>
+            )}
           </button>
         </div>
 
         {/* User Footer Profile */}
-        <div className="px-3.5 py-2.5" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-teal-300 font-black text-sm" style={{background:'rgba(20,184,166,0.12)'}}>
+        <div className={`${sidebarCollapsed ? 'p-2 flex flex-col items-center gap-2' : 'px-3.5 py-2.5'}`} style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+          {sidebarCollapsed ? (
+            <>
+              <div 
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-teal-300 font-black text-sm cursor-pointer" 
+                style={{background:'rgba(20,184,166,0.12)'}}
+                title={`${name} (${userRole})`}
+              >
                 {name.charAt(0).toUpperCase()}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-xs font-bold leading-none truncate">{name}</p>
-                <span className="text-slate-500 text-[10px] leading-none block mt-0.5 truncate">{userRole}</span>
+              <button
+                onClick={handleLogout}
+                className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors"
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-teal-300 font-black text-sm" style={{background:'rgba(20,184,166,0.12)'}}>
+                  {name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-xs font-bold leading-none truncate">{name}</p>
+                  <span className="text-slate-500 text-[10px] leading-none block mt-0.5 truncate">{userRole}</span>
+                </div>
               </div>
+              <button
+                onClick={handleLogout}
+                className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors"
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
-            <button
-              onClick={handleLogout}
-              className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors"
-              title="Logout"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
+          )}
         </div>
       </aside>
       {/* Main Content Area */}
@@ -1710,6 +1825,8 @@ function App() {
             getHeaders={getHeaders}
             showToast={showToast}
             userRole={userRole}
+            sidebarCollapsed={sidebarCollapsed}
+            setSidebarCollapsed={setSidebarCollapsed}
           />
         )}
 
@@ -1723,6 +1840,8 @@ function App() {
             showToast={showToast}
             adminSettingsForm={adminSettingsForm}
             userRole={userRole}
+            sidebarCollapsed={sidebarCollapsed}
+            setSidebarCollapsed={setSidebarCollapsed}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             patients={patients}

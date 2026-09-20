@@ -28,6 +28,8 @@ import { parsePatientVoiceClient } from '../utils/clinicalNLPClient';
  * without requiring the doctor to re-dictate or re-type.
  */
 export default function PatientVoiceModal({
+  inline = false,
+  autoStart = true,
   isOpen,
   onClose,
   onPopulate,
@@ -55,17 +57,7 @@ export default function PatientVoiceModal({
     setLang,
     isSupported,
     requestPermission
-  } = useSpeechRecognition({ defaultLang: selectedLang });
-
-  // Sync selected language
-  const handleLanguageChange = (newLang) => {
-    setSelectedLang(newLang);
-    if (setLang) setLang(newLang);
-    if (isListening) {
-      stopListening();
-      showToast(`Language switched to ${newLang === 'hi-IN' ? 'Hindi (हिंदी)' : 'Indian English / Hinglish'}. Click Start to speak.`, 'notice');
-    }
-  };
+  } = useSpeechRecognition({ defaultLang: 'hi-IN' });
 
   const spokenText = (transcript + ' ' + interimTranscript).trim() || customText;
 
@@ -157,26 +149,35 @@ export default function PatientVoiceModal({
     onClose();
   };
 
-  // Reset when modal opens
+  // Auto-start recording immediately on open - ZERO extra clicks!
   useEffect(() => {
     if (isOpen) {
       resetTranscript();
       setParsedResult(null);
       setCustomText('');
       setActiveTab('speak');
+      if (autoStart) {
+        const timer = setTimeout(() => {
+          try {
+            startListening({ customLang: 'hi-IN' });
+          } catch (err) {
+            console.warn('Auto start mic notice:', err);
+          }
+        }, 120);
+        return () => clearTimeout(timer);
+      }
     } else {
       if (isListening) stopListening();
     }
-  }, [isOpen]);
+  }, [isOpen, autoStart]);
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-700/80 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col text-slate-100 max-h-[92vh]">
+  const cardContent = (
+    <div className={`bg-slate-900 border ${inline ? 'border-2 border-emerald-500/50 rounded-2xl shadow-xl w-full my-2' : 'border-slate-700/80 w-full max-w-2xl rounded-3xl shadow-2xl max-h-[92vh]'} overflow-hidden flex flex-col text-slate-100 animate-in fade-in ${inline ? 'slide-in-from-top-2' : ''} duration-200`}>
         
         {/* Header */}
-        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900">
+        <div className="px-4 py-3 sm:px-5 sm:py-3.5 border-b border-slate-800 flex items-center justify-between bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
               <Mic className="w-5 h-5 text-slate-950 font-bold" />
@@ -208,34 +209,25 @@ export default function PatientVoiceModal({
         </div>
 
         {/* Content Body */}
-        <div className="p-5 overflow-y-auto space-y-4 compact-scroll flex-1">
+        <div className="p-4 sm:p-5 overflow-y-auto space-y-3.5 compact-scroll flex-1">
           
-          {/* Language Selector Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-slate-950/60 rounded-2xl border border-slate-800">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 font-bold">
-              <Globe className="w-3.5 h-3.5 text-teal-400" />
-              <span>Speaking Language:</span>
+          {/* Smart Auto-Adapting Language Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 bg-slate-950/70 rounded-xl border border-teal-500/25 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="font-extrabold text-teal-300">
+                🤖 Auto-Adapting Multi-Lingual:
+              </span>
+              <span className="text-slate-300 font-medium text-[11.5px]">
+                Hindi • Hinglish • English (मरीज़ सीधे अपनी स्वाभाविक भाषा में बोलें, कोई सेटिंग बदलने की ज़रूरत नहीं)
+              </span>
             </div>
-            <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-700/60">
-              {[
-                { code: 'hi-IN', label: '🇮🇳 Hindi (हिंदी)' },
-                { code: 'en-IN', label: '🔤 Hinglish / English' },
-                { code: 'en-US', label: '🇺🇸 English' }
-              ].map((l) => (
-                <button
-                  key={l.code}
-                  type="button"
-                  onClick={() => handleLanguageChange(l.code)}
-                  className={`text-xs font-bold px-2.5 py-1 rounded-lg transition-all ${
-                    selectedLang === l.code
-                      ? 'bg-teal-500 text-slate-950 shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  {l.label}
-                </button>
-              ))}
-            </div>
+            <span className="text-[10px] font-bold text-teal-300/90 bg-teal-950/60 px-2 py-0.5 rounded-md border border-teal-800/60">
+              Zero Config
+            </span>
           </div>
 
           {/* Voice Waveform & Live Recording Console */}
@@ -245,12 +237,12 @@ export default function PatientVoiceModal({
                 {isListening ? (
                   <span className="flex items-center gap-1.5 text-xs font-bold text-rose-400 animate-pulse">
                     <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-                    मरीज़ बोल रहे हैं... (Listening live)
+                    मरीज़ बोल रहे हैं... (Listening live • Auto-detecting)
                   </span>
                 ) : (
                   <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
                     <Volume2 className="w-3.5 h-3.5 text-slate-500" />
-                    माइक्रोफ़ोन तैयार है (Ready to record)
+                    माइक्रोफ़ोन तैयार है (Ready)
                   </span>
                 )}
               </div>
@@ -275,7 +267,7 @@ export default function PatientVoiceModal({
             </div>
 
             {/* Live Spoken Transcript Display */}
-            <div className="min-h-[72px] max-h-[120px] overflow-y-auto bg-slate-900/80 rounded-xl p-3 border border-slate-800/80 text-xs font-medium leading-relaxed compact-scroll">
+            <div className="min-h-[64px] max-h-[110px] overflow-y-auto bg-slate-900/80 rounded-xl p-3 border border-slate-800/80 text-xs font-medium leading-relaxed compact-scroll">
               {spokenText ? (
                 <p className="text-slate-100">
                   <span className="text-teal-400 font-bold mr-1.5">Patient Spoke:</span>
@@ -283,7 +275,11 @@ export default function PatientVoiceModal({
                 </p>
               ) : (
                 <p className="text-slate-500 italic">
-                  "Start Speaking" पर क्लिक करें और मरीज़ से बोलें, जैसे: "मुझे 2 दिन से बुखार, खांसी और सिरदर्द है..."
+                  {isListening ? (
+                    <span>🎙️ मरीज़ अब बोल सकते हैं... जैसे: "मुझे 2 दिन से बुखार और सूखी खांसी है, सिर में दर्द है..."</span>
+                  ) : (
+                    <span>"Start Speaking" पर क्लिक करें या नीचे दिए गए किसी भी 1-Click चिप पर क्लिक करें...</span>
+                  )}
                 </p>
               )}
             </div>
@@ -294,11 +290,16 @@ export default function PatientVoiceModal({
                 {isListening ? (
                   <button
                     type="button"
-                    onClick={stopListening}
-                    className="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-rose-600/30 active:scale-95 cursor-pointer"
+                    onClick={() => {
+                      stopListening();
+                      if (spokenText) {
+                        handleParseSpeech(spokenText, true);
+                      }
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-emerald-600/30 active:scale-95 cursor-pointer"
                   >
-                    <MicOff className="w-3.5 h-3.5" />
-                    Stop Listening
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    🛑 Done & Auto-Fill Desk (बोलना पूरा हुआ)
                   </button>
                 ) : (
                   <button
@@ -306,12 +307,12 @@ export default function PatientVoiceModal({
                     onClick={() => {
                       resetTranscript();
                       setParsedResult(null);
-                      startListening({ customLang: selectedLang });
+                      startListening({ customLang: 'hi-IN' });
                     }}
                     className="bg-gradient-to-r from-teal-400 to-emerald-400 hover:from-teal-300 hover:to-emerald-300 text-slate-950 font-extrabold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-lg shadow-teal-500/20 active:scale-95 cursor-pointer"
                   >
                     <Mic className="w-3.5 h-3.5 text-slate-950 font-bold" />
-                    🎙️ Start Speaking (बोलना शुरू करें)
+                    🎙️ Speak Again (फिर से बोलें)
                   </button>
                 )}
 
@@ -335,17 +336,17 @@ export default function PatientVoiceModal({
                 type="button"
                 onClick={() => handleParseSpeech()}
                 disabled={isParsing || !spokenText}
-                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-extrabold text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-95 cursor-pointer"
+                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-extrabold text-xs px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-95 cursor-pointer"
               >
                 {isParsing ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-950" />
-                    <span>AI Analyzing & Adding...</span>
+                    <span>AI Extracting...</span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-3.5 h-3.5 text-slate-950" />
-                    <span>⚡ AI Extract & Add to Desk</span>
+                    <span>⚡ AI Auto-Fill Desk</span>
                   </>
                 )}
               </button>
@@ -493,6 +494,15 @@ export default function PatientVoiceModal({
         </div>
 
       </div>
+  );
+
+  if (inline) {
+    return cardContent;
+  }
+
+  return (
+    <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+      {cardContent}
     </div>
   );
 }
