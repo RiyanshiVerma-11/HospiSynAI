@@ -3266,7 +3266,7 @@ export default function PatientSearchTab({
                         </p>
                         <div className="flex items-center justify-center gap-1.5 mt-2">
                           <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-                          <span className="text-[10px] text-violet-500 font-bold uppercase tracking-widest">Powered by Groq · Llama 3.3 70B</span>
+                          <span className="text-[10px] text-violet-500 font-bold uppercase tracking-widest">Powered by Groq · Clinical AI</span>
                         </div>
                       </div>
                     </div>

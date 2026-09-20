@@ -313,7 +313,7 @@ Return ONLY a valid JSON object matching:
 
         preferred_model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
         # List of models to try in order of priority starting with user's configured model
-        candidate_models = [preferred_model, "openai/gpt-oss-120b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+        candidate_models = [preferred_model, "openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b", "groq/compound-mini"]
         models_to_try = []
         for m in candidate_models:
             if m and m not in models_to_try:

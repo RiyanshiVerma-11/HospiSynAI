@@ -295,7 +295,7 @@ async def call_groq_api(
         return None
 
     preferred_model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
-    candidate_models = [preferred_model, "openai/gpt-oss-120b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+    candidate_models = [preferred_model, "openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b", "groq/compound-mini"]
     models_to_try = []
     for m in candidate_models:
         if m and m not in models_to_try:
@@ -593,7 +593,6 @@ async def update_visit_summary(
     # Call AI if requested
     if generate_ai_summary:
         api_key = os.getenv("GROQ_API_KEY")
-        model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
         if not api_key:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
