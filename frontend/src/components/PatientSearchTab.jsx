@@ -25,7 +25,11 @@ import {
   MicOff,
   Volume2,
   Activity,
-  X
+  X,
+  Users,
+  PanelLeftClose,
+  PanelLeftOpen,
+  GripVertical
 } from 'lucide-react';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import VoiceVisualizer from './VoiceVisualizer';
@@ -293,7 +297,46 @@ export default function PatientSearchTab({
   const [selectedLanguage, setSelectedLanguage] = React.useState('');
   const [viewMode, setViewMode] = React.useState('en'); // 'en' | 'native' | 'pdf'
   const [pdfPreviewUrl, setPdfPreviewUrl] = React.useState('');
-  const [pdfLoading, setPdfLoading] = React.useState(false);
+  // Patient Finder Width & Resizing States
+  const [finderWidth, setFinderWidth] = React.useState(() => {
+    const saved = localStorage.getItem('hospisyn_finder_width');
+    return saved ? parseInt(saved, 10) : 340;
+  });
+  const [finderCollapsed, setFinderCollapsed] = React.useState(false);
+  const [isDraggingFinder, setIsDraggingFinder] = React.useState(false);
+
+  const containerRef = React.useRef(null);
+
+  // Dragging Patient Finder Splitter (Horizontally enlarge or shrink the finder)
+  React.useEffect(() => {
+    if (!isDraggingFinder) return;
+
+    const handleMouseMove = (e) => {
+      if (!containerRef.current) return;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newWidth = e.clientX - containerRect.left;
+
+      if (newWidth < 160) {
+        setFinderCollapsed(true);
+      } else {
+        setFinderCollapsed(false);
+        const clampedWidth = Math.max(240, Math.min(newWidth, 600));
+        setFinderWidth(clampedWidth);
+        localStorage.setItem('hospisyn_finder_width', clampedWidth.toString());
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingFinder(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingFinder]);
 
   const INDIAN_LANGUAGES = [
     { code: 'Hindi', label: 'Hindi (हिंदी)' },
@@ -1108,30 +1151,129 @@ export default function PatientSearchTab({
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-3 md:gap-4 items-stretch animate-in fade-in duration-300 h-full w-full min-h-0 p-2 md:p-3">
-      {/* Search Panel (Left Sidebar: compact 320-350px) */}
-      <div className="w-full lg:w-[320px] xl:w-[350px] shrink-0 flex flex-col gap-3 md:h-full md:min-h-0">
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col md:h-full md:overflow-hidden min-h-[300px] lg:min-h-0">
-          <div className="flex items-center justify-between mb-2.5">
-            <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-              <Search className="w-3.5 h-3.5 text-teal-600" />
-              Patient Finder
-            </h3>
-            {userRole !== 'Doctor' && (
+    <div 
+      ref={containerRef}
+      className={`flex flex-col lg:flex-row gap-0 items-stretch animate-in fade-in duration-300 h-full w-full min-h-0 p-2 md:p-3 relative ${
+        isDraggingFinder ? 'select-none' : ''
+      }`}
+    >
+      {/* Search Panel (Left Sidebar: compact 320-350px / resizable) */}
+      {finderCollapsed ? (
+        /* Collapsed Slim Dock Rail with Triage Counters */
+        <div className="hidden lg:flex w-14 min-w-[56px] bg-slate-50 border border-slate-200 rounded-2xl flex-col items-center py-3 px-1 flex-shrink-0 select-none z-10 mr-1.5 justify-between shadow-xs">
+          {/* Top: Expand Toggle + Counts */}
+          <div className="flex flex-col items-center gap-2.5 w-full">
+            <button
+              type="button"
+              onClick={() => setFinderCollapsed(false)}
+              className="p-2 rounded-xl bg-white border border-slate-200 hover:border-teal-500 text-slate-600 hover:text-teal-700 shadow-xs transition-all flex items-center justify-center group cursor-pointer"
+              title="Expand Patient Finder (मरीज़ खोजें)"
+            >
+              <PanelLeftOpen className="w-4 h-4 text-teal-600 group-hover:scale-110 transition-transform" />
+            </button>
+
+            {/* Total Patients Badge */}
+            <button
+              type="button"
+              onClick={() => setFinderCollapsed(false)}
+              className="w-full py-1.5 px-0.5 rounded-xl border bg-white border-slate-200 hover:border-teal-400 hover:bg-teal-50/50 shadow-xs transition-all cursor-pointer flex flex-col items-center"
+              title={`Total Patients: ${patients.length}`}
+            >
+              <Users className="w-3.5 h-3.5 text-teal-600 mb-0.5" />
+              <span className="text-xs font-black text-slate-900 font-mono leading-none">
+                {patients.length}
+              </span>
+              <span className="text-[7.5px] font-black uppercase text-slate-400 mt-0.5 leading-none">
+                Total
+              </span>
+            </button>
+
+            {/* Unpaid Bills Badge if any */}
+            {unpaidBills && unpaidBills.length > 0 && (
               <button
                 type="button"
-                onClick={() => {
-                  handleSelectPatient(null);
-                  setShowVoiceIntake(false);
-                }}
-                className="text-[11px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer hover:scale-[1.02] active:scale-95"
-                title="Open New Patient Registration form"
+                onClick={() => setFinderCollapsed(false)}
+                className="w-full py-1.5 px-0.5 rounded-xl border bg-amber-50 border-amber-300 hover:bg-amber-100 shadow-xs transition-all cursor-pointer flex flex-col items-center"
+                title={`${unpaidBills.length} Unpaid Bills`}
               >
-                <PlusCircle className="w-3 h-3 text-teal-600" />
-                + New Patient
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 mb-0.5" />
+                <span className="text-xs font-black text-amber-800 font-mono leading-none">
+                  {unpaidBills.length}
+                </span>
+                <span className="text-[7.5px] font-black uppercase text-amber-700 mt-0.5 leading-none">
+                  Unpaid
+                </span>
               </button>
             )}
           </div>
+
+          {/* Middle: Rotated Text Label */}
+          <div 
+            onClick={() => setFinderCollapsed(false)}
+            className="my-auto flex flex-col items-center cursor-pointer group py-2"
+            title="Click to expand Patient Finder"
+          >
+            <span className="text-[9.5px] font-black uppercase text-slate-400 group-hover:text-teal-700 [writing-mode:vertical-lr] rotate-180 tracking-widest">
+              Patient Finder
+            </span>
+          </div>
+
+          {/* Bottom: New Patient Button */}
+          {userRole !== 'Doctor' && (
+            <button
+              type="button"
+              onClick={() => {
+                handleSelectPatient(null);
+                setShowVoiceIntake(false);
+                setFinderCollapsed(false);
+              }}
+              className="p-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white shadow-xs transition-all flex items-center justify-center cursor-pointer"
+              title="Register New Patient"
+            >
+              <PlusCircle className="w-4 h-4 text-white" />
+            </button>
+          )}
+        </div>
+      ) : (
+        /* Expanded Resizable Patient Finder */
+        <div 
+          style={{ width: `${finderWidth}px`, minWidth: `${finderWidth}px` }}
+          className="w-full lg:w-auto shrink-0 flex flex-col gap-3 md:h-full md:min-h-0 transition-[width] duration-75"
+        >
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col md:h-full md:overflow-hidden min-h-[300px] lg:min-h-0">
+            <div className="flex items-center justify-between mb-2.5">
+              <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                <Search className="w-3.5 h-3.5 text-teal-600" />
+                Patient Finder
+                <span className="text-[10px] font-black bg-teal-50 text-teal-700 px-1.5 py-0.2 rounded-full border border-teal-200">
+                  {patients.length}
+                </span>
+              </h3>
+              <div className="flex items-center gap-1">
+                {userRole !== 'Doctor' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleSelectPatient(null);
+                      setShowVoiceIntake(false);
+                    }}
+                    className="text-[11px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer hover:scale-[1.02] active:scale-95"
+                    title="Open New Patient Registration form"
+                  >
+                    <PlusCircle className="w-3 h-3 text-teal-600" />
+                    + New Patient
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setFinderCollapsed(true)}
+                  className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                  title="Collapse Patient Finder (पूरा स्क्रीन खोलें)"
+                >
+                  <PanelLeftClose className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           <div className="flex gap-2 flex-shrink-0">
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -1318,6 +1460,21 @@ export default function PatientSearchTab({
           </div>
         </div>
       </div>
+      )}
+
+      {/* Draggable Splitter Handle between Patient Finder and Workspace */}
+      {!finderCollapsed && (
+        <div
+          onMouseDown={() => setIsDraggingFinder(true)}
+          onDoubleClick={() => setFinderCollapsed(true)}
+          className={`hidden lg:flex w-2 hover:w-2.5 bg-slate-200 hover:bg-teal-500 cursor-col-resize transition-all items-center justify-center relative group select-none flex-shrink-0 mx-1 rounded-full ${
+            isDraggingFinder ? 'bg-teal-600 w-2.5 ring-2 ring-teal-400/40' : ''
+          }`}
+          title="Drag horizontally to resize sections • Double click to collapse"
+        >
+          <GripVertical className="w-3 h-3 text-slate-400 group-hover:text-white transition-colors pointer-events-none" />
+        </div>
+      )}
 
       {/* Workspace / Register Pane (FLEX-1: Expands across 100% of remaining screen width!) */}
       <div className="flex-1 w-full min-w-0 flex flex-col gap-3 md:h-full md:min-h-0 overflow-y-auto compact-scroll pr-1">
@@ -1325,7 +1482,22 @@ export default function PatientSearchTab({
           <>
             {/* Top Patient Workspace Switcher Banner: Receptionist can register a new patient in 1 click at any time */}
             <div className="bg-white border border-slate-200 rounded-2xl px-4 py-2.5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 shrink-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Finder Toggle Button */}
+                <button
+                  type="button"
+                  onClick={() => setFinderCollapsed(prev => !prev)}
+                  className={`text-xs font-bold px-2.5 py-1 rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer ${
+                    finderCollapsed
+                      ? 'bg-teal-50 text-teal-800 border-teal-300 hover:bg-teal-100 shadow-xs'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                  title={finderCollapsed ? 'Open Patient Finder' : 'Collapse Patient Finder'}
+                >
+                  {finderCollapsed ? <PanelLeftOpen className="w-3.5 h-3.5 text-teal-600" /> : <PanelLeftClose className="w-3.5 h-3.5 text-slate-500" />}
+                  <span>{finderCollapsed ? `Finder (${patients.length})` : 'Hide Finder'}</span>
+                </button>
+
                 <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Active Workspace:</span>
                 <span className="bg-teal-50 text-teal-900 border border-teal-200 text-xs font-extrabold px-2.5 py-1 rounded-xl flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
@@ -1975,9 +2147,9 @@ export default function PatientSearchTab({
         </div>
       ) : (
           /* Register Patient Profile form (displayed in right panel when no patient is selected) - FULL SCREEN WIDTH & 2-COLUMN RESPONSIVE LAYOUT */
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm w-full space-y-4 animate-in fade-in duration-150">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-              <div>
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm w-full space-y-4 animate-in fade-in duration-150 overflow-hidden">
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div className="min-w-0">
                 <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
                   <UserCheck className="w-5 h-5 text-teal-600" />
                   New Patient Registration
@@ -1985,7 +2157,22 @@ export default function PatientSearchTab({
                 <p className="text-slate-400 text-xs">Register a new patient profile into the central hospital records directory.</p>
               </div>
               {/* HERO VOICE ACTION BUTTONS */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center flex-wrap gap-2 shrink-0 max-w-full">
+                {/* Finder Toggle inside Registration Form Header */}
+                <button
+                  type="button"
+                  onClick={() => setFinderCollapsed(prev => !prev)}
+                  className={`text-xs font-bold px-2.5 py-2.5 rounded-xl border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                    finderCollapsed
+                      ? 'bg-teal-50 text-teal-800 border-teal-300 hover:bg-teal-100 shadow-xs ring-1 ring-teal-400/30'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
+                  }`}
+                  title={finderCollapsed ? 'Show Patient Finder' : 'Hide Patient Finder'}
+                >
+                  {finderCollapsed ? <PanelLeftOpen className="w-3.5 h-3.5 text-teal-600" /> : <PanelLeftClose className="w-3.5 h-3.5 text-slate-500" />}
+                  <span>{finderCollapsed ? `Finder (${patients.length})` : 'Hide Finder'}</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => {
@@ -1996,7 +2183,7 @@ export default function PatientSearchTab({
                       startGuidedVoiceIntake();
                     }
                   }}
-                  className={`relative group overflow-hidden text-xs font-black px-4 py-2.5 rounded-xl shadow-lg transition-all flex items-center gap-2 shrink-0 cursor-pointer active:scale-95 ${
+                  className={`relative group overflow-hidden text-xs font-black px-3.5 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95 ${
                     guidedVoiceStep || intakeVoice.isListening
                       ? 'bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 text-white shadow-rose-500/40 ring-4 ring-rose-400/50 animate-pulse'
                       : 'bg-gradient-to-r from-teal-600 via-cyan-600 to-emerald-600 hover:from-teal-500 hover:to-cyan-500 text-white shadow-teal-500/30 ring-2 ring-teal-400/40 hover:ring-teal-300'
@@ -2009,12 +2196,12 @@ export default function PatientSearchTab({
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
                       </span>
-                      <span>● LISTENING ({GUIDED_STEPS.find(s => s.id === guidedVoiceStep)?.label || 'Guided Voice'}) - Click to Stop</span>
+                      <span>● LISTENING ({GUIDED_STEPS.find(s => s.id === guidedVoiceStep)?.label || 'Guided Voice'}) - Stop</span>
                     </>
                   ) : (
                     <>
                       <Mic className="w-4 h-4 text-cyan-200 group-hover:scale-110 transition-transform" />
-                      <span>🎙️ Guided Voice Intake (Enter ↵ to Advance)</span>
+                      <span>🎙️ Guided Voice Intake <span className="hidden xl:inline">(Enter ↵ to Advance)</span></span>
                     </>
                   )}
                 </button>
@@ -2031,7 +2218,7 @@ export default function PatientSearchTab({
                       intakeVoice.stopListening();
                     }
                   }}
-                  className={`text-xs font-bold px-3 py-2.5 rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer ${
+                  className={`text-xs font-bold px-3 py-2.5 rounded-xl border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                     showVoiceIntake
                       ? 'bg-slate-800 text-white border-slate-700 shadow-sm'
                       : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
@@ -2039,7 +2226,7 @@ export default function PatientSearchTab({
                   title="Toggle continuous audio waveform and sample chips"
                 >
                   <Activity className="w-3.5 h-3.5 text-teal-600" />
-                  <span className="hidden sm:inline">Waveform</span>
+                  <span>Waveform</span>
                 </button>
               </div>
             </div>
