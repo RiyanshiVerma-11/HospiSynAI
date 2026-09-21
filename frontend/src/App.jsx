@@ -34,7 +34,10 @@ import {
   Sparkles,
   PanelLeft,
   PanelLeftClose,
-  Menu
+  Menu,
+  Receipt,
+  Shield,
+  User
 } from 'lucide-react';
 import DashboardTab from './components/DashboardTab';
 import ReceptionistDashboardTab from './components/ReceptionistDashboardTab';
@@ -51,6 +54,7 @@ import ROICalculatorTab from './components/ROICalculatorTab';
 import DemoTour from './components/DemoTour';
 import DoctorConsoleTab from './components/DoctorConsoleTab';
 import LandingPage from './components/LandingPage';
+import PatientPortalTab from './components/PatientPortalTab';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
@@ -89,6 +93,19 @@ function App() {
     }
   }, [activeTab]);
 
+  // Patient Portal Sub-Navigation State (Prescriptions, Bills, Smart Health Pass, Profile)
+  const [patientSubTab, setPatientSubTab] = useState(() => {
+    const saved = sessionStorage.getItem('patientSubTab');
+    return saved || 'prescriptions';
+  });
+  const [patientPortalData, setPatientPortalData] = useState({ patient: null, visits: [], bills: [] });
+
+  useEffect(() => {
+    if (patientSubTab) {
+      sessionStorage.setItem('patientSubTab', patientSubTab);
+    }
+  }, [patientSubTab]);
+
   // Command Palette State
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
   const [cmdSearch, setCmdSearch] = useState('');
@@ -121,6 +138,7 @@ function App() {
     age: '',
     gender: '',
     mobile_number: '',
+    email: '',
     address: ''
   });
   const [newVisit, setNewVisit] = useState({ reason: '' });
@@ -310,6 +328,8 @@ function App() {
         setActiveTab('dashboard');
       } else if (data.role === 'Accountant') {
         setActiveTab('dashboard');
+      } else if (data.role === 'Patient') {
+        setActiveTab('patient_portal');
       } else {
         setActiveTab('dashboard');
       }
@@ -499,7 +519,7 @@ function App() {
       if (!res.ok) throw new Error("Failed to register patient");
       const registered = await res.json();
       showToast(`Patient registered successfully: ${registered.name} (${registered.patient_id})`);
-      setNewPatient({ name: '', age: '', gender: '', mobile_number: '', address: '' });
+      setNewPatient({ name: '', age: '', gender: '', mobile_number: '', email: '', address: '' });
       fetchPatients();
     } catch (err) {
       showToast(err.message, 'error');
@@ -1043,7 +1063,24 @@ function App() {
     const quickLogin = (u, p) => setLoginForm({ username: u, password: p });
 
     if (viewMode === 'landing') {
-      return <LandingPage onEnterWorkspace={() => setViewMode('login')} />;
+      return (
+        <LandingPage
+          onEnterWorkspace={() => setViewMode('login')}
+          API_BASE={API_BASE}
+          onPatientAuthSuccess={(authData) => {
+            sessionStorage.setItem('token', authData.access_token);
+            sessionStorage.setItem('role', authData.role);
+            sessionStorage.setItem('username', authData.username);
+            sessionStorage.setItem('name', authData.name);
+            setToken(authData.access_token);
+            setUserRole(authData.role);
+            setUsername(authData.username);
+            setName(authData.name);
+            setActiveTab('patient_portal');
+            showToast(`Welcome to your Health Portal, ${authData.name}!`);
+          }}
+        />
+      );
     }
 
     return (
@@ -1084,17 +1121,19 @@ function App() {
             {/* Quick demo login buttons */}
             <div className="mb-6">
               <p className="text-slate-500 text-[10px] uppercase tracking-widest text-center mb-3">⚡ Quick Demo Login</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-2">
                 {[
-                  ['Receptionist','recep123','bg-teal-500/10 border-teal-500/20 text-teal-300 hover:bg-teal-500/20'],
-                  ['Doctor','doc123','bg-emerald-500/10 border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20'],
-                  ['Accountant','acct123','bg-violet-500/10 border-violet-500/20 text-violet-300 hover:bg-violet-500/20'],
-                  ['Admin','admin123','bg-amber-500/10 border-amber-500/20 text-amber-300 hover:bg-amber-500/20']
-                ].map(([role, pass, cls]) => (
+                  ['Receptionist','recep123','bg-teal-500/10 border-teal-500/30 text-teal-300 hover:bg-teal-500/25', '🧑‍💼'],
+                  ['Doctor','doc123','bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25', '🩺'],
+                  ['Accountant','acct123','bg-violet-500/10 border-violet-500/30 text-violet-300 hover:bg-violet-500/25', '🧾'],
+                  ['Admin','admin123','bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/25', '🛡️'],
+                  ['Patient','pat123','bg-cyan-500/10 border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/25', '👤']
+                ].map(([role, pass, cls, emoji]) => (
                   <button key={role} type="button"
                     onClick={() => quickLogin(role.toLowerCase(), pass)}
-                    className={`border rounded-xl py-2 px-1 text-[10px] font-bold uppercase tracking-wider transition-all ${cls}`}>
-                    {role}
+                    className={`border rounded-xl py-2 px-3 text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap ${cls}`}>
+                    <span className="text-xs leading-none">{emoji}</span>
+                    <span>{role}</span>
                   </button>
                 ))}
               </div>
@@ -1327,6 +1366,162 @@ function App() {
 
           {/* Nav Items */}
           <nav className={`py-2 space-y-2 ${sidebarCollapsed ? 'px-2' : 'px-2.5'}`}>
+            {/* SECTION: PATIENT SELF-CARE DESK (FOR PATIENTS) */}
+            {userRole === 'Patient' && (
+              <div>
+                {!sidebarCollapsed ? (
+                  <p className="px-2 pb-1 text-teal-400/90 text-[9.5px] font-extrabold uppercase tracking-wider">Patient Care Portal</p>
+                ) : (
+                  <div className="my-1 border-t border-white/5" />
+                )}
+                <div className="space-y-0.5">
+                  {/* Item 1: Prescriptions & Consultations */}
+                  <button
+                    onClick={() => {
+                      setPatientSubTab('prescriptions');
+                      setActiveTab('patient_portal');
+                      setMobileMenuOpen(false);
+                    }}
+                    title="Prescriptions & Consultations"
+                    className={`w-full flex items-center gap-2.5 rounded-lg text-xs font-semibold transition-all group ${
+                      sidebarCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-1.5'
+                    } ${
+                      (activeTab === 'patient_portal' || activeTab === 'dashboard') && patientSubTab === 'prescriptions'
+                        ? 'text-white font-bold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    style={
+                      (activeTab === 'patient_portal' || activeTab === 'dashboard') && patientSubTab === 'prescriptions'
+                        ? sidebarCollapsed
+                          ? { background: 'rgba(20,184,166,0.22)', border: '1px solid rgba(20,184,166,0.4)' }
+                          : { background: 'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft: '3px solid #14b8a6', paddingLeft: '7px' }
+                        : {}
+                    }
+                  >
+                    <FileText className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${
+                      (activeTab === 'patient_portal' || activeTab === 'dashboard') && patientSubTab === 'prescriptions' ? 'text-teal-400' : ''
+                    }`} />
+                    {!sidebarCollapsed && (
+                      <>
+                        <span className="truncate">Prescriptions & Consultations</span>
+                        <span className="ml-auto flex items-center justify-center min-w-[20px] h-[20px] px-1.5 bg-teal-500/20 border border-teal-500/40 text-teal-300 text-[10px] font-extrabold rounded-full">
+                          {patientPortalData?.visits?.length ?? 1}
+                        </span>
+                      </>
+                    )}
+                  </button>
+
+                  {/* Item 2: Bills & Receipts */}
+                  <button
+                    onClick={() => {
+                      setPatientSubTab('bills');
+                      setActiveTab('patient_portal');
+                      setMobileMenuOpen(false);
+                    }}
+                    title="Bills & Receipts"
+                    className={`w-full flex items-center gap-2.5 rounded-lg text-xs font-semibold transition-all group ${
+                      sidebarCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-1.5'
+                    } ${
+                      (activeTab === 'patient_portal' || activeTab === 'dashboard') && patientSubTab === 'bills'
+                        ? 'text-white font-bold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    style={
+                      (activeTab === 'patient_portal' || activeTab === 'dashboard') && patientSubTab === 'bills'
+                        ? sidebarCollapsed
+                          ? { background: 'rgba(20,184,166,0.22)', border: '1px solid rgba(20,184,166,0.4)' }
+                          : { background: 'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft: '3px solid #14b8a6', paddingLeft: '7px' }
+                        : {}
+                    }
+                  >
+                    <Receipt className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${
+                      (activeTab === 'patient_portal' || activeTab === 'dashboard') && patientSubTab === 'bills' ? 'text-teal-400' : ''
+                    }`} />
+                    {!sidebarCollapsed && (
+                      <>
+                        <span className="truncate">Bills & Receipts</span>
+                        <span className="ml-auto flex items-center justify-center min-w-[20px] h-[20px] px-1.5 bg-slate-700/60 border border-slate-600 text-slate-200 text-[10px] font-extrabold rounded-full">
+                          {patientPortalData?.bills?.length ?? 1}
+                        </span>
+                      </>
+                    )}
+                  </button>
+
+                  {/* Item 3: HospiSynAI Smart Health Pass */}
+                  <button
+                    onClick={() => {
+                      setPatientSubTab('health_card');
+                      setActiveTab('patient_portal');
+                      setMobileMenuOpen(false);
+                    }}
+                    title="Smart Health Pass"
+                    className={`w-full flex items-center gap-2.5 rounded-lg text-xs font-semibold transition-all group ${
+                      sidebarCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-1.5'
+                    } ${
+                      (activeTab === 'patient_portal' || activeTab === 'dashboard') && patientSubTab === 'health_card'
+                        ? 'text-white font-bold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    style={
+                      (activeTab === 'patient_portal' || activeTab === 'dashboard') && patientSubTab === 'health_card'
+                        ? sidebarCollapsed
+                          ? { background: 'rgba(20,184,166,0.22)', border: '1px solid rgba(20,184,166,0.4)' }
+                          : { background: 'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft: '3px solid #14b8a6', paddingLeft: '7px' }
+                        : {}
+                    }
+                  >
+                    <Shield className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${
+                      (activeTab === 'patient_portal' || activeTab === 'dashboard') && patientSubTab === 'health_card' ? 'text-teal-400' : ''
+                    }`} />
+                    {!sidebarCollapsed && (
+                      <>
+                        <span className="truncate">Smart Health Pass</span>
+                        {(activeTab === 'patient_portal' || activeTab === 'dashboard') && patientSubTab === 'health_card' && (
+                          <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />
+                        )}
+                      </>
+                    )}
+                  </button>
+
+                  {/* Item 4: Patient Profile */}
+                  <button
+                    onClick={() => {
+                      setPatientSubTab('profile');
+                      setActiveTab('patient_portal');
+                      setMobileMenuOpen(false);
+                    }}
+                    title="Patient Profile & Details"
+                    className={`w-full flex items-center gap-2.5 rounded-lg text-xs font-semibold transition-all group ${
+                      sidebarCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-1.5'
+                    } ${
+                      (activeTab === 'patient_portal' || activeTab === 'dashboard') && patientSubTab === 'profile'
+                        ? 'text-white font-bold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    style={
+                      (activeTab === 'patient_portal' || activeTab === 'dashboard') && patientSubTab === 'profile'
+                        ? sidebarCollapsed
+                          ? { background: 'rgba(20,184,166,0.22)', border: '1px solid rgba(20,184,166,0.4)' }
+                          : { background: 'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft: '3px solid #14b8a6', paddingLeft: '7px' }
+                        : {}
+                    }
+                  >
+                    <User className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${
+                      (activeTab === 'patient_portal' || activeTab === 'dashboard') && patientSubTab === 'profile' ? 'text-teal-400' : ''
+                    }`} />
+                    {!sidebarCollapsed && (
+                      <>
+                        <span className="truncate">Patient Profile</span>
+                        {(activeTab === 'patient_portal' || activeTab === 'dashboard') && patientSubTab === 'profile' && (
+                          <span className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-400" />
+                        )}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* SECTION 1: CLINICAL WORKSPACE */}
             {['Admin', 'Receptionist', 'Accountant', 'Doctor'].includes(userRole) && (
               <div>
@@ -1642,6 +1837,16 @@ function App() {
         <header className="sticky top-0 z-30 px-3 md:px-5 py-2 flex items-center justify-between gap-3 backdrop-blur-md flex-shrink-0"
           style={{background:'rgba(240,244,248,0.85)', borderBottom:'1px solid rgba(0,0,0,0.06)'}}>
           <div className="flex items-center gap-2.5 min-w-0">
+            {/* Toggle Sidebar Button for Mobile */}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              className="md:hidden flex items-center justify-center p-1.5 text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors shadow-2xs"
+              title="Open Navigation Menu"
+            >
+              <Menu className="w-4 h-4 text-slate-700" />
+            </button>
+
             {/* Toggle Sidebar Button for Desktop */}
             <button
               type="button"
@@ -1655,10 +1860,22 @@ function App() {
             <div className="min-w-0">
               <h1 className="text-sm font-black text-slate-900 tracking-tight leading-tight truncate">
               {activeTab === 'dashboard' && (
+                userRole === 'Patient' ? (
+                  patientSubTab === 'bills' ? 'Bills & Receipts' :
+                  patientSubTab === 'health_card' ? 'HospiSynAI Smart Health Pass' :
+                  patientSubTab === 'profile' ? 'Patient Profile' :
+                  'Prescriptions & Consultations'
+                ) :
                 userRole === 'Receptionist' ? 'Front-Desk Operations' :
                 userRole === 'Accountant' ? 'Financial Overview' :
                 userRole === 'Doctor' ? 'Doctor OPD Command Center' :
                 'Dashboard Overview'
+              )}
+              {activeTab === 'patient_portal' && (
+                patientSubTab === 'bills' ? 'Bills & Receipts' :
+                patientSubTab === 'health_card' ? 'HospiSynAI Smart Health Pass' :
+                patientSubTab === 'profile' ? 'Patient Profile' :
+                'Prescriptions & Consultations'
               )}
               {activeTab === 'doctor_dashboard' && 'Doctor OPD Command Center'}
               {activeTab === 'search_register' && (userRole === 'Doctor' ? 'Patient Medical Records' : 'Patient Desk')}
@@ -1672,10 +1889,22 @@ function App() {
             </h1>
             <p className="text-slate-400 text-[10px] font-medium leading-none truncate mt-0.5">
               {activeTab === 'dashboard' && (
+                userRole === 'Patient' ? (
+                  patientSubTab === 'bills' ? 'Itemized invoices, cleared payments & GST receipts' :
+                  patientSubTab === 'health_card' ? 'HospiSynAI Smart Health Pass & instant OPD digital identity' :
+                  patientSubTab === 'profile' ? 'Demographic details, verified UHID credentials & communication settings' :
+                  'Digital prescriptions, medication timetables & doctor clinical advice'
+                ) :
                 userRole === 'Receptionist' ? 'OPD footfall, live token queue, doctor chambers & counter triage' :
                 userRole === 'Accountant' ? 'Revenue collections, outstanding patient receivables & payment reconciliation' :
                 userRole === 'Doctor' ? 'Live patient consultation queue, clinical triage, Voice Scribe dictation, and prescription manager' :
                 'Real-time financial summary • AI-powered insights'
+              )}
+              {activeTab === 'patient_portal' && (
+                patientSubTab === 'bills' ? 'Itemized invoices, cleared payments & GST receipts' :
+                patientSubTab === 'health_card' ? 'HospiSynAI Smart Health Pass & instant OPD digital identity' :
+                patientSubTab === 'profile' ? 'Demographic details, verified UHID credentials & communication settings' :
+                'Digital prescriptions, medication timetables & doctor clinical advice'
               )}
               {activeTab === 'doctor_dashboard' && 'Live patient consultation queue, clinical triage, Voice Scribe dictation, and prescription manager'}
               {activeTab === 'search_register' && (
@@ -1730,10 +1959,23 @@ function App() {
         <div className="flex-1 overflow-y-auto md:overflow-hidden p-0 min-h-0">
 
         {/* ----------------------------------------------------
-            TAB 1: DASHBOARD (Role-Aware: Receptionist, Accountant, Doctor, Admin)
+            TAB 1: DASHBOARD (Role-Aware: Patient, Receptionist, Accountant, Doctor, Admin)
             ---------------------------------------------------- */}
         {activeTab === 'dashboard' && (
-          userRole === 'Receptionist' ? (
+          userRole === 'Patient' ? (
+            <PatientPortalTab
+              API_BASE={API_BASE}
+              STATIC_BASE={STATIC_BASE}
+              getHeaders={getHeaders}
+              showToast={showToast}
+              currentUser={{ username, name, role: userRole }}
+              handleLogout={handleLogout}
+              setActiveTab={setActiveTab}
+              activeSubTab={patientSubTab}
+              setActiveSubTab={setPatientSubTab}
+              onDataLoaded={setPatientPortalData}
+            />
+          ) : userRole === 'Receptionist' ? (
             <ReceptionistDashboardTab
               API_BASE={API_BASE}
               getHeaders={getHeaders}
@@ -1791,6 +2033,24 @@ function App() {
               fetchReceiptDetails={fetchReceiptDetails}
             />
           )
+        )}
+
+        {/* ----------------------------------------------------
+            TAB: PATIENT PORTAL SELF-SERVICE DESK
+            ---------------------------------------------------- */}
+        {activeTab === 'patient_portal' && (
+          <PatientPortalTab
+            API_BASE={API_BASE}
+            STATIC_BASE={STATIC_BASE}
+            getHeaders={getHeaders}
+            showToast={showToast}
+            currentUser={{ username, name, role: userRole }}
+            handleLogout={handleLogout}
+            setActiveTab={setActiveTab}
+            activeSubTab={patientSubTab}
+            setActiveSubTab={setPatientSubTab}
+            onDataLoaded={setPatientPortalData}
+          />
         )}
 
         {/* ----------------------------------------------------
@@ -1917,6 +2177,9 @@ function App() {
             viewingPayment={viewingPayment}
             setViewingPayment={setViewingPayment}
             STATIC_BASE={STATIC_BASE}
+            API_BASE={API_BASE}
+            getHeaders={getHeaders}
+            showToast={showToast}
           />
         )}
 

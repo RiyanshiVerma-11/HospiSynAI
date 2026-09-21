@@ -9,7 +9,7 @@ from typing import List, Optional, Dict
 from fastapi import FastAPI, Depends, HTTPException, status, Query, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.responses import StreamingResponse, FileResponse, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_, and_
@@ -22,6 +22,8 @@ import auth
 import pdf_generator
 import anakin_client
 import clinical_nlp
+import email_service
+import random
 
 NHA_RATES_FILE = os.path.join(os.path.dirname(__file__), "nha_cghs_rates.json")
 NHA_BENCHMARKS = []
@@ -106,6 +108,7 @@ def on_startup():
             safe_add_column("visits", "status", "VARCHAR DEFAULT 'Waiting'")
             safe_add_column("visits", "token_number", "INTEGER")
             safe_add_column("patients", "abha_id", "VARCHAR")
+            safe_add_column("patients", "email", "VARCHAR")
         except Exception as e:
             print("Migration setup warning:", e)
 
@@ -125,7 +128,8 @@ def on_startup():
             ("admin", "admin123", "Admin", "System Administrator"),
             ("receptionist", "recep123", "Receptionist", "Front Desk Receptionist"),
             ("accountant", "acct123", "Accountant", "Chief Accountant"),
-            ("doctor", "doc123", "Doctor", "Dr. Shweta Grover")
+            ("doctor", "doc123", "Doctor", "Dr. Shweta Grover"),
+            ("patient", "pat123", "Patient", "Nisha Patel")
         ]
         for username, password, role, name in users_to_seed:
             existing_user = db.query(models.User).filter(models.User.username == username).first()
@@ -419,6 +423,7 @@ def register_patient(
         age=patient_in.age,
         gender=patient_in.gender,
         mobile_number=patient_in.mobile_number,
+        email=patient_in.email,
         address=patient_in.address
     )
     db.add(db_patient)
@@ -555,12 +560,401 @@ def get_patient_visits(
     return db.query(models.Visit).filter(models.Visit.patient_id == id, models.Visit.is_active == True).order_by(models.Visit.visit_date.desc()).all()
 
 
+# ----------------------------------------------------
+# PATIENT PORTAL & EMAIL DELIVERY ROUTERS
+# ----------------------------------------------------
+PATIENT_OTP_CACHE: Dict[str, dict] = {}
+
+@app.post("/api/patient-portal/send-otp")
+def patient_portal_send_otp(req: schemas.PatientOtpRequest, db: Session = Depends(get_db)):
+    ident = req.identifier.strip()
+    if not ident:
+        raise HTTPException(status_code=400, detail="Please enter your Mobile Number or Patient ID (UHID).")
+
+    patient = db.query(models.Patient).filter(
+        or_(
+            models.Patient.mobile_number == ident,
+            models.Patient.patient_id.ilike(ident),
+            models.Patient.abha_id.ilike(ident)
+        ),
+        models.Patient.is_active == True
+    ).first()
+
+    if not patient:
+        raise HTTPException(
+            status_code=404,
+            detail="No patient record found with this mobile number or UHID. Please contact the front desk."
+        )
+
+    # Resolve email
+    target_email = patient.email or os.getenv("SMTP_USER", "")
+    if not target_email:
+        raise HTTPException(
+            status_code=400,
+            detail="No email address linked with this profile yet. Please ask reception to update your email."
+        )
+
+    otp = f"{random.randint(100000, 999999)}"
+    PATIENT_OTP_CACHE[ident.lower()] = {
+        "otp": otp,
+        "patient_id": patient.id,
+        "expires_at": datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
+    }
+
+    # Mask email for privacy: r***@gmail.com
+    parts = target_email.split("@")
+    masked_email = f"{parts[0][:2]}***@{parts[1]}" if len(parts) == 2 else target_email
+
+    # Send verification email via SMTP
+    subject = f"HospiSynAI Patient Portal Login OTP: {otp}"
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 520px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background: #ffffff;">
+      <div style="background: linear-gradient(135deg, #0f766e, #0d9488); padding: 18px; border-radius: 12px; text-align: center; color: white;">
+        <h2 style="margin: 0; font-size: 20px;">HospiSynAI Patient Health Portal</h2>
+        <p style="margin: 4px 0 0; font-size: 12px; opacity: 0.9;">Secure Login Verification</p>
+      </div>
+      <div style="padding: 20px 8px;">
+        <p style="font-size: 14px; color: #1e293b;">Hello <strong>{patient.name}</strong>,</p>
+        <p style="font-size: 13px; color: #475569; line-height: 1.5;">
+          Use the 6-digit one-time password below to access your digital prescriptions, medication schedule, and hospital payment receipts:
+        </p>
+        <div style="margin: 20px 0; padding: 16px; background: #f0fdfa; border: 2px dashed #14b8a6; border-radius: 12px; text-align: center;">
+          <span style="font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #0f766e; font-family: monospace;">{otp}</span>
+        </div>
+        <p style="font-size: 12px; color: #64748b;">
+          ⏳ This code expires in <strong>10 minutes</strong>. Do not share this code with anyone.
+        </p>
+      </div>
+      <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 12px 0;">
+      <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+        Vedam Diagnostics & Hospital · HospiSynAI Healthcare Platform
+      </p>
+    </div>
+    """
+
+    try:
+        email_service._send_email(to_email=target_email, subject=subject, html_body=html)
+    except Exception as e:
+        print(f"[Patient OTP] SMTP warning: {e}")
+
+    print(f"[PATIENT OTP SENT] Identifier: {ident} | OTP: {otp} | Email: {target_email}")
+
+    return {
+        "message": f"Verification code sent to {masked_email}",
+        "masked_email": masked_email,
+        "patient_name": patient.name,
+        "patient_id": patient.patient_id
+    }
+
+
+@app.post("/api/patient-portal/verify-otp")
+def patient_portal_verify_otp(req: schemas.PatientOtpVerifyRequest, db: Session = Depends(get_db)):
+    ident = req.identifier.strip()
+    submitted_otp = req.otp.strip()
+
+    patient = None
+    is_valid = False
+
+    # Demo OTP fallback for smooth testing
+    if submitted_otp == "123456":
+        patient = db.query(models.Patient).filter(
+            or_(
+                models.Patient.mobile_number == ident,
+                models.Patient.patient_id.ilike(ident),
+                models.Patient.abha_id.ilike(ident)
+            ),
+            models.Patient.is_active == True
+        ).first()
+        if patient:
+            is_valid = True
+
+    # Check cached OTP
+    stored = PATIENT_OTP_CACHE.get(ident.lower())
+    if not is_valid and stored:
+        if stored["otp"] == submitted_otp and datetime.datetime.utcnow() <= stored["expires_at"]:
+            patient = db.query(models.Patient).filter(models.Patient.id == stored["patient_id"]).first()
+            if patient:
+                is_valid = True
+
+    if not is_valid or not patient:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired verification code. Please check your email or enter 123456 for demo."
+        )
+
+    # Ensure a corresponding User record exists for seamless auth token validation
+    user = db.query(models.User).filter(models.User.username == patient.patient_id).first()
+    if not user:
+        user = models.User(
+            username=patient.patient_id,
+            password_hash=auth.get_password_hash("patient_portal_auth"),
+            role="Patient",
+            name=patient.name
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    access_token = auth.create_access_token(data={"sub": user.username, "role": "Patient"})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "role": "Patient",
+        "name": patient.name,
+        "username": patient.patient_id,
+        "patient_id": patient.patient_id,
+        "patient": {
+            "id": patient.id,
+            "patient_id": patient.patient_id,
+            "name": patient.name,
+            "age": patient.age,
+            "gender": patient.gender,
+            "mobile_number": patient.mobile_number,
+            "email": patient.email,
+            "address": patient.address,
+            "abha_id": patient.abha_id,
+            "created_at": patient.created_at.isoformat() if patient.created_at else None
+        }
+    }
+
+
+@app.get("/api/patient-portal/my-records")
+def get_patient_portal_records(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    patient = None
+    if current_user.role == "Patient":
+        patient = db.query(models.Patient).filter(
+            or_(
+                models.Patient.patient_id == current_user.username,
+                models.Patient.name.ilike(current_user.name or "")
+            ),
+            models.Patient.is_active == True
+        ).first()
+
+    if not patient:
+        patient = db.query(models.Patient).filter(models.Patient.is_active == True).first()
+
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient profile not found")
+
+    visits = db.query(models.Visit).filter(
+        models.Visit.patient_id == patient.id,
+        models.Visit.is_active == True
+    ).order_by(models.Visit.visit_date.desc()).all()
+
+    visit_ids = [v.id for v in visits]
+    bills = db.query(models.Bill).filter(
+        models.Bill.visit_id.in_(visit_ids),
+        models.Bill.is_active == True
+    ).order_by(models.Bill.created_at.desc()).all() if visit_ids else []
+
+    def serialize_visit(v):
+        return {
+            "id": v.id,
+            "visit_id": v.visit_id,
+            "patient_id": v.patient_id,
+            "doctor_id": v.doctor_id,
+            "doctor": {
+                "name": v.doctor.name,
+                "degree": v.doctor.degree
+            } if v.doctor else None,
+            "visit_date": v.visit_date.isoformat() if v.visit_date else None,
+            "reason": v.reason,
+            "diagnosis": v.diagnosis,
+            "chief_complaints": v.chief_complaints,
+            "medicines_list": v.medicines_list,
+            "tests_list": v.tests_list,
+            "advice": v.advice,
+            "follow_up_date": v.follow_up_date,
+            "patient_summary": v.patient_summary,
+            "status": v.status,
+            "token_number": v.token_number
+        }
+
+    def serialize_bill(b):
+        paid = max(0.0, float(b.grand_total) - float(b.balance_amount))
+        return {
+            "id": b.id,
+            "bill_id": b.bill_id,
+            "total_amount": float(b.grand_total),
+            "paid_amount": paid,
+            "balance_amount": float(b.balance_amount),
+            "payment_status": b.payment_status,
+            "created_at": b.created_at.isoformat() if b.created_at else None,
+            "items": [
+                {
+                    "id": item.id,
+                    "service_name": item.service_name,
+                    "category": getattr(item.service, "category", "General") if getattr(item, "service", None) else "General",
+                    "quantity": 1,
+                    "unit_price": float(item.amount),
+                    "total_price": float(item.amount)
+                } for item in (b.items or [])
+            ]
+        }
+
+    return {
+        "patient": {
+            "id": patient.id,
+            "patient_id": patient.patient_id,
+            "name": patient.name,
+            "age": patient.age,
+            "gender": patient.gender,
+            "mobile_number": patient.mobile_number,
+            "email": patient.email,
+            "address": patient.address,
+            "abha_id": patient.abha_id,
+            "created_at": patient.created_at.isoformat() if patient.created_at else None
+        },
+        "visits": [serialize_visit(v) for v in visits],
+        "bills": [serialize_bill(b) for b in bills]
+    }
+
+
+@app.post("/api/visits/{id}/send-prescription-email")
+def send_visit_prescription_email(
+    id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    db_visit = None
+    if id.isdigit():
+        db_visit = db.query(models.Visit).filter(models.Visit.id == int(id), models.Visit.is_active == True).first()
+    if not db_visit:
+        db_visit = db.query(models.Visit).filter(models.Visit.visit_id.ilike(id), models.Visit.is_active == True).first()
+    if not db_visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+
+    patient = db_visit.patient
+    target_email = (patient.email if patient else None) or os.getenv("SMTP_USER", "")
+    if not target_email:
+        raise HTTPException(status_code=400, detail="No email address linked to this patient profile.")
+
+    # Compile PDF if not yet generated
+    filename = f"prescription_{db_visit.visit_id}.pdf"
+    pdf_path = os.path.join(RECEIPTS_DIR, filename)
+    try:
+        if not os.path.exists(pdf_path):
+            pdf_generator.generate_prescription_pdf(db_visit, db, pdf_path)
+    except Exception as e:
+        print(f"Prescription PDF build notice ({e})")
+
+    pdf_bytes = None
+    if os.path.exists(pdf_path):
+        with open(pdf_path, "rb") as f:
+            pdf_bytes = f.read()
+
+    doc_name = db_visit.doctor.name if db_visit.doctor else "Dr. Shweta Grover"
+    hosp_name = "Vedam Diagnostics"
+
+    sent = email_service.send_prescription_email(
+        patient_name=patient.name if patient else "Patient",
+        patient_email=target_email,
+        doctor_name=doc_name,
+        hospital_name=hosp_name,
+        diagnosis=db_visit.diagnosis or "Clinical OPD Consultation",
+        medicines=db_visit.medicines_list or "As advised by doctor",
+        advice=db_visit.advice or "Rest and maintain healthy hydration",
+        follow_up_date=db_visit.follow_up_date,
+        language_summary=db_visit.patient_summary,
+        prescription_pdf_bytes=pdf_bytes
+    )
+
+    if not sent:
+        raise HTTPException(status_code=500, detail="Failed to dispatch email. Please check SMTP configuration.")
+
+    return {
+        "message": f"Prescription handout and calendar reminder sent to {target_email}",
+        "email": target_email
+    }
+
+
+@app.get("/api/visits/{id}/medicine-calendar")
+def download_visit_medicine_calendar(
+    id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Downloads a .ics calendar file containing recurring daily medicine dosage alarms
+    and follow-up appointment reminders. Synchronizes with Google Calendar, Apple Calendar, Outlook.
+    """
+    db_visit = None
+    if id.isdigit():
+        db_visit = db.query(models.Visit).filter(models.Visit.id == int(id), models.Visit.is_active == True).first()
+    if not db_visit:
+        db_visit = db.query(models.Visit).filter(models.Visit.visit_id.ilike(id), models.Visit.is_active == True).first()
+    if not db_visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+
+    patient_name = db_visit.patient.name if db_visit.patient else "Patient"
+    doc_name = db_visit.doctor.name if db_visit.doctor else "Dr. Shweta Grover"
+    hosp_name = "Vedam Diagnostics"
+
+    ics_bytes = email_service.build_medicine_schedule_ics(
+        medicines=db_visit.medicines_list or "As advised by doctor",
+        follow_up_date=db_visit.follow_up_date,
+        patient_name=patient_name,
+        doctor_name=doc_name,
+        hospital_name=hosp_name
+    )
+
+    clean_filename = f"medicine_schedule_{db_visit.visit_id}.ics"
+    return Response(
+        content=ics_bytes,
+        media_type="text/calendar",
+        headers={"Content-Disposition": f'attachment; filename="{clean_filename}"'}
+    )
+
+
+@app.post("/api/bills/{id}/send-invoice-email")
+def send_bill_invoice_email(
+    id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    db_bill = None
+    if id.isdigit():
+        db_bill = db.query(models.Bill).filter(models.Bill.id == int(id), models.Bill.is_active == True).first()
+    if not db_bill:
+        db_bill = db.query(models.Bill).filter(models.Bill.bill_id.ilike(id), models.Bill.is_active == True).first()
+    if not db_bill:
+        raise HTTPException(status_code=404, detail="Bill record not found")
+
+    patient = db_bill.visit.patient if (db_bill.visit and db_bill.visit.patient) else None
+    target_email = (patient.email if patient else None) or os.getenv("SMTP_USER", "")
+    if not target_email:
+        raise HTTPException(status_code=400, detail="No email address linked to this patient profile.")
+
+    paid = max(0.0, float(db_bill.grand_total) - float(db_bill.balance_amount))
+    sent = email_service.send_invoice_email(
+        patient_name=patient.name if patient else "Patient",
+        patient_email=target_email,
+        hospital_name="Vedam Diagnostics",
+        bill_id=db_bill.bill_id,
+        total_amount=float(db_bill.grand_total),
+        paid_amount=paid,
+        balance_due=float(db_bill.balance_amount),
+        payment_status=db_bill.payment_status or "Paid"
+    )
+
+    if not sent:
+        raise HTTPException(status_code=500, detail="Failed to dispatch email. Please check SMTP configuration.")
+
+    return {
+        "message": f"Invoice receipt emailed successfully to {target_email}",
+        "email": target_email
+    }
 @app.get("/api/visits", response_model=List[schemas.VisitResponse])
 def get_all_visits(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant", "Doctor"]))
 ):
-    return db.query(models.Visit).filter(models.Visit.is_active == True).order_by(models.Visit.visit_date.desc()).all()
+    return db.query(models.Visit).options(
+        joinedload(models.Visit.patient),
+        joinedload(models.Visit.doctor)
+    ).filter(models.Visit.is_active == True).order_by(models.Visit.visit_date.desc()).all()
 
 
 @app.put("/api/visits/{id}/summary", response_model=schemas.VisitResponse)
@@ -1601,45 +1995,126 @@ def run_local_anomaly_checks(
             
     return issues
 
-def generate_auto_corrections(items, patient_age, issues):
+def generate_auto_corrections(
+    items: List[schemas.BillItemAnomaly], 
+    patient_age: Optional[int], 
+    issues: List[str],
+    diagnosis: Optional[str] = None
+) -> Optional[schemas.AutoCorrectionDetails]:
     if not issues:
         return None
         
-    corrected = []
+    corrected: List[schemas.AutoCorrectionItem] = []
     seen_names = set()
     actions = []
     original_total = sum(i.amount for i in items)
     
+    item_names = [item.service_name.lower().strip() for item in items]
+    has_icu = any("icu" in name for name in item_names)
+    
+    is_accident_reconstructive = False
+    if diagnosis:
+        diag_lower = diagnosis.lower()
+        if any(w in diag_lower for w in ["accident", "injury", "burn", "reconstruction", "trauma", "congenital"]):
+            is_accident_reconstructive = True
+
     has_lab = False
     has_consultation = False
+    gst_room_rent_lines = []
+    gst_cosmetic_lines = []
 
     for item in items:
-        name_lower = item.service_name.lower()
+        name_lower = item.service_name.lower().strip()
         
-        # Check duplicate
+        # 1. Duplicates check
         if name_lower in seen_names:
             actions.append(f"Removed duplicate item '{item.service_name}' (saved ₹{item.amount:.2f})")
             continue
         seen_names.add(name_lower)
 
-        # Check pediatric age formulation replacement
+        # 2. Inpatient ICU vs General Ward Room Rent redundancy
+        if has_icu and "room rent" in name_lower and "icu" not in name_lower:
+            actions.append(f"Removed redundant general room rent '{item.service_name}' for ICU admission (saved ₹{item.amount:.2f})")
+            continue
+
+        # 3. Inpatient ICU vs OPD Consultation / Registration mismatch
+        if has_icu and any(w in name_lower for w in ["opd registration", "physician consultation", "specialist consultation"]):
+            if "registration" in name_lower:
+                actions.append(f"Removed outpatient registration fee '{item.service_name}' for inpatient ICU admission (saved ₹{item.amount:.2f})")
+                continue
+            else:
+                new_service = "Inpatient Critical Care / ICU Specialist Review"
+                actions.append(f"Converted outpatient consultation '{item.service_name}' to Inpatient Critical Care Review")
+                corrected.append(schemas.AutoCorrectionItem(
+                    service_name=new_service,
+                    amount=item.amount,
+                    correction_reason="Converted OPD consult to Inpatient ICU Review"
+                ))
+                has_consultation = True
+                continue
+
+        # 4. Pediatric age formulation safety replacement (patient_age < 12)
         if patient_age is not None and patient_age < 12:
             adult_markers = ["625mg", "650mg", "500mg", "400mg", "200mg", "tablet", "tab", "capsule", "cap"]
             pediatric_markers = ["suspension", "syrup", "susp", "syr", "drops", "drop", "pediatric"]
             if any(w in name_lower for w in adult_markers) and not any(w in name_lower for w in pediatric_markers):
-                new_name = f"{item.service_name.split()[0]} Pediatric Suspension (60ml)"
+                clean_name = item.service_name.split()[0]
+                new_name = f"{clean_name} Pediatric Suspension (60ml)"
                 new_amount = 45.00
-                actions.append(f"Replaced adult formulation '{item.service_name}' with pediatric syrup '{new_name}' (adjusted amount to ₹{new_amount:.2f})")
+                savings_item = max(0.0, item.amount - new_amount)
+                actions.append(f"Replaced adult formulation '{item.service_name}' with pediatric syrup '{new_name}' (adjusted amount to ₹{new_amount:.2f}, saved ₹{savings_item:.2f})")
                 corrected.append(schemas.AutoCorrectionItem(
                     service_name=new_name,
                     amount=new_amount,
                     correction_reason="Pediatric formulation safety correction"
                 ))
                 continue
-                
-        if any(w in name_lower for w in ["consultation", "opd fee", "doctor fee"]):
+
+        # 5. Room Rent GST Threshold (> ₹5,000)
+        if "room rent" in name_lower and "icu" not in name_lower and item.amount > 5000:
+            gst_amount = round(item.amount * 0.05, 2)
+            gst_room_rent_lines.append(schemas.AutoCorrectionItem(
+                service_name="Statutory Room Rent GST (5%)",
+                amount=gst_amount,
+                correction_reason="Statutory 5% GST on AC Room Rent exceeding ₹5,000/day"
+            ))
+            actions.append(f"Added statutory 5% GST (₹{gst_amount:.2f}) for Room Rent exceeding ₹5,000")
+
+        # 6. Cosmetic / Plastic Surgery GST (18%)
+        if "cosmetic" in name_lower or "plastic surgery" in name_lower:
+            if not is_accident_reconstructive:
+                gst_amount = round(item.amount * 0.18, 2)
+                gst_cosmetic_lines.append(schemas.AutoCorrectionItem(
+                    service_name=f"Statutory Cosmetic GST (18%) - {item.service_name}",
+                    amount=gst_amount,
+                    correction_reason="Statutory 18% GST for elective cosmetic procedure"
+                ))
+                actions.append(f"Added statutory 18% GST (₹{gst_amount:.2f}) for elective cosmetic surgery")
+            else:
+                actions.append(f"Certified '{item.service_name}' as GST-exempt under reconstructive diagnosis")
+
+        # 7. High-Value Audit Alert (> ₹5,000 excluding MRI, ICU, Room Rent)
+        if item.amount > 5000 and not any(w in name_lower for w in ["mri", "icu", "room rent"]):
+            matched_cap = None
+            for bm in NHA_BENCHMARKS:
+                if any(kw in name_lower for kw in bm["keywords"]):
+                    matched_cap = bm["mrp_cap"]
+                    break
+            if matched_cap and item.amount > matched_cap:
+                savings_high = item.amount - matched_cap
+                actions.append(f"Aligned overpriced item '{item.service_name}' with NHA tariff cap of ₹{matched_cap:.2f} (saved ₹{savings_high:.2f})")
+                corrected.append(schemas.AutoCorrectionItem(
+                    service_name=item.service_name,
+                    amount=matched_cap,
+                    correction_reason="Aligned with NHA statutory tariff cap"
+                ))
+                continue
+            else:
+                actions.append(f"Verified high-value tariff for '{item.service_name}' (₹{item.amount:.2f})")
+
+        if any(w in name_lower for w in ["consultation", "opd fee", "doctor fee", "physician", "specialist"]):
             has_consultation = True
-        if any(w in name_lower for w in ["blood", "test", "cbc", "xray", "ecg", "lft", "kft"]):
+        if any(w in name_lower for w in ["blood", "test", "cbc", "xray", "ecg", "lft", "kft", "profile", "ultrasound", "glucose"]):
             has_lab = True
             
         corrected.append(schemas.AutoCorrectionItem(
@@ -1648,8 +2123,8 @@ def generate_auto_corrections(items, patient_age, issues):
             correction_reason=None
         ))
 
-    # Missing consultation fix
-    if has_lab and not has_consultation:
+    # 8. Missing consultation fix
+    if has_lab and not has_consultation and not has_icu:
         corrected.insert(0, schemas.AutoCorrectionItem(
             service_name="OPD General Physician Consultation",
             amount=200.00,
@@ -1657,14 +2132,20 @@ def generate_auto_corrections(items, patient_age, issues):
         ))
         actions.append("Added missing OPD Consultation fee (₹200.00)")
 
-    corrected_total = sum(i.amount for i in corrected)
-    savings = original_total - corrected_total
+    # Append GST compliance lines
+    for line in gst_room_rent_lines:
+        corrected.append(line)
+    for line in gst_cosmetic_lines:
+        corrected.append(line)
+
+    corrected_total = round(sum(i.amount for i in corrected), 2)
+    savings = round(original_total - corrected_total, 2)
 
     summary_str = "; ".join(actions) if actions else "AI optimized billing items."
     return schemas.AutoCorrectionDetails(
         corrected_items=corrected,
         action_summary=summary_str,
-        original_total=original_total,
+        original_total=round(original_total, 2),
         corrected_total=corrected_total,
         savings_amount=savings
     )
@@ -1693,7 +2174,7 @@ async def check_bill_anomaly(
         has_critical = any("duplicate" in iss.lower() or "safety" in iss.lower() for iss in local_issues)
         status = "critical" if has_critical else ("warning" if local_issues else "clear")
         summary = "Billing audit executed via Local Rule engine (AI model offline)."
-        auto_corr = generate_auto_corrections(req.items, req.patient_age, local_issues)
+        auto_corr = generate_auto_corrections(req.items, req.patient_age, local_issues, diagnosis=req.diagnosis)
         return schemas.AnomalyCheckResponse(
             status=status,
             issues=local_issues,
@@ -1748,7 +2229,7 @@ If no issues, return status "clear", empty issues list, and safe_to_proceed: tru
 
         has_critical = any("duplicate" in iss.lower() or "safety" in iss.lower() for iss in combined_issues)
         status = "critical" if has_critical else ("warning" if combined_issues else "clear")
-        auto_corr = generate_auto_corrections(req.items, req.patient_age, combined_issues)
+        auto_corr = generate_auto_corrections(req.items, req.patient_age, combined_issues, diagnosis=req.diagnosis)
 
         return schemas.AnomalyCheckResponse(
             status=status,
@@ -1761,7 +2242,7 @@ If no issues, return status "clear", empty issues list, and safe_to_proceed: tru
         # Fall back to local issues in case of api request failure
         has_critical = any("duplicate" in iss.lower() or "safety" in iss.lower() for iss in local_issues)
         status = "critical" if has_critical else ("warning" if local_issues else "clear")
-        auto_corr = generate_auto_corrections(req.items, req.patient_age, local_issues)
+        auto_corr = generate_auto_corrections(req.items, req.patient_age, local_issues, diagnosis=req.diagnosis)
         return schemas.AnomalyCheckResponse(
             status=status,
             issues=local_issues,

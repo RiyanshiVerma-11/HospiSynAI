@@ -38,11 +38,19 @@ class PatientBase(BaseModel):
     age: int
     gender: str
     mobile_number: str
+    email: Optional[str] = None
     address: Optional[str] = None
     abha_id: Optional[str] = None
 
 class PatientCreate(PatientBase):
     pass
+
+class PatientOtpRequest(BaseModel):
+    identifier: str  # Mobile number or Patient ID (PAT-...)
+
+class PatientOtpVerifyRequest(BaseModel):
+    identifier: str
+    otp: str
 
 class PatientSimpleResponse(PatientBase):
     id: int
@@ -52,6 +60,7 @@ class PatientSimpleResponse(PatientBase):
 
     class Config:
         orm_mode = True
+        from_attributes = True
 
 class PatientResponse(PatientBase):
     id: int
@@ -62,6 +71,7 @@ class PatientResponse(PatientBase):
 
     class Config:
         orm_mode = True
+        from_attributes = True
 
 
 # Doctor Schemas

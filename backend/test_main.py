@@ -10,7 +10,7 @@ if backend_dir not in sys.path:
 
 import auth
 import schemas
-from main import run_local_anomaly_checks
+from main import run_local_anomaly_checks, generate_auto_corrections
 
 def test_password_hashing():
     """Verify password hashing and verification functionality."""
@@ -219,4 +219,153 @@ def test_advance_split_net_balance_conservation():
     assert adjusted_original_paid - prior_refund == consumed
     # Total conservation
     assert adjusted_original_paid + excess_amount == original_paid
+
+
+def test_auto_resolve_duplicate_and_missing_consultation():
+    """Verify that auto-corrections remove duplicates and add missing consultation."""
+    items = [
+        MockBillItemAnomaly("Complete Blood Count (CBC)", 350.0),
+        MockBillItemAnomaly("Complete Blood Count (CBC)", 350.0),
+    ]
+    issues = run_local_anomaly_checks(items, patient_age=30, patient_gender="Male", diagnosis="Fever")
+    assert len(issues) >= 2  # Duplicate and missing consultation
+    
+    auto_corr = generate_auto_corrections(items, patient_age=30, issues=issues)
+    assert auto_corr is not None
+    # Corrected items should have 1 CBC and 1 OPD consultation
+    item_names = [i.service_name for i in auto_corr.corrected_items]
+    assert "Complete Blood Count (CBC)" in item_names
+    assert item_names.count("Complete Blood Count (CBC)") == 1
+    assert any("Consultation" in name for name in item_names)
+    assert auto_corr.savings_amount > 0
+
+
+def test_auto_resolve_pediatric_safety():
+    """Verify that auto-corrections replace adult tablets with pediatric suspension."""
+    items = [
+        MockBillItemAnomaly("Augmentin 625mg tablet", 250.0),
+        MockBillItemAnomaly("Doctor Consultation", 500.0)
+    ]
+    issues = run_local_anomaly_checks(items, patient_age=6, patient_gender="Female", diagnosis="Infection")
+    auto_corr = generate_auto_corrections(items, patient_age=6, issues=issues)
+    assert auto_corr is not None
+    item_names = [i.service_name for i in auto_corr.corrected_items]
+    assert not any("625mg tablet" in name for name in item_names)
+    assert any("Pediatric Suspension" in name for name in item_names)
+
+
+def test_auto_resolve_icu_redundancy_and_mismatch():
+    """Verify that auto-corrections eliminate redundant room rent and adapt OPD consultation for ICU patients."""
+    items = [
+        MockBillItemAnomaly("ICU Bed Charges per day", 8000.0),
+        MockBillItemAnomaly("AC Deluxe Room Rent", 5500.0),
+        MockBillItemAnomaly("Physician Consultation OPD fee", 500.0)
+    ]
+    issues = run_local_anomaly_checks(items, patient_age=40, patient_gender="Male", diagnosis="Sepsis")
+    assert len(issues) >= 2
+    
+    auto_corr = generate_auto_corrections(items, patient_age=40, issues=issues)
+    assert auto_corr is not None
+    item_names = [i.service_name for i in auto_corr.corrected_items]
+    # Redundant standard room rent removed
+    assert not any("AC Deluxe Room Rent" in name for name in item_names)
+    # ICU bed kept
+    assert any("ICU Bed" in name for name in item_names)
+    # OPD consultation converted to Inpatient Critical Care
+    assert any("Inpatient Critical Care" in name for name in item_names)
+    # Substantial savings from eliminating redundant room rent
+    assert auto_corr.savings_amount >= 5500.0
+
+
+def test_auto_resolve_gst_compliance():
+    """Verify that auto-corrections attach statutory GST line items for room rent and cosmetic procedures."""
+    # Room rent > 5000
+    items_room = [
+        MockBillItemAnomaly("AC Deluxe Room Rent", 6000.0),
+        MockBillItemAnomaly("Doctor Consultation", 500.0)
+    ]
+    issues_room = run_local_anomaly_checks(items_room, patient_age=45, patient_gender="Female", diagnosis="Observation")
+    auto_corr_room = generate_auto_corrections(items_room, patient_age=45, issues=issues_room)
+    assert auto_corr_room is not None
+    item_names_room = [i.service_name for i in auto_corr_room.corrected_items]
+    assert any("Statutory Room Rent GST (5%)" in name for name in item_names_room)
+
+    # Cosmetic procedure (elective)
+    items_cosmetic = [
+        MockBillItemAnomaly("Cosmetic rhinoplasty", 15000.0),
+        MockBillItemAnomaly("Doctor Consultation", 500.0)
+    ]
+    issues_cosmetic = run_local_anomaly_checks(items_cosmetic, patient_age=28, patient_gender="Female", diagnosis="Aesthetic")
+    auto_corr_cosmetic = generate_auto_corrections(items_cosmetic, patient_age=28, issues=issues_cosmetic, diagnosis="Aesthetic")
+    assert auto_corr_cosmetic is not None
+    item_names_cosmetic = [i.service_name for i in auto_corr_cosmetic.corrected_items]
+    assert any("Statutory Cosmetic GST (18%)" in name for name in item_names_cosmetic)
+
+
+def test_parse_medicine_schedule():
+    """Verify that clinical medicine strings are correctly parsed into structured dosage slots, food instructions, and days."""
+    import email_service
+
+    meds_text = (
+        "1. Dolo 650mg - TID PC for 3 Days\n"
+        "2. Pantocid 40mg - OD Before Breakfast for 7 days\n"
+        "3. Shelcal 500mg - 1 Tab at Bedtime for 15 days\n"
+        "4. Augmentin 625mg - BD After Meals for 5 days"
+    )
+    parsed = email_service.parse_medicine_schedule(meds_text)
+    assert len(parsed) == 4
+
+    # Dolo 650mg: TID -> 3 slots, After meal, 3 days
+    dolo = parsed[0]
+    assert "Dolo 650mg" in dolo["medicine"]
+    assert len(dolo["slots"]) == 3
+    assert dolo["days"] == 3
+    assert "After Meal" in dolo["food"]
+
+    # Pantocid 40mg: OD -> 1 slot, Before meal, 7 days
+    panto = parsed[1]
+    assert "Pantocid 40mg" in panto["medicine"]
+    assert len(panto["slots"]) == 1
+    assert panto["days"] == 7
+    assert "Before Meal" in panto["food"]
+
+    # Shelcal: Bedtime -> 1 slot at night, 15 days
+    shelcal = parsed[2]
+    assert "Shelcal 500mg" in shelcal["medicine"]
+    assert len(shelcal["slots"]) == 1
+    assert shelcal["days"] == 15
+    assert "Bedtime" in shelcal["food"]
+
+    # Augmentin: BD -> 2 slots, After meal, 5 days
+    aug = parsed[3]
+    assert "Augmentin 625mg" in aug["medicine"]
+    assert len(aug["slots"]) == 2
+    assert aug["days"] == 5
+
+
+def test_build_medicine_schedule_ics_structure():
+    """Verify that .ics calendar file contains recurring daily events and VALARM notification triggers."""
+    import email_service
+
+    meds_text = "1. Paracetamol 500mg - BD After Meal for 5 days"
+    ics_bytes = email_service.build_medicine_schedule_ics(
+        medicines=meds_text,
+        follow_up_date="2026-09-30",
+        patient_name="Ramesh Verma",
+        doctor_name="Dr. Shweta Grover",
+        hospital_name="Vedam Diagnostics"
+    )
+
+    assert isinstance(ics_bytes, bytes)
+    assert len(ics_bytes) > 500
+    ics_str = ics_bytes.decode("utf-8", errors="ignore")
+
+    # Verify iCalendar header and format
+    assert "BEGIN:VCALENDAR" in ics_str
+    assert "END:VCALENDAR" in ics_str
+    assert "BEGIN:VEVENT" in ics_str
+    assert "RRULE:FREQ=DAILY;COUNT=5" in ics_str
+    assert "BEGIN:VALARM" in ics_str
+    assert "Follow-up Appointment with Dr. Shweta Grover" in ics_str
+
 

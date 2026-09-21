@@ -5,7 +5,8 @@ import {
   RotateCcw,
   Copy,
   Search,
-  X
+  X,
+  Mail
 } from 'lucide-react';
 
 export default function BillingTab({
@@ -21,9 +22,13 @@ export default function BillingTab({
   handleIssueRefund,
   viewingPayment,
   setViewingPayment,
-  STATIC_BASE
+  STATIC_BASE,
+  API_BASE,
+  getHeaders,
+  showToast
 }) {
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [sendingEmail, setSendingEmail] = React.useState(false);
 
   const filteredBills = unpaidBills.filter(bill => {
     const q = searchQuery.toLowerCase().trim();
@@ -270,6 +275,33 @@ export default function BillingTab({
               >
                 Open in New Tab
               </a>
+              {viewingPayment.bill_id && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      setSendingEmail(true);
+                      const res = await fetch(`${API_BASE}/bills/${viewingPayment.bill_id}/send-invoice-email`, {
+                        method: 'POST',
+                        headers: getHeaders ? getHeaders() : {}
+                      });
+                      const d = await res.json();
+                      if (!res.ok) throw new Error(d.detail || "Failed to email invoice.");
+                      if (showToast) showToast(d.message || "Receipt emailed to patient!", "success");
+                    } catch (e) {
+                      if (showToast) showToast(e.message, 'error');
+                    } finally {
+                      setSendingEmail(false);
+                    }
+                  }}
+                  disabled={sendingEmail}
+                  className="px-3 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs py-2 rounded-xl text-center shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                  title="Email payment receipt to patient"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  {sendingEmail ? 'Sending...' : 'Email Receipt'}
+                </button>
+              )}
             </div>
           </div>
         ) : (

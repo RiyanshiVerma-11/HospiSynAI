@@ -195,13 +195,118 @@ const trustItems = [
   { label: '🐳 Docker Containerized Deployment' }
 ];
 
-export default function LandingPage({ onEnterWorkspace }) {
+export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, API_BASE }) {
   const [activeSimTab, setActiveSimTab] = useState('voice');
   const [activeLang, setActiveLang] = useState('hi');
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallBtn, setShowInstallBtn] = useState(true);
   const [showInstructionModal, setShowInstructionModal] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  // Patient OTP Modal State
+  const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
+  const [patientIdent, setPatientIdent] = useState('');
+  const [patientOtp, setPatientOtp] = useState('');
+  const [patientOtpStep, setPatientOtpStep] = useState('identifier'); // 'identifier' | 'otp'
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [otpSentNotice, setOtpSentNotice] = useState('');
+
+  const handleSendOtp = async (e) => {
+    if (e) e.preventDefault();
+    if (!patientIdent.trim()) {
+      setOtpError('Please enter your Mobile Number or Patient ID (UHID).');
+      return;
+    }
+    setOtpLoading(true);
+    setOtpError('');
+    try {
+      const res = await fetch(`${API_BASE || '/api'}/patient-portal/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: patientIdent.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Could not send verification code');
+      setOtpSentNotice(data.message || 'OTP sent! Use demo code: 123456');
+      setPatientOtpStep('otp');
+    } catch (err) {
+      setOtpError(err.message);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    if (e) e.preventDefault();
+    if (!patientOtp.trim()) {
+      setOtpError('Please enter the 6-digit OTP code.');
+      return;
+    }
+    setOtpLoading(true);
+    setOtpError('');
+    try {
+      const res = await fetch(`${API_BASE || '/api'}/patient-portal/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: patientIdent.trim(),
+          otp: patientOtp.trim()
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Invalid or expired OTP');
+      setIsPatientModalOpen(false);
+      if (onPatientAuthSuccess) {
+        onPatientAuthSuccess(data);
+      }
+    } catch (err) {
+      setOtpError(err.message);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleDemoPatientLogin = async () => {
+    setOtpLoading(true);
+    setOtpError('');
+    try {
+      const res = await fetch(`${API_BASE || '/api'}/patient-portal/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: 'PAT-20260921-0001',
+          otp: '123456'
+        })
+      });
+      const data = await res.json();
+      if (res.ok && onPatientAuthSuccess) {
+        setIsPatientModalOpen(false);
+        onPatientAuthSuccess(data);
+        return;
+      }
+      // Fallback to username/password patient/pat123
+      const formBody = new URLSearchParams();
+      formBody.append('username', 'patient');
+      formBody.append('password', 'pat123');
+      const fallbackRes = await fetch(`${API_BASE || '/api'}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formBody
+      });
+      if (fallbackRes.ok) {
+        const fallData = await fallbackRes.json();
+        setIsPatientModalOpen(false);
+        if (onPatientAuthSuccess) onPatientAuthSuccess(fallData);
+      } else {
+        throw new Error('Demo patient account not initialized yet.');
+      }
+    } catch (err) {
+      setOtpError(err.message);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
 
   const typewriterWords = [
     'Hindi/Hinglish Ambient Voice Scribes',
@@ -409,6 +514,7 @@ export default function LandingPage({ onEnterWorkspace }) {
             </button>
           )}
 
+
           <button
             onClick={onEnterWorkspace}
             className="relative px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-white flex items-center gap-2 group overflow-hidden transition-all active:scale-[0.97] shadow-lg shadow-teal-900/40"
@@ -518,6 +624,7 @@ export default function LandingPage({ onEnterWorkspace }) {
                 <ArrowRight className="w-4 h-4 relative z-10 transition-transform group-hover:translate-x-1.5" />
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
               </button>
+
 
               <a
                 href="#demo"
@@ -1332,6 +1439,126 @@ export default function LandingPage({ onEnterWorkspace }) {
             <button onClick={() => setShowInstructionModal(false)} className="w-full mt-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider text-white bg-slate-800 hover:bg-slate-700 transition-colors">
               Got It, Thanks!
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          PATIENT PORTAL QUICK-ACCESS & OTP VERIFICATION MODAL
+      ========================================================================= */}
+      {isPatientModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-teal-500/30 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative text-left">
+            <button
+              onClick={() => { setIsPatientModalOpen(false); setPatientOtpStep('identifier'); setOtpError(''); }}
+              className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-teal-400">
+                <Shield className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white tracking-tight">Patient Health Portal</h3>
+                <p className="text-xs text-slate-400">Access Prescriptions, Invoices & OPD Pass</p>
+              </div>
+            </div>
+
+            {otpError && (
+              <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs rounded-xl flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{otpError}</span>
+              </div>
+            )}
+
+            {patientOtpStep === 'identifier' ? (
+              <form onSubmit={handleSendOtp} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Mobile Number or UHID / Health ID
+                  </label>
+                  <input
+                    type="text"
+                    value={patientIdent}
+                    onChange={(e) => setPatientIdent(e.target.value)}
+                    placeholder="e.g. 9876543210 or PAT-20260921-0001"
+                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                    required
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Enter the phone number or UHID given during hospital OPD registration.
+                  </p>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={otpLoading}
+                  className="w-full py-3 bg-teal-600 hover:bg-teal-500 active:scale-98 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-teal-600/25 disabled:opacity-50"
+                >
+                  {otpLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  <span>{otpLoading ? 'Sending OTP...' : 'Send Verification OTP'}</span>
+                </button>
+
+                <div className="pt-2 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={handleDemoPatientLogin}
+                    disabled={otpLoading}
+                    className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-teal-300 border border-teal-500/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-teal-400" />
+                    <span>Instant Demo Access (Nisha Patel)</span>
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                {otpSentNotice && (
+                  <div className="p-3 bg-teal-500/10 border border-teal-500/20 text-teal-300 text-xs rounded-xl flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                    <span>{otpSentNotice}</span>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+                    Enter 6-Digit Verification Code
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={patientOtp}
+                    onChange={(e) => setPatientOtp(e.target.value)}
+                    placeholder="123456"
+                    className="w-full bg-slate-800/80 border border-teal-500/40 rounded-xl px-4 py-3 text-center text-xl tracking-[6px] font-mono text-white placeholder-slate-600 focus:outline-none focus:border-teal-400"
+                    required
+                  />
+                  <p className="text-[11px] text-teal-400/80 mt-1.5">
+                    💡 For demo testing, enter code <strong>123456</strong>
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setPatientOtpStep('identifier'); setOtpError(''); }}
+                    className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={otpLoading}
+                    className="flex-1 py-3 bg-teal-600 hover:bg-teal-500 active:scale-98 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-teal-600/25 disabled:opacity-50"
+                  >
+                    {otpLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    <span>{otpLoading ? 'Verifying...' : 'Access My Records'}</span>
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

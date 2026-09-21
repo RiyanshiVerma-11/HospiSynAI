@@ -25,12 +25,15 @@ import {
   MicOff,
   Volume2,
   X,
+  Mail,
   Users,
   PanelLeftClose,
   PanelLeftOpen,
-  GripVertical
+  GripVertical,
+  ExternalLink
 } from 'lucide-react';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
+import { buildMasterGoogleCalendarUrl, buildFollowUpGoogleCalendarUrl, downloadClientIcsFile } from '../utils/calendarService';
 
 const MEDICINE_DATASTORE = [
   // Paracetamol & Pain Relievers
@@ -1124,6 +1127,27 @@ export default function PatientSearchTab({
       showToast(err.message, 'error');
     } finally {
       setDownloadPrescriptionLoading(false);
+    }
+  };
+
+  const [sendingPrescriptionEmailId, setSendingPrescriptionEmailId] = useState(null);
+
+  const handleSendPrescriptionEmail = async (visitId) => {
+    const targetVisitId = (typeof visitId === 'string' || typeof visitId === 'number') ? visitId : selectedVisit?.id;
+    if (!targetVisitId) return;
+    setSendingPrescriptionEmailId(targetVisitId);
+    try {
+      const res = await fetch(`${API_BASE}/visits/${targetVisitId}/send-prescription-email`, {
+        method: 'POST',
+        headers: getHeaders()
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Failed to email prescription.");
+      showToast(data.message || "Prescription emailed to patient successfully!", "success");
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setSendingPrescriptionEmailId(null);
     }
   };
 
@@ -2549,6 +2573,21 @@ export default function PatientSearchTab({
                       required
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <span>Email Address (For Digital Receipts & PDF Handouts)</span>
+                      </span>
+                    </label>
+                    <input
+                      type="email"
+                      className="w-full rounded-xl px-3.5 py-2.5 text-xs placeholder-slate-400 focus:outline-none transition-all font-medium bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500"
+                      placeholder="patient@example.com (Optional)"
+                      value={newPatient.email || ''}
+                      onChange={(e) => setNewPatient({ ...newPatient, email: e.target.value })}
+                    />
+                  </div>
                 </div>
 
                 {/* Right Form Column: Address & Initial Symptoms */}
@@ -3539,6 +3578,75 @@ export default function PatientSearchTab({
                         Save PDF
                       </>
                     )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSendPrescriptionEmail(selectedVisit?.id)}
+                    disabled={sendingPrescriptionEmailId === selectedVisit?.id}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 text-xs active:scale-95 disabled:opacity-50 cursor-pointer"
+                    title="Email prescription PDF with calendar invite to patient"
+                  >
+                    <Mail className="w-4 h-4" />
+                    {sendingPrescriptionEmailId === selectedVisit?.id ? 'Sending...' : 'Email to Patient'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!selectedVisit) return;
+                      const url = buildMasterGoogleCalendarUrl({
+                        medicinesText: selectedVisit.medicines_list,
+                        patientName: selectedPatient?.name || 'Patient',
+                        doctorName: selectedVisit.doctor?.name || 'Dr. Shweta Grover',
+                        hospitalName: 'Vedam Diagnostics'
+                      });
+                      window.open(url, '_blank');
+                      showToast("Opening Google Calendar! Tap 'Save' to save medicine reminders.", "success");
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-3.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 text-xs active:scale-95 cursor-pointer"
+                    title="Open Google Calendar directly with daily medicine reminders pre-filled and Save ready"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span>Set Medicine Reminder</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!selectedVisit) return;
+                      const url = buildFollowUpGoogleCalendarUrl({
+                        followUpDate: selectedVisit.follow_up_date,
+                        patientName: selectedPatient?.name || 'Patient',
+                        doctorName: selectedVisit.doctor?.name || 'Dr. Shweta Grover',
+                        hospitalName: 'Vedam Diagnostics'
+                      });
+                      window.open(url, '_blank');
+                      showToast("Opening Google Calendar for Follow-up! Tap 'Save' to set reminder.", "success");
+                    }}
+                    className="bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 font-bold py-2.5 px-3.5 rounded-xl border border-indigo-200 dark:border-indigo-800 transition-all flex items-center justify-center gap-1.5 text-xs active:scale-95 cursor-pointer"
+                    title="1-Click save doctor follow-up appointment in Google Calendar with reminder notification"
+                  >
+                    <Calendar className="w-4 h-4 text-indigo-600" />
+                    <span>Set Follow-up Reminder</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!selectedVisit) return;
+                      downloadClientIcsFile({
+                        medicinesText: selectedVisit.medicines_list,
+                        followUpDate: selectedVisit.follow_up_date,
+                        patientName: selectedPatient?.name || 'Patient',
+                        doctorName: selectedVisit.doctor?.name || 'Dr. Shweta Grover',
+                        hospitalName: 'Vedam Diagnostics'
+                      });
+                      showToast("📅 Medicine alarms .ics file downloaded for phone calendar!", "success");
+                    }}
+                    className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-200 font-bold py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 transition-all flex items-center justify-center gap-1.5 text-xs active:scale-95 cursor-pointer"
+                    title="Download .ics file for iPhone/Android/Outlook calendar"
+                  >
+                    <Download className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                    <span>Download .ics</span>
                   </button>
                   <button
                     type="button"

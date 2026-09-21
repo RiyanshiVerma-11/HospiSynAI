@@ -30,6 +30,7 @@ class Patient(Base):
     age = Column(Integer, nullable=False)
     gender = Column(String, nullable=False)
     mobile_number = Column(String, index=True, nullable=False)
+    email = Column(String, index=True, nullable=True)
     address = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     deleted_at = Column(DateTime, nullable=True)
@@ -133,6 +134,7 @@ class BillItem(Base):
 
     # Relationships
     bill = relationship("Bill", back_populates="items")
+    service = relationship("Service")
 
 
 class Payment(Base):
