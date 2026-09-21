@@ -32,17 +32,21 @@ HospiSynAI is a production-grade, real-time hospital management ecosystem coveri
 | 🛡️ **3** | **Pre-Invoice AI Billing Auditor & Compliance Guard** | Before an invoice is created, a hybrid rule engine + LLM scans every line item for duplicate tests, clinically impossible service combinations (e.g., ICU + OPD), age-inappropriate charges, and missing consultation codes — returning a `clear`, `warning`, or `critical` verdict with specific issues listed. |
 | ⚖️ **4** | **NHA & CGHS Price Benchmark Intelligence** | Live pricing comparison against National Health Authority (NHA) & Central Government Health Scheme (CGHS) benchmark rates for OPD consultations, labs, and radiology. Flags overbilling, undercharging, and revenue leakages in real time. |
 | 🌐 **5** | **Live Multilingual Patient Handout in 11 Indian Languages** | The AI converts the doctor's prescription into a patient-friendly storytelling summary (Morning / Afternoon / Night routine + warnings), then auto-translates it into any of 11 Indian languages — Hindi, Kannada, Tamil, Telugu, Bengali, Marathi, Gujarati, Malayalam, Punjabi, Odia, Urdu — the moment a language is selected from the dropdown. No extra click needed. |
-| 🧑‍⚕️ **6** | **4 Specialized Role-Based Workspaces** | Tailored operational desks for **Doctor** (active OPD queue with live token counter, ambient voice intake, Rx generator), **Receptionist** (speed registration, OPD token assignment, advance deposit), **Accountant** (invoice queue, UPI/cash settlements, refund ledger, dashboard metrics), and **Admin** (system KPIs, catalog pricing, audit logs, branding). |
+| 🧑‍⚕️ **6** | **5 Specialized Role-Based Workspaces** | Tailored operational desks for **Doctor** (active OPD queue with live token counter, ambient voice intake, Rx generator), **Receptionist** (speed registration, OPD token assignment, advance deposit), **Accountant** (invoice queue, UPI/cash settlements, refund ledger, dashboard metrics), **Admin** (system KPIs, catalog pricing, audit logs, branding), and **Patient** (self-service portal for prescriptions, bills, digital health cards, and calendar reminders). |
 | 🔢 **7** | **Persistent OPD Token System** | Every patient visit gets a unique, persistent OPD token number (e.g., `18-00001`). The Doctor's live queue displays token numbers alongside patient demographics and chief complaints, ordered chronologically so morning/completed patients appear first and waiting patients queue below. |
 | 💡 **8** | **Interactive Hospital Financial ROI Calculator** | Built-in financial simulation tool modeling annual hospital cost recovery from eliminated billing leakages, automated pre-invoice auditing, prevented test duplications, and reduced doctor administrative burden. |
 | 📊 **9** | **AI Revenue Narrative Dashboard** | Instead of just charts, the dashboard reads today's actual live transaction data and generates a paragraph-level business insight with sentiment (positive / neutral / negative), a specific financial highlight, and an actionable recommendation for the hospital admin. |
 | 🧾 **10** | **AI Test & Service Recommender** | Before billing, the system queries the hospital's own active services catalog and recommends the most relevant OPD tests based on patient age, gender, and symptoms — with clinical reasoning for each suggestion. |
 | 📄 **11** | **ReportLab Dynamic PDF Engine with Devanagari Font Support** | A5 receipts and prescription sheets are generated server-side by ReportLab with native Nirmala Devanagari font rendering. Every branding detail — hospital name, logo, GSTIN, doctor name, contact, address — is editable via the Admin panel and reflects on every new PDF instantly. |
 | 💳 **12** | **Complete Payment Lifecycle & Advance Adjustments** | Supports Cash, UPI, Card, Net Banking, and Wallet. Handles Advance deposits, Partial payments, Full settlements, and Refunds — advance amounts are automatically detected and applied to the matching invoice during checkout. |
-| 🔐 **13** | **Fine-Grained Role-Based Access Control (RBAC)** | Four distinct roles — `Admin`, `Doctor`, `Receptionist`, `Accountant` — each with precisely scoped permissions enforced at every API endpoint via FastAPI's `RoleChecker` dependency injection. |
+| 🔐 **13** | **Fine-Grained Role-Based Access Control (RBAC)** | Distinct roles — `Admin`, `Doctor`, `Receptionist`, `Accountant`, and `Patient` — each with precisely scoped permissions enforced at every API endpoint via FastAPI's `RoleChecker` dependency injection. |
 | 📋 **14** | **Immutable System Audit Trail** | Every action — logins, patient registrations, billing edits, payments, refunds, settings changes — is automatically logged with the user identity and timestamp. The log is read-only, tamper-evident, and visible only to Admins. |
 | 📤 **15** | **One-Click Data Export** | Transaction ledgers stream directly from the server as Excel (`.xlsx`) or CSV via Pandas — no third-party BI tool needed. |
 | 🚀 **16** | **Zero-Config Docker Deployment & Offline PWA** | The entire stack launches with a single command: `docker-compose up --build`. Also installable as an offline-capable Progressive Web App with Service Workers. |
+| 📱 **17** | **Patient Self-Service Portal & Digital Health Records** | Dedicated mobile-friendly patient workspace accessible via UHID (e.g., `PAT-20260626-00001`) or contact number. Patients can inspect active and past consultations, review clinical notes, access itemized invoices, download official bilingual PDFs, and manage digital health cards without queueing at reception. |
+| 🗓️ **18** | **Automated Medicine Calendar & Timetable Reminders** | Automatically parses prescription dosages into distinct daily timetables (Morning, Afternoon, Evening, Bedtime). Patients can sync recurring dosage alarms directly to **Google Calendar** with 1-click URL generation or download universal **iCalendar (`.ics`)** files for Apple Calendar, Outlook, and mobile alarms. |
+| 📲 **19** | **Interactive QR Code Ecosystem & Gate Check-In** | Public-facing QR code for hospital kiosks, reception counters, and patient handouts (`screenshots/qr-code.png`). Allows arriving patients to scan with any smartphone camera to instantly launch their digital health portal, view OPD token wait times, or verify their appointment. |
+| 📧 **20** | **Asynchronous SMTP Email Notification Engine** | Production-ready background email dispatcher powered by `aiosmtplib`. Automatically sends beautifully formatted HTML transactional emails containing itemized PDF receipts, clinical prescription summaries, and attached `.ics` calendar appointment invitations directly to the patient's registered email address. |
 
 > [!NOTE]
 > All AI outputs (voice clinical parsing, prescription suggestions, billing audit verdicts, patient handouts, revenue insights) are **assistive** — final clinical and financial decisions remain with the attending doctor and accountant respectively.
@@ -100,6 +104,15 @@ graph TD
 - **Collection Summary**: Today's cash vs. UPI/card/digital split with running totals.
 - **Refund Ledger**: Inline refund processing with automatic invoice balance adjustment and PDF receipt generation.
 - **Report Downloads**: One-click CSV and Excel exports directly from the dashboard.
+
+#### Patient Portal (Self-Service Workspace)
+- **Instant Patient Authentication**: Secure login using Patient UHID (`PAT-YYYYMMDD-XXXXX`) or registered mobile number — no password barriers.
+- **Digital Health Card**: Live virtual health identity pass with QR code, blood group, emergency contact, and persistent UHID.
+- **Prescription Repository & Bilingual PDF**: Instant access to consultation history, clinical diagnoses, and official doctor prescription sheets with Devanagari multi-script rendering.
+- **Itemized Invoices & Payment Slips**: Transparent view of billing receipts, payment modes, advance deposit adjustments, and outstanding balances with 1-click A5 receipt downloads.
+- **Medicine Calendar Modal**: Interactive timetable converting complex prescription lines (OD/BD/TID) into morning, afternoon, evening, and night slots.
+- **1-Click Google Calendar & Apple Calendar Sync**: Direct web URL deep-link to create recurring medication reminders in Google Calendar, plus instant `.ics` download.
+- **Email Delivery Request**: One-click trigger allowing patients to receive formal PDF receipts and calendar invites directly in their registered email inbox.
 
 
 ### 🧠 Advanced AI-Powered Assistant Ecosystem
@@ -223,6 +236,9 @@ Here is a visual overview of the HospiSynAI user interface and product screens:
 ### ⚙️ 6. System Settings & Custom Branding
 ![Branding Settings](screenshots/settings.png)
 
+### 📲 7. Mobile-First Patient Portal & QR Check-In Access
+![Patient QR Code Access](screenshots/qr-code.png)
+
 ---
 
 ## 🏗️ Project Architecture
@@ -234,12 +250,14 @@ graph TD
     subgraph Frontend Container
         React[React 18 - Vite] --> CSS[Vanilla CSS + Glassmorphism]
         React --> Router[App.jsx Router & Tab Navigator]
+        React --> Portal[Patient Portal & Medicine Calendar Modal]
         React --> PWA[Service Worker - Offline PWA]
     end
 
     subgraph Backend Container
         API[FastAPI Backend - Python 3.11] --> Auth[JWT & bcrypt RBAC Guard]
         API --> PDF[ReportLab A5 Receipt Engine]
+        API --> Email[aiosmtplib SMTP Dispatcher & .ics Generator]
         API --> Excel[Pandas Ledger Streamer]
         API --> AI[Groq Multi-Model LLM Client]
         API --> NLP[Clinical NLP Engine]
@@ -513,14 +531,27 @@ Follow this standard workflow to verify system capabilities:
 3. Open any receipt. Check that the printed/displayed PDF headers update dynamically.
 4. Check the **System Audit Trail** tab. Verify that all patient registrations, visit additions, payments, settings modifications, and user logins are logged with their corresponding timestamp and user session.
 
-### Step 5: Automated Testing (Verification)
+### Step 5: Patient Self-Service & Medicine Calendar (Patient Portal)
+1. Navigate to the **Patient Portal** tab from the top navigation, or scan the Hospital QR Code (`screenshots/qr-code.png`) with a smartphone.
+2. Enter the Patient ID (e.g., `PAT-20260626-00001`) or phone number to authenticate instantly.
+3. In the Patient Portal workspace:
+   - View your **Digital Health Card** with real-time QR pass and patient demographic summary.
+   - Inspect active and past consultations, diagnoses, and prescribed medicines.
+   - Click **Download Prescription** or **Download Invoice** to retrieve the official bilingual ReportLab A5 PDF.
+4. Click **Set Reminders for Medicines & Timetable**:
+   - The **Medicine Calendar Modal** automatically categorizes medicines into Morning, Afternoon, Evening, and Night slots.
+   - Click **Save to Google Calendar** to trigger pre-configured recurring alarms directly on Google Calendar.
+   - Click **Download .ics File** to save universal calendar event reminders to Apple Calendar, Outlook, or device alarms.
+5. Click **Email Summary** to test asynchronous background email delivery (attaching the A5 PDF and `.ics` calendar invitation).
+
+### Step 6: Automated Testing (Verification)
 Verify backend routing logic and clinical/GST billing rules using the automated test suite:
 1. Open a terminal in the project root directory.
 2. Run pytest inside the backend environment:
    ```bash
    python -m pytest backend/test_main.py
    ```
-3. Check that all unit tests pass, confirming correctness of password hashing, JWT token generation, RBAC security restrictions, duplicate test auditing, room rent & cosmetic surgery GST calculations, missing consultation fee alerts, pediatric dosage safety flags, and AI response schema structures.
+3. Check that all 21 unit tests pass, confirming correctness of password hashing, JWT token generation, RBAC security restrictions, duplicate test auditing, room rent & cosmetic surgery GST calculations, missing consultation fee alerts, pediatric dosage safety flags, and AI response schema structures.
 
 ---
 
@@ -546,6 +577,11 @@ For deployment and local setup, the project supports a `.env` configuration file
 | `VITE_STATIC_BASE_URL` | Static download Base URL (for PDF receipts) | `http://localhost:5000` |
 | `GROQ_API_KEY` | API Key for Groq Cloud services (required for AI features) | *(None)* |
 | `GROQ_MODEL` | Primary Groq LLM model | `openai/gpt-oss-120b` |
+| `SMTP_HOST` | SMTP server host for sending transaction emails | *(Optional, e.g. `smtp.gmail.com`)* |
+| `SMTP_PORT` | SMTP server port | `587` |
+| `SMTP_USER` | SMTP authentication username / sender email | *(Optional)* |
+| `SMTP_PASSWORD` | SMTP authentication password / App password | *(Optional)* |
+| `SMTP_FROM_EMAIL` | Displayed sender email address | `noreply@hospisynai.internal` |
 
 ### 🚀 Production Deployment Checklist
 
@@ -565,7 +601,10 @@ For deployment and local setup, the project supports a `.env` configuration file
 | :--- | :---: | :---: |
 | **AI Prescription Suggester** (LLM generates diagnosis + medicines + tests from symptoms) | ❌ Not available | ✅ Built-in, no extra cost |
 | **Persistent OPD Token System** (token numbers survive refresh, ordered queue) | ❌ Manual slip / paper | ✅ Database-backed, auto-assigned |
-| **Role-Specific Dashboards** (Doctor queue, Receptionist desk, Accountant ledger) | ❌ Single generic view | ✅ 4 tailored workspaces |
+| **Role-Specific Dashboards** (Doctor queue, Receptionist desk, Accountant ledger, Patient Portal) | ❌ Single generic view | ✅ 5 tailored workspaces |
+| **Patient Self-Service Portal** (Digital UHID pass, prescriptions & invoices access) | ❌ Absent / Paper slips | ✅ Built-in Web & QR Portal |
+| **Medicine Calendar & Timetable Reminders** (Google Calendar / Apple `.ics` sync) | ❌ Confusing handwriting on slips | ✅ 1-click sync to phone calendar with daily alarms |
+| **Automated Email Invoicing & Invites** (Async SMTP delivery with PDF & `.ics`) | ❌ Manual printout only | ✅ Automated async HTML emails with attachments |
 | **Pre-Invoice Billing Fraud Auditor** (catches duplicate tests, age errors, clinical mismatches before checkout) | ❌ Not available | ✅ Runs automatically before every invoice |
 | **Patient Handout in Regional Language** (Kannada, Tamil, Telugu, Hindi, Bengali etc.) | ❌ English only or fixed Hindi printout | ✅ 11 live Indian languages, auto-generated by AI |
 | **AI-Driven Dashboard Insights** (narrative analysis of revenue, sentiment, recommendations) | ❌ Static counters / bar charts only | ✅ AI writes a paragraph summary of today's financial health |
