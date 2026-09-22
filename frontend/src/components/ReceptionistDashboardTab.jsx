@@ -92,6 +92,9 @@ export default function ReceptionistDashboardTab({
     if (vis.status === 'In Cabin' || vis.status === 'In Consultation' || vis.status === 'Critical' || (vis.status !== 'Completed' && vis.diagnosis)) {
       return { statusKey: 'In Consultation', label: 'In Cabin', badgeColor: 'bg-rose-100 text-rose-800 border-rose-200 animate-pulse' };
     }
+    if (vis.status === 'Arrived') {
+      return { statusKey: 'Waiting', label: 'Arrived (Lobby)', badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300 ring-1 ring-emerald-400/40 font-bold' };
+    }
     return { statusKey: 'Waiting', label: 'Waiting', badgeColor: 'bg-amber-100 text-amber-800 border-amber-200' };
   };
 

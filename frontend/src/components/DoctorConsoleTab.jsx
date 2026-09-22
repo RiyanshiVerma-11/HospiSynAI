@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Users,
   Search,
@@ -553,13 +553,25 @@ export default function DoctorConsoleTab({
     }
   };
 
-  // Find next waiting/scheduled/arrived patient in queue
+  // Find next waiting/scheduled/arrived patient in queue in chronological FIFO token order
   const getNextWaitingPatient = () => {
     if (!visits || visits.length === 0) return null;
-    return visits.find(v => 
+    const waitingPatients = visits.filter(v => 
       v.id !== selectedVisit?.id && 
-      (v.status || '').toLowerCase() !== 'completed'
+      (v.status || '').toLowerCase() !== 'completed' &&
+      !v.diagnosis
     );
+    if (waitingPatients.length === 0) return null;
+
+    // Prioritize physically arrived patients, then sort by token_number ascending (FIFO)
+    return [...waitingPatients].sort((a, b) => {
+      const aArrived = (a.status || '').toLowerCase() === 'arrived' ? 0 : 1;
+      const bArrived = (b.status || '').toLowerCase() === 'arrived' ? 0 : 1;
+      if (aArrived !== bArrived) return aArrived - bArrived;
+      const aToken = a.token_number || a.id || 999999;
+      const bToken = b.token_number || b.id || 999999;
+      return aToken - bToken;
+    })[0];
   };
 
   const nextWaitingPatient = getNextWaitingPatient();
@@ -675,26 +687,56 @@ export default function DoctorConsoleTab({
     }
   };
 
-  // Filter queue
-  const filteredQueue = visits.filter(v => {
-    const matchesSearch = 
-      v.patient?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      v.visit_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (v.patient?.mobile_number && v.patient.mobile_number.includes(searchQuery));
+  // Filter and sort queue with clinical priority & token search
+  const filteredQueue = useMemo(() => {
+    const cleanQuery = searchQuery.trim().toLowerCase();
+    const queryWithoutHash = cleanQuery.replace(/^#/, '');
+
+    const matched = visits.filter(v => {
+      const tokenStr = v.token_number ? String(v.token_number) : '';
+      const matchesSearch = 
+        !cleanQuery ||
+        v.patient?.name?.toLowerCase().includes(cleanQuery) ||
+        v.visit_id?.toLowerCase().includes(cleanQuery) ||
+        (v.patient?.mobile_number && v.patient.mobile_number.includes(cleanQuery)) ||
+        (tokenStr && (tokenStr === queryWithoutHash || `#${tokenStr}`.includes(cleanQuery) || `token ${tokenStr}`.includes(cleanQuery)));
+        
+      if (!matchesSearch) return false;
+      if (statusFilter === 'All') return true;
       
-    if (!matchesSearch) return false;
-    if (statusFilter === 'All') return true;
-    
-    const hasDiagnosis = !!v.diagnosis;
-    let visitStatus = 'Waiting';
-    if (v.status === 'Critical') {
-      visitStatus = 'Critical';
-    } else if (v.status === 'Completed' || hasDiagnosis) {
-      visitStatus = 'Completed';
-    }
-    
-    return visitStatus === statusFilter;
-  });
+      const hasDiagnosis = !!v.diagnosis;
+      let visitStatus = 'Waiting';
+      if (v.status === 'Critical') {
+        visitStatus = 'Critical';
+      } else if (v.status === 'Completed' || hasDiagnosis) {
+        visitStatus = 'Completed';
+      }
+      
+      return visitStatus === statusFilter;
+    });
+
+    // Clinical priority sorting:
+    // 1. In-Consultation (Active cabin desk)
+    // 2. Arrived (Physically in waiting lobby, by ascending token)
+    // 3. Waiting / Critical / Scheduled (by ascending token)
+    // 4. Completed (most recent diagnosis at bottom)
+    return matched.sort((a, b) => {
+      const getPriority = (v) => {
+        const s = (v.status || '').toLowerCase();
+        if (s === 'in-consultation' || s === 'in cabin') return 0;
+        if (s === 'arrived') return 1;
+        if (s === 'critical' || v.triage_severity === 'Urgent') return 2;
+        if (s === 'completed' || !!v.diagnosis) return 4;
+        return 3; // 'waiting' or 'scheduled'
+      };
+      const prioA = getPriority(a);
+      const prioB = getPriority(b);
+      if (prioA !== prioB) return prioA - prioB;
+      const aToken = a.token_number || a.id || 999999;
+      const bToken = b.token_number || b.id || 999999;
+      return aToken - bToken;
+    });
+  }, [visits, searchQuery, statusFilter]);
 
   const criticalCount = visits.filter(v => v.status === 'Critical').length;
   const waitingCount = visits.filter(v => v.status !== 'Critical' && v.status !== 'Completed' && !v.diagnosis).length;

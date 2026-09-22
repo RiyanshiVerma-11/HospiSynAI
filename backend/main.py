@@ -529,13 +529,11 @@ def create_visit(
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
-    today_start = datetime.datetime.combine(datetime.date.today(), datetime.time.min)
-    today_end = datetime.datetime.combine(datetime.date.today(), datetime.time.max)
-    today_visits_count = db.query(models.Visit).filter(
-        models.Visit.visit_date >= today_start,
-        models.Visit.visit_date <= today_end
-    ).count()
-    token_number = today_visits_count + 1
+    # Generate persistent sequential OPD token across all active visits
+    max_token = db.query(func.max(models.Visit.token_number)).filter(
+        models.Visit.is_active == True
+    ).scalar() or 0
+    token_number = max_token + 1
 
     visit_id = generate_unique_id(db, "VIS", models.Visit, models.Visit.visit_id)
     db_visit = models.Visit(
@@ -773,10 +771,8 @@ def book_appointment(
     if not doctor:
         doctor = db.query(models.Doctor).filter(models.Doctor.is_active == True).first()
 
-    # 4. Generate persistent OPD token for today
-    today_start = datetime.datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    # 4. Generate persistent sequential OPD token across all active visits
     max_token = db.query(func.max(models.Visit.token_number)).filter(
-        models.Visit.visit_date >= today_start,
         models.Visit.is_active == True
     ).scalar() or 0
     next_token = max_token + 1
@@ -903,33 +899,43 @@ def get_live_queue_status(db: Session = Depends(get_db)):
     Returns currently serving token, waiting count, arrived count, and estimated wait minutes.
     """
     today_start = datetime.datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    today_visits = db.query(models.Visit).filter(
+    queue_visits = db.query(models.Visit).filter(
         models.Visit.visit_date >= today_start,
         models.Visit.is_active == True
     ).order_by(models.Visit.token_number.asc()).all()
+
+    # Fallback to all active visits if no visits today (e.g. initial demo/seed state)
+    if not queue_visits:
+        queue_visits = db.query(models.Visit).filter(
+            models.Visit.is_active == True
+        ).order_by(models.Visit.token_number.asc()).all()
 
     serving_token = None
     waiting_count = 0
     arrived_count = 0
     completed_count = 0
+    next_waiting_token = None
 
-    for v in today_visits:
+    for v in queue_visits:
         st = (v.status or "").lower()
         if st == "completed":
             completed_count += 1
         elif st == "in-consultation":
-            if serving_token is None:
-                serving_token = v.token_number
+            # Highest priority: Doctor is currently consulting this patient in the cabin
+            serving_token = v.token_number
             waiting_count += 1
         elif st == "arrived":
             arrived_count += 1
             waiting_count += 1
-            if serving_token is None:
-                serving_token = v.token_number
+            if next_waiting_token is None:
+                next_waiting_token = v.token_number
         else: # "scheduled" or "waiting"
             waiting_count += 1
-            if serving_token is None:
-                serving_token = v.token_number
+            if next_waiting_token is None:
+                next_waiting_token = v.token_number
+
+    if serving_token is None:
+        serving_token = next_waiting_token or (queue_visits[0].token_number if queue_visits else 1)
 
     avg_wait = max(0, waiting_count * 10)
 
@@ -939,7 +945,7 @@ def get_live_queue_status(db: Session = Depends(get_db)):
         total_arrived=arrived_count,
         total_completed=completed_count,
         estimated_wait_minutes=avg_wait,
-        active_tokens_today=len(today_visits)
+        active_tokens_today=len(queue_visits)
     )
 
 

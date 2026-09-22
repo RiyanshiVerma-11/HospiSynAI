@@ -444,10 +444,250 @@ def test_ai_symptom_triage_emergency_and_routine(client):
         "age": 25,
         "gender": "Female"
     })
+    item_names = [i.service_name for i in auto_corr.corrected_items]
+    assert not any("625mg tablet" in name for name in item_names)
+    assert any("Pediatric Suspension" in name for name in item_names)
+
+
+def test_auto_resolve_icu_redundancy_and_mismatch():
+    """Verify that auto-corrections eliminate redundant room rent and adapt OPD consultation for ICU patients."""
+    items = [
+        MockBillItemAnomaly("ICU Bed Charges per day", 8000.0),
+        MockBillItemAnomaly("AC Deluxe Room Rent", 5500.0),
+        MockBillItemAnomaly("Physician Consultation OPD fee", 500.0)
+    ]
+    issues = run_local_anomaly_checks(items, patient_age=40, patient_gender="Male", diagnosis="Sepsis")
+    assert len(issues) >= 2
+    
+    auto_corr = generate_auto_corrections(items, patient_age=40, issues=issues)
+    assert auto_corr is not None
+    item_names = [i.service_name for i in auto_corr.corrected_items]
+    # Redundant standard room rent removed
+    assert not any("AC Deluxe Room Rent" in name for name in item_names)
+    # ICU bed kept
+    assert any("ICU Bed" in name for name in item_names)
+    # OPD consultation converted to Inpatient Critical Care
+    assert any("Inpatient Critical Care" in name for name in item_names)
+    # Substantial savings from eliminating redundant room rent
+    assert auto_corr.savings_amount >= 5500.0
+
+
+def test_auto_resolve_gst_compliance():
+    """Verify that auto-corrections attach statutory GST line items for room rent and cosmetic procedures."""
+    # Room rent > 5000
+    items_room = [
+        MockBillItemAnomaly("AC Deluxe Room Rent", 6000.0),
+        MockBillItemAnomaly("Doctor Consultation", 500.0)
+    ]
+    issues_room = run_local_anomaly_checks(items_room, patient_age=45, patient_gender="Female", diagnosis="Observation")
+    auto_corr_room = generate_auto_corrections(items_room, patient_age=45, issues=issues_room)
+    assert auto_corr_room is not None
+    item_names_room = [i.service_name for i in auto_corr_room.corrected_items]
+    assert any("Statutory Room Rent GST (5%)" in name for name in item_names_room)
+
+    # Cosmetic procedure (elective)
+    items_cosmetic = [
+        MockBillItemAnomaly("Cosmetic rhinoplasty", 15000.0),
+        MockBillItemAnomaly("Doctor Consultation", 500.0)
+    ]
+    issues_cosmetic = run_local_anomaly_checks(items_cosmetic, patient_age=28, patient_gender="Female", diagnosis="Aesthetic")
+    auto_corr_cosmetic = generate_auto_corrections(items_cosmetic, patient_age=28, issues=issues_cosmetic, diagnosis="Aesthetic")
+    assert auto_corr_cosmetic is not None
+    item_names_cosmetic = [i.service_name for i in auto_corr_cosmetic.corrected_items]
+    assert any("Statutory Cosmetic GST (18%)" in name for name in item_names_cosmetic)
+
+
+def test_parse_medicine_schedule():
+    """Verify that clinical medicine strings are correctly parsed into structured dosage slots, food instructions, and days."""
+    import email_service
+
+    meds_text = (
+        "1. Dolo 650mg - TID PC for 3 Days\n"
+        "2. Pantocid 40mg - OD Before Breakfast for 7 days\n"
+        "3. Shelcal 500mg - 1 Tab at Bedtime for 15 days\n"
+        "4. Augmentin 625mg - BD After Meals for 5 days"
+    )
+    parsed = email_service.parse_medicine_schedule(meds_text)
+    assert len(parsed) == 4
+
+    # Dolo 650mg: TID -> 3 slots, After meal, 3 days
+    dolo = parsed[0]
+    assert "Dolo 650mg" in dolo["medicine"]
+    assert len(dolo["slots"]) == 3
+    assert dolo["days"] == 3
+    assert "After Meal" in dolo["food"]
+
+    # Pantocid 40mg: OD -> 1 slot, Before meal, 7 days
+    panto = parsed[1]
+    assert "Pantocid 40mg" in panto["medicine"]
+    assert len(panto["slots"]) == 1
+    assert panto["days"] == 7
+    assert "Before Meal" in panto["food"]
+
+    # Shelcal: Bedtime -> 1 slot at night, 15 days
+    shelcal = parsed[2]
+    assert "Shelcal 500mg" in shelcal["medicine"]
+    assert len(shelcal["slots"]) == 1
+    assert shelcal["days"] == 15
+    assert "Bedtime" in shelcal["food"]
+
+    # Augmentin: BD -> 2 slots, After meal, 5 days
+    aug = parsed[3]
+    assert "Augmentin 625mg" in aug["medicine"]
+    assert len(aug["slots"]) == 2
+    assert aug["days"] == 5
+
+
+def test_build_medicine_schedule_ics_structure():
+    """Verify that .ics calendar file contains recurring daily events and VALARM notification triggers."""
+    import email_service
+
+    meds_text = "1. Paracetamol 500mg - BD After Meal for 5 days"
+    ics_bytes = email_service.build_medicine_schedule_ics(
+        medicines=meds_text,
+        follow_up_date="2026-09-30",
+        patient_name="Ramesh Verma",
+        doctor_name="Dr. Shweta Grover",
+        hospital_name="Vedam Diagnostics"
+    )
+
+    assert isinstance(ics_bytes, bytes)
+    assert len(ics_bytes) > 500
+    ics_str = ics_bytes.decode("utf-8", errors="ignore")
+
+    # Verify iCalendar header and format
+    assert "BEGIN:VCALENDAR" in ics_str
+    assert "END:VCALENDAR" in ics_str
+    assert "BEGIN:VEVENT" in ics_str
+    assert "RRULE:FREQ=DAILY;COUNT=5" in ics_str
+    assert "BEGIN:VALARM" in ics_str
+    assert "Follow-up Appointment with Dr. Shweta Grover" in ics_str
+
+
+from fastapi.testclient import TestClient
+from main import app
+
+@pytest.fixture
+def client():
+    from main import on_startup
+    on_startup()
+    with TestClient(app) as c:
+        yield c
+
+
+def test_appointment_self_booking_and_checkin(client):
+    """Verify public new patient self-registration, OPD token allocation, and 1-tap arrival check-in."""
+    # 1. Book appointment for new patient
+    booking_payload = {
+        "name": "Ananya Sharma",
+        "age": 28,
+        "gender": "Female",
+        "mobile": "9876543299",
+        "email": "ananya.sharma.test@example.com",
+        "city": "Noida",
+        "chief_complaints": "Persistent migraine and nausea",
+        "triage_severity": "Moderate"
+    }
+    res = client.post("/api/appointments/book", json=booking_payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["patient_name"] == "Ananya Sharma"
+    assert data["patient_id"].startswith("PAT-")
+    assert data["visit_id"].startswith("VIS-")
+    assert data["token_number"] >= 1
+    assert data["status"] == "Scheduled"
+    visit_id = data["visit_id"]
+
+    # 2. Check in when arriving at hospital gate
+    checkin_res = client.post(f"/api/appointments/{visit_id}/checkin")
+    assert checkin_res.status_code == 200
+    checkin_data = checkin_res.json()
+    assert checkin_data["status"] == "Arrived"
+    assert checkin_data["visit_id"] == visit_id
+    assert "Arrived in Waiting Area" in checkin_data["message"]
+
+
+def test_live_queue_status(client):
+    """Verify live OPD queue tracker returns real-time metrics."""
+    res = client.get("/api/queue/live")
+    assert res.status_code == 200
+    data = res.json()
+    assert "total_waiting" in data
+    assert "total_arrived" in data
+    assert "total_completed" in data
+    assert "estimated_wait_minutes" in data
+    assert isinstance(data["active_tokens_today"], int)
+
+
+def test_ai_symptom_triage_emergency_and_routine(client):
+    """Verify AI symptom triage accurately flags red-flag emergencies vs routine care."""
+    # Urgent/Emergency symptom
+    res_urgent = client.post("/api/ai/triage", json={
+        "chief_complaints": "Severe chest pain radiating to left arm and breathless",
+        "age": 55,
+        "gender": "Male"
+    })
+    assert res_urgent.status_code == 200
+    data_urgent = res_urgent.json()
+    assert data_urgent["severity"] == "Urgent"
+    assert data_urgent["is_emergency"] is True
+    assert "Emergency" in data_urgent["recommended_department"] or "Cardiology" in data_urgent["recommended_department"]
+
+    # Routine complaint
+    res_routine = client.post("/api/ai/triage", json={
+        "chief_complaints": "Mild cough and running nose since 2 days",
+        "age": 25,
+        "gender": "Female"
+    })
     assert res_routine.status_code == 200
     data_routine = res_routine.json()
     assert data_routine["severity"] in ["Normal", "Moderate"]
     assert data_routine["is_emergency"] is False
 
+def test_sequential_opd_tokens_across_bookings_and_visits(client):
+    """Verify OPD tokens strictly increment sequentially without collision across online and receptionist walk-ins."""
+    receptionist_token = auth.create_access_token({"sub": "receptionist", "role": "Receptionist"})
 
+    # 1. Book first appointment online
+    res1 = client.post("/api/appointments/book", json={
+        "name": "Token Test Patient 1",
+        "age": 30,
+        "gender": "Male",
+        "mobile": "9811002233",
+        "chief_complaints": "Routine checkup"
+    })
+    assert res1.status_code == 200
+    token1 = res1.json()["token_number"]
+    assert token1 >= 1
 
+    # 2. Book second appointment online
+    res2 = client.post("/api/appointments/book", json={
+        "name": "Token Test Patient 2",
+        "age": 35,
+        "gender": "Female",
+        "mobile": "9811002244",
+        "chief_complaints": "Joint pain"
+    })
+    assert res2.status_code == 200
+    token2 = res2.json()["token_number"]
+    assert token2 == token1 + 1
+
+    # 3. Book walk-in visit via Receptionist
+    # Create patient first
+    p_res = client.post("/api/patients", json={
+        "name": "Walk-In Token Patient",
+        "age": 40,
+        "gender": "Male",
+        "mobile_number": "9811002255"
+    }, headers={"Authorization": f"Bearer {receptionist_token}"})
+    assert p_res.status_code == 200
+    patient_id = p_res.json()["id"]
+
+    v_res = client.post("/api/visits", json={
+        "patient_id": patient_id,
+        "reason": "Walk-in consultation",
+        "status": "Waiting"
+    }, headers={"Authorization": f"Bearer {receptionist_token}"})
+    assert v_res.status_code == 200
+    token3 = v_res.json()["token_number"]
+    assert token3 == token2 + 1
