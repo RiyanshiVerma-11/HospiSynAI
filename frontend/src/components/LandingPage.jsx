@@ -568,24 +568,6 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
           {/* Hero Left: Pitch */}
           <div className="flex-1 text-center lg:text-left">
 
-            {/* Sleek Luminous Hero Pill */}
-            <div
-              className="inline-flex items-center gap-2.5 mb-5 px-4 py-2 rounded-full border border-teal-500/30 bg-gradient-to-r from-teal-950/60 via-slate-900/80 to-emerald-950/60 backdrop-blur-xl shadow-lg shadow-teal-950/50"
-              style={{
-                opacity: heroInView ? 1 : 0,
-                transform: heroInView ? 'translateY(0)' : 'translateY(-16px)',
-                transition: 'opacity 0.6s ease, transform 0.6s ease'
-              }}
-            >
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-              </span>
-              <span className="text-teal-300 text-xs font-black tracking-wider uppercase">Next-Gen Clinical AI Platform</span>
-              <span className="text-teal-600 font-bold">•</span>
-              <span className="text-slate-300 text-xs font-semibold">Groq OSS-120B · NHA CGHS Verified</span>
-            </div>
-
             {/* Showstopping Headline */}
             <h1
               className="text-4xl sm:text-5xl lg:text-[3.6rem] font-black tracking-tight text-white leading-[1.08] mb-4"
