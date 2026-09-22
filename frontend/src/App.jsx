@@ -56,6 +56,7 @@ import ROICalculatorTab from './components/ROICalculatorTab';
 import DemoTour from './components/DemoTour';
 import DoctorConsoleTab from './components/DoctorConsoleTab';
 import LandingPage from './components/LandingPage';
+import LoginPage from './components/LoginPage';
 import PatientPortalTab from './components/PatientPortalTab';
 import AppointmentBookingModal from './components/AppointmentBookingModal';
 
@@ -79,6 +80,7 @@ function App() {
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [viewMode, setViewMode] = useState('landing');
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [loginInitialRole, setLoginInitialRole] = useState('doctor');
 
   // Navigation State (Persisted across browser refreshes, role-aware default)
   const [activeTab, setActiveTab] = useState(() => {
@@ -297,13 +299,12 @@ function App() {
   // ----------------------------------------------------
   // API FETCHES
   // ----------------------------------------------------
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleLoginDirect = async (u, p) => {
     setAuthError('');
     try {
       const formData = new URLSearchParams();
-      formData.append('username', loginForm.username);
-      formData.append('password', loginForm.password);
+      formData.append('username', u);
+      formData.append('password', p);
 
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
@@ -313,7 +314,7 @@ function App() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.detail || 'Login failed');
+        throw new Error(errorData.detail || 'Login failed. Check chamber credentials.');
       }
 
       const data = await res.json();
@@ -337,10 +338,16 @@ function App() {
       } else {
         setActiveTab('dashboard');
       }
-      showToast(`Welcome back, ${data.name}!`);
+      showToast(`Welcome back, ${data.name}!`, 'success');
     } catch (err) {
       setAuthError(err.message);
+      throw err;
     }
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    await handleLoginDirect(loginForm.username, loginForm.password);
   };
 
   const handleLogout = () => {
@@ -1064,21 +1071,21 @@ function App() {
 
   // Render Login page if not authenticated
   if (!token) {
-    const quickLogin = (u, p) => setLoginForm({ username: u, password: p });
-
     if (viewMode === 'landing') {
       return (
         <LandingPage
           onEnterWorkspace={(preferredRole) => {
             setViewMode('login');
             if (preferredRole === 'Doctor OPD') {
-              quickLogin('dr.rajesh', 'doc123');
+              setLoginInitialRole('doctor');
             } else if (preferredRole === 'Receptionist') {
-              quickLogin('receptionist', 'recep123');
+              setLoginInitialRole('receptionist');
             } else if (preferredRole === 'Accountant') {
-              quickLogin('accountant', 'acct123');
+              setLoginInitialRole('accountant');
             } else if (preferredRole === 'Administrator') {
-              quickLogin('admin', 'admin123');
+              setLoginInitialRole('admin');
+            } else {
+              setLoginInitialRole('doctor');
             }
           }}
           API_BASE={API_BASE}
@@ -1100,174 +1107,31 @@ function App() {
     }
 
     return (
-      <div className="min-h-screen bg-[#060c18] flex items-center justify-center p-4 relative overflow-hidden">
-        {/* Animated background orbs */}
-        <div className="absolute w-[600px] h-[600px] rounded-full orb-float-1 pointer-events-none" style={{background:'radial-gradient(circle, rgba(20,184,166,0.18) 0%, transparent 70%)', top:'-15%', left:'-10%'}} />
-        <div className="absolute w-[500px] h-[500px] rounded-full orb-float-2 pointer-events-none" style={{background:'radial-gradient(circle, rgba(139,92,246,0.14) 0%, transparent 70%)', bottom:'-10%', right:'-5%'}} />
-        <div className="absolute w-[350px] h-[350px] rounded-full orb-float-3 pointer-events-none" style={{background:'radial-gradient(circle, rgba(99,102,241,0.10) 0%, transparent 70%)', top:'40%', right:'20%'}} />
+      <>
+        <LoginPage
+          initialRole={loginInitialRole}
+          onLogin={handleLoginDirect}
+          authError={authError}
+          setAuthError={setAuthError}
+          onBackToLanding={() => setViewMode('landing')}
+          onOpenBookingModal={() => setShowBookingModal(true)}
+          API_BASE={API_BASE}
+        />
 
-        {/* Subtle grid overlay */}
-        <div className="absolute inset-0 pointer-events-none" style={{backgroundImage:'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)', backgroundSize:'48px 48px'}} />
-
-        <div className="relative z-10 w-full max-w-md animate-slide-up">
-          {/* Top navigation row */}
-          <div className="mb-4 flex items-center justify-between gap-2">
-            <button
-              onClick={() => setViewMode('landing')}
-              className="text-slate-400 hover:text-white transition-colors text-xs font-bold flex items-center gap-1 bg-[#0b1329]/60 border border-white/10 hover:border-slate-700 px-3.5 py-2 rounded-xl cursor-pointer"
-            >
-              ← Back to Overview
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowBookingModal(true)}
-              className="text-teal-300 hover:text-white transition-all text-xs font-bold flex items-center gap-1.5 bg-teal-950/60 border border-teal-500/40 hover:bg-teal-900/60 px-3.5 py-2 rounded-xl cursor-pointer shadow-xs"
-            >
-              <Ticket className="w-3.5 h-3.5 text-teal-400" />
-              <span>Register Patient</span>
-            </button>
-          </div>
-
-          {/* Main glass card */}
-          <div className="glass-card p-8 rounded-3xl" style={{border:'1px solid rgba(20,184,166,0.18)'}}>
-            {/* Compact Header */}
-            <div className="text-center mb-4">
-              <h2 className="text-xl font-black text-white tracking-tight">Sign In</h2>
-              <p className="text-slate-400 text-xs mt-0.5">Select your role or enter credentials</p>
-            </div>
-
-            {/* Quick demo login buttons */}
-            <div className="mb-6">
-              <p className="text-slate-500 text-[10px] uppercase tracking-widest text-center mb-2.5">⚡ Quick Demo Login</p>
-              <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
-                {[
-                  ['Receptionist','recep123','bg-teal-500/10 border-teal-500/30 text-teal-300 hover:bg-teal-500/25', '🧑‍💼'],
-                  ['Doctor','doc123','bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25', '🩺'],
-                  ['Accountant','acct123','bg-violet-500/10 border-violet-500/30 text-violet-300 hover:bg-violet-500/25', '🧾'],
-                  ['Admin','admin123','bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/25', '🛡️'],
-                  ['Patient','pat123','bg-cyan-500/10 border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/25', '👤']
-                ].map(([role, pass, cls, emoji]) => (
-                  <button key={role} type="button"
-                    onClick={() => quickLogin(role === 'Doctor' ? 'dr.rajesh' : role.toLowerCase(), pass)}
-                    className={`border rounded-xl py-2 px-3 text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap ${cls}`}>
-                    <span className="text-xs leading-none">{emoji}</span>
-                    <span>{role}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* 3 Hospital Doctors Quick Selection Roster */}
-              <div className="p-3 rounded-2xl bg-emerald-950/25 border border-emerald-500/20 text-left">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                    <Stethoscope className="w-3.5 h-3.5 text-emerald-400" />
-                    Doctor Portals (3 Roster Doctors):
-                  </span>
-                  <span className="text-[9px] text-emerald-400/80 font-mono bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">pass: doc123</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
-                  {[
-                    { id: 'dr.shweta', name: 'Dr. Shweta Grover', dept: 'Pathology & Lab', chamber: 'Chamber 102' },
-                    { id: 'dr.rajesh', name: 'Dr. Rajesh Verma', dept: 'Gen. Medicine', chamber: 'Chamber 103' },
-                    { id: 'dr.priya', name: 'Dr. Priya Nair', dept: 'ENT Specialist', chamber: 'Chamber 104' }
-                  ].map(doc => {
-                    const isSelected = loginForm.username === doc.id || (doc.id === 'dr.shweta' && loginForm.username === 'doctor');
-                    return (
-                      <button
-                        key={doc.id}
-                        type="button"
-                        onClick={() => quickLogin(doc.id, 'doc123')}
-                        className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-emerald-500/20 border-emerald-400 text-white ring-1 ring-emerald-400 shadow-sm'
-                            : 'bg-white/[0.03] border-white/10 text-slate-300 hover:bg-emerald-500/10 hover:border-emerald-500/30'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-white truncate">{doc.name}</span>
-                          {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
-                        </div>
-                        <div className="text-[9.5px] text-emerald-400/90 font-medium truncate">{doc.dept}</div>
-                        <div className="text-[8.5px] text-slate-400 mt-0.5">{doc.chamber}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            <form onSubmit={handleLogin} className="space-y-4">
-              {authError && (
-                <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm px-4 py-3 rounded-xl flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                  <span>{authError}</span>
-                </div>
-              )}
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Username</label>
-                  <span className="text-[9.5px] text-teal-400/80 font-medium">dr.shweta / dr.rajesh / dr.priya</span>
-                </div>
-                <input type="text"
-                  className="w-full rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all text-sm font-medium"
-                  style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)'}}
-                  placeholder="receptionist / dr.rajesh / dr.priya / doctor / admin"
-                  value={loginForm.username}
-                  onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
-                  required />
-              </div>
-
-              <div>
-                <label className="block text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Password</label>
-                <input type="password"
-                  className="w-full rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all text-sm font-medium"
-                  style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)'}}
-                  placeholder="••••••••"
-                  value={loginForm.password}
-                  onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                  required />
-              </div>
-
-              <button type="submit"
-                className="w-full font-bold py-3.5 rounded-xl text-white text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-2"
-                style={{background:'linear-gradient(135deg, #14b8a6, #0d9488)', boxShadow:'0 4px 20px rgba(20,184,166,0.3)'}}>
-                <Lock className="w-4 h-4" />
-                Secure Sign In
-              </button>
-            </form>
-
-            {/* New Patient Direct Registration Section */}
-            <div className="mt-5 pt-4 border-t border-white/10 text-center space-y-2">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">New Patient or Need OPD Appointment?</p>
-              <button
-                type="button"
-                onClick={() => setShowBookingModal(true)}
-                className="w-full py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider text-slate-950 bg-gradient-to-r from-teal-400 via-emerald-400 to-teal-300 hover:from-teal-300 hover:to-emerald-300 transition-all flex items-center justify-center gap-2 shadow-lg shadow-teal-500/25 active:scale-98 cursor-pointer"
-              >
-                <Sparkles className="w-4 h-4 text-slate-950" />
-                <span>Register / Book OPD Appointment</span>
-                <ArrowRight className="w-4 h-4 text-slate-950" />
-              </button>
-            </div>
-
-            <div className="mt-5 flex items-center justify-center gap-2 text-slate-600 text-[10px]">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Encrypted · Audited · RBAC Protected</span>
-            </div>
-          </div>
-
-          {/* Modal mounted in login mode */}
-          <AppointmentBookingModal
-            isOpen={showBookingModal}
-            onClose={() => setShowBookingModal(false)}
-            API_BASE={API_BASE}
-            showToast={showToast}
-          />
-        </div>
-      </div>
+        {/* Modal mounted in login mode */}
+        <AppointmentBookingModal
+          isOpen={showBookingModal}
+          onClose={() => setShowBookingModal(false)}
+          API_BASE={API_BASE}
+          showToast={showToast}
+          onBookingSuccess={(pass) => {
+            showToast(`Token #${pass.token_number} generated for ${pass.name}!`, 'success');
+          }}
+        />
+      </>
     );
   }
+
 
 
   // ----------------------------------------------------
