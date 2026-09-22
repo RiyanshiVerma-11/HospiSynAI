@@ -37,7 +37,9 @@ import {
   Menu,
   Receipt,
   Shield,
-  User
+  User,
+  ArrowRight,
+  Ticket
 } from 'lucide-react';
 import DashboardTab from './components/DashboardTab';
 import ReceptionistDashboardTab from './components/ReceptionistDashboardTab';
@@ -55,6 +57,7 @@ import DemoTour from './components/DemoTour';
 import DoctorConsoleTab from './components/DoctorConsoleTab';
 import LandingPage from './components/LandingPage';
 import PatientPortalTab from './components/PatientPortalTab';
+import AppointmentBookingModal from './components/AppointmentBookingModal';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
@@ -75,6 +78,7 @@ function App() {
   const [authError, setAuthError] = useState('');
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [viewMode, setViewMode] = useState('landing');
+  const [showBookingModal, setShowBookingModal] = useState(false);
 
   // Navigation State (Persisted across browser refreshes, role-aware default)
   const [activeTab, setActiveTab] = useState(() => {
@@ -1094,13 +1098,21 @@ function App() {
         <div className="absolute inset-0 pointer-events-none" style={{backgroundImage:'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)', backgroundSize:'48px 48px'}} />
 
         <div className="relative z-10 w-full max-w-md animate-slide-up">
-          {/* Back button */}
-          <div className="mb-4">
+          {/* Top navigation row */}
+          <div className="mb-4 flex items-center justify-between gap-2">
             <button
               onClick={() => setViewMode('landing')}
-              className="text-slate-400 hover:text-white transition-colors text-xs font-bold flex items-center gap-1 bg-[#0b1329]/40 border border-white/5 hover:border-slate-700 px-3.5 py-2 rounded-xl"
+              className="text-slate-400 hover:text-white transition-colors text-xs font-bold flex items-center gap-1 bg-[#0b1329]/60 border border-white/10 hover:border-slate-700 px-3.5 py-2 rounded-xl cursor-pointer"
             >
-              ← Back to Product Overview
+              ← Back to Overview
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowBookingModal(true)}
+              className="text-teal-300 hover:text-white transition-all text-xs font-bold flex items-center gap-1.5 bg-teal-950/60 border border-teal-500/40 hover:bg-teal-900/60 px-3.5 py-2 rounded-xl cursor-pointer shadow-xs"
+            >
+              <Ticket className="w-3.5 h-3.5 text-teal-400" />
+              <span>Register Patient</span>
             </button>
           </div>
 
@@ -1177,11 +1189,32 @@ function App() {
               </button>
             </form>
 
-            <div className="mt-6 flex items-center justify-center gap-2 text-slate-600 text-[10px]">
+            {/* New Patient Direct Registration Section */}
+            <div className="mt-5 pt-4 border-t border-white/10 text-center space-y-2">
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">New Patient or Need OPD Appointment?</p>
+              <button
+                type="button"
+                onClick={() => setShowBookingModal(true)}
+                className="w-full py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider text-slate-950 bg-gradient-to-r from-teal-400 via-emerald-400 to-teal-300 hover:from-teal-300 hover:to-emerald-300 transition-all flex items-center justify-center gap-2 shadow-lg shadow-teal-500/25 active:scale-98 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-slate-950" />
+                <span>Register / Book OPD Appointment</span>
+                <ArrowRight className="w-4 h-4 text-slate-950" />
+              </button>
+            </div>
+
+            <div className="mt-5 flex items-center justify-center gap-2 text-slate-600 text-[10px]">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span>Encrypted · Audited · RBAC Protected</span>
             </div>
           </div>
+
+          {/* Modal mounted in login mode */}
+          <AppointmentBookingModal
+            isOpen={showBookingModal}
+            onClose={() => setShowBookingModal(false)}
+            API_BASE={API_BASE}
+          />
         </div>
       </div>
     );
