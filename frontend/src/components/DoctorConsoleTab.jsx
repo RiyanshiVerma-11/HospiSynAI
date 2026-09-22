@@ -27,7 +27,8 @@ import {
   Columns,
   Maximize2,
   Minimize2,
-  ExternalLink
+  ExternalLink,
+  ArrowRight
 } from 'lucide-react';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import VoiceVisualizer from './VoiceVisualizer';
@@ -133,7 +134,7 @@ export default function DoctorConsoleTab({
   const [isDraggingQueue, setIsDraggingQueue] = useState(false);
   const [autoCollapseOnSelect, setAutoCollapseOnSelect] = useState(() => {
     const saved = localStorage.getItem('hospisyn_auto_collapse_queue');
-    return saved !== null ? saved === 'true' : true;
+    return saved !== null ? saved === 'true' : false;
   });
 
   // Desk Inner Sections Resizing & Layout (Clinical Records vs. Bilingual Handout)
@@ -1169,11 +1170,11 @@ export default function DoctorConsoleTab({
                   <button
                     type="button"
                     onClick={() => {
-                      if (!activeVisit) return;
+                      if (!selectedVisit) return;
                       const url = buildMasterGoogleCalendarUrl({
-                        medicinesText: activeVisit.medicines_list,
-                        patientName: selectedPatient?.name || 'Patient',
-                        doctorName: 'Dr. Shweta Grover',
+                        medicinesText: selectedVisit.medicines_list,
+                        patientName: selectedVisit.patient?.name || 'Patient',
+                        doctorName: selectedVisit.doctor?.name || 'Dr. Shweta Grover',
                         hospitalName: 'Vedam Diagnostics'
                       });
                       window.open(url, '_blank');
@@ -1189,11 +1190,11 @@ export default function DoctorConsoleTab({
                   <button
                     type="button"
                     onClick={() => {
-                      if (!activeVisit) return;
+                      if (!selectedVisit) return;
                       const url = buildFollowUpGoogleCalendarUrl({
-                        followUpDate: activeVisit.follow_up_date,
-                        patientName: selectedPatient?.name || 'Patient',
-                        doctorName: 'Dr. Shweta Grover',
+                        followUpDate: selectedVisit.follow_up_date,
+                        patientName: selectedVisit.patient?.name || 'Patient',
+                        doctorName: selectedVisit.doctor?.name || 'Dr. Shweta Grover',
                         hospitalName: 'Vedam Diagnostics'
                       });
                       window.open(url, '_blank');
@@ -1209,12 +1210,12 @@ export default function DoctorConsoleTab({
                   <button
                     type="button"
                     onClick={() => {
-                      if (!activeVisit) return;
+                      if (!selectedVisit) return;
                       downloadClientIcsFile({
-                        medicinesText: activeVisit.medicines_list,
-                        followUpDate: activeVisit.follow_up_date,
-                        patientName: selectedPatient?.name || 'Patient',
-                        doctorName: 'Dr. Shweta Grover',
+                        medicinesText: selectedVisit.medicines_list,
+                        followUpDate: selectedVisit.follow_up_date,
+                        patientName: selectedVisit.patient?.name || 'Patient',
+                        doctorName: selectedVisit.doctor?.name || 'Dr. Shweta Grover',
                         hospitalName: 'Vedam Diagnostics'
                       });
                       showToast("📅 Medicine schedule .ics downloaded for phone calendar!", "success");

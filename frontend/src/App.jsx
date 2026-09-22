@@ -1118,16 +1118,10 @@ function App() {
 
           {/* Main glass card */}
           <div className="glass-card p-8 rounded-3xl" style={{border:'1px solid rgba(20,184,166,0.18)'}}>
-            {/* Logo */}
-            <div className="flex flex-col items-center mb-7">
-              <div className="relative mb-4">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center animate-pulse-teal" style={{background:'linear-gradient(135deg, #14b8a6, #34d399)'}}>
-                  <Activity className="w-8 h-8 text-white" />
-                </div>
-                <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-400 border-2 border-[#060c18] animate-pulse" />
-              </div>
-              <h1 className="text-3xl font-black tracking-tight text-white">HospiSyn<span className="gradient-text-teal">AI</span></h1>
-              <p className="text-slate-400 text-xs mt-1 text-center">Hospital Billing · Receipts · AI Clinical Assistant</p>
+            {/* Compact Header */}
+            <div className="text-center mb-4">
+              <h2 className="text-xl font-black text-white tracking-tight">Sign In</h2>
+              <p className="text-slate-400 text-xs mt-0.5">Select your role or enter credentials</p>
             </div>
 
             {/* Quick demo login buttons */}
