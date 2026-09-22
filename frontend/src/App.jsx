@@ -1111,6 +1111,22 @@ function App() {
         <LoginPage
           initialRole={loginInitialRole}
           onLogin={handleLoginDirect}
+          onAuthSuccess={(data) => {
+            sessionStorage.setItem('token', data.access_token);
+            sessionStorage.setItem('role', data.role);
+            sessionStorage.setItem('username', data.username);
+            sessionStorage.setItem('name', data.name);
+            setToken(data.access_token);
+            setUserRole(data.role);
+            setUsername(data.username);
+            setName(data.name);
+            if (data.role === 'Patient') {
+              setActiveTab('patient_portal');
+            } else {
+              setActiveTab('dashboard');
+            }
+            showToast(`Welcome back, ${data.name}!`, 'success');
+          }}
           authError={authError}
           setAuthError={setAuthError}
           onBackToLanding={() => setViewMode('landing')}
