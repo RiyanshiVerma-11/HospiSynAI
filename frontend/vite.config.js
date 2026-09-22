@@ -5,6 +5,7 @@ const isDocker = process.env.IS_DOCKER === 'true' || process.cwd() === '/app';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  root: '.',
   plugins: [react()],
   envDir: isDocker ? '.' : '../',
   server: {

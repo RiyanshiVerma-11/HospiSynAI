@@ -36,7 +36,7 @@ export default function DoctorDashboardTab({
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [doctorScope, setDoctorScope] = useState('all'); // 'all' | 'mine'
+  const [doctorScope, setDoctorScope] = useState('mine'); // Default: strictly show only this doctor's patients
 
   // Fetch all active visits
   const fetchVisits = async () => {

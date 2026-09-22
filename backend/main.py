@@ -1272,15 +1272,34 @@ def send_bill_invoice_email(
         "message": f"Invoice receipt emailed successfully to {target_email}",
         "email": target_email
     }
+
+
 @app.get("/api/visits", response_model=List[schemas.VisitResponse])
 def get_all_visits(
+    all_doctors: bool = Query(False),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant", "Doctor"]))
 ):
-    return db.query(models.Visit).options(
+    query = db.query(models.Visit).options(
         joinedload(models.Visit.patient),
         joinedload(models.Visit.doctor)
-    ).filter(models.Visit.is_active == True).order_by(models.Visit.visit_date.desc()).all()
+    ).filter(models.Visit.is_active == True)
+
+    # When a doctor logs in, ONLY return visits assigned to this specific doctor
+    if current_user.role == "Doctor" and not all_doctors:
+        db_doc = db.query(models.Doctor).filter(
+            func.lower(models.Doctor.name) == func.lower(current_user.name)
+        ).first()
+        if db_doc:
+            query = query.filter(models.Visit.doctor_id == db_doc.id)
+        elif current_user.username in ("dr.rajesh",):
+            query = query.filter(models.Visit.doctor_id == 2)
+        elif current_user.username in ("dr.priya",):
+            query = query.filter(models.Visit.doctor_id == 3)
+        elif current_user.username in ("dr.shweta", "doctor"):
+            query = query.filter(models.Visit.doctor_id == 1)
+
+    return query.order_by(models.Visit.visit_date.desc()).all()
 
 
 @app.put("/api/visits/{id}/summary", response_model=schemas.VisitResponse)

@@ -41,7 +41,7 @@ services:
       - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:5000/api}
       - VITE_STATIC_BASE_URL=${VITE_STATIC_BASE_URL:-http://localhost:5000}
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "${FRONTEND_PORT:-3001}:3001"
     volumes:
       - ./frontend:/app
       - /app/node_modules

@@ -89,7 +89,7 @@ export default function DoctorConsoleTab({
   const [selectedVisit, setSelectedVisit] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [doctorQueueScope, setDoctorQueueScope] = useState('All'); // 'All' | 'Mine'
+  const [doctorQueueScope, setDoctorQueueScope] = useState('Mine'); // Default: strictly show only this doctor's patients
 
   // Form state
   const [summaryForm, setSummaryForm] = useState({
