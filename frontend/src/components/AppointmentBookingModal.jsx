@@ -182,8 +182,26 @@ export default function AppointmentBookingModal({
       if (res.ok) {
         const data = await res.json();
         setTriageResult(data);
-        setFormData(prev => ({ ...prev, triage_severity: data.severity }));
-        showToast?.(`AI Triage: ${data.severity} priority recommended`, 'info');
+
+        let targetDocId = formData.doctor_id;
+        if (data.recommended_department) {
+          const depLower = data.recommended_department.toLowerCase();
+          const matchedDoc = doctors.find(d => 
+            (d.degree && d.degree.toLowerCase().includes(depLower)) ||
+            (d.specialty && d.specialty.toLowerCase().includes(depLower)) ||
+            (depLower.includes('medicine') && d.degree?.toLowerCase().includes('general medicine'))
+          );
+          if (matchedDoc) {
+            targetDocId = matchedDoc.id;
+          }
+        }
+
+        setFormData(prev => ({
+          ...prev,
+          doctor_id: targetDocId,
+          triage_severity: data.severity
+        }));
+        showToast?.(`AI Triage: ${data.severity} priority recommended (${data.recommended_department})`, 'info');
       } else {
         showToast?.('AI Triage offline, continuing with default priority', 'info');
       }
@@ -630,30 +648,41 @@ export default function AppointmentBookingModal({
                   Select Attending Specialist / Doctor
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {doctors.map(doc => (
-                    <button
-                      key={doc.id}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, doctor_id: doc.id })}
-                      className={`p-3 rounded-2xl border text-left transition-all ${
-                        formData.doctor_id === doc.id
-                          ? 'bg-teal-50 dark:bg-teal-950/30 border-teal-500 shadow-md ring-2 ring-teal-500/20'
-                          : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:border-teal-300'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="font-bold text-sm text-slate-900 dark:text-white">
-                          {doc.name}
+                  {doctors.map(doc => {
+                    const isAiMatch = triageResult?.recommended_department && (
+                      (doc.degree && doc.degree.toLowerCase().includes(triageResult.recommended_department.toLowerCase())) ||
+                      (triageResult.recommended_department.toLowerCase().includes('medicine') && doc.degree?.toLowerCase().includes('general medicine'))
+                    );
+                    return (
+                      <button
+                        key={doc.id}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, doctor_id: doc.id })}
+                        className={`p-3 rounded-2xl border text-left transition-all relative ${
+                          formData.doctor_id === doc.id
+                            ? 'bg-teal-50 dark:bg-teal-950/30 border-teal-500 shadow-md ring-2 ring-teal-500/20'
+                            : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:border-teal-300'
+                        }`}
+                      >
+                        {isAiMatch && (
+                          <span className="absolute -top-2 right-3 text-[9.5px] font-black bg-gradient-to-r from-teal-600 to-cyan-600 text-white px-2 py-0.5 rounded-full shadow-xs">
+                            ✨ AI Match
+                          </span>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <div className="font-bold text-sm text-slate-900 dark:text-white">
+                            {doc.name}
+                          </div>
+                          <span className="text-xs font-black text-teal-600 dark:text-teal-400">
+                            ₹{doc.consultation_fee || doc.fee || 500}
+                          </span>
                         </div>
-                        <span className="text-xs font-black text-teal-600 dark:text-teal-400">
-                          ₹{doc.consultation_fee || doc.fee || 500}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
-                        {doc.degree}
-                      </div>
-                    </button>
-                  ))}
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
+                          {doc.degree}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
