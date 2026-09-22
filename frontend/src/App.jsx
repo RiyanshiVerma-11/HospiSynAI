@@ -80,7 +80,7 @@ function App() {
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [viewMode, setViewMode] = useState('landing');
   const [showBookingModal, setShowBookingModal] = useState(false);
-  const [loginInitialRole, setLoginInitialRole] = useState('doctor');
+  const [loginInitialRole, setLoginInitialRole] = useState('admin');
 
   // Navigation State (Persisted across browser refreshes, role-aware default)
   const [activeTab, setActiveTab] = useState(() => {
@@ -1085,7 +1085,7 @@ function App() {
             } else if (preferredRole === 'Administrator') {
               setLoginInitialRole('admin');
             } else {
-              setLoginInitialRole('doctor');
+              setLoginInitialRole('admin');
             }
           }}
           API_BASE={API_BASE}

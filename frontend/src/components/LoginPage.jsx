@@ -69,6 +69,16 @@ const DOCTORS_ROSTER = [
 
 const ROLES_CATALOG = [
   {
+    key: 'admin',
+    label: 'Hospital Administrator',
+    subtitle: 'Master tariffs, users & governance',
+    icon: ShieldCheck,
+    badgeText: 'Super Admin',
+    name: 'System Admin',
+    defaultUsername: 'admin',
+    defaultPassword: 'admin123'
+  },
+  {
     key: 'doctor',
     label: 'Doctor OPD',
     subtitle: '3 Clinic Chambers (102, 103, 104)',
@@ -98,16 +108,6 @@ const ROLES_CATALOG = [
     defaultPassword: 'acct123'
   },
   {
-    key: 'admin',
-    label: 'Hospital Administrator',
-    subtitle: 'Master tariffs, users & governance',
-    icon: ShieldCheck,
-    badgeText: 'Super Admin',
-    name: 'System Admin',
-    defaultUsername: 'admin',
-    defaultPassword: 'admin123'
-  },
-  {
     key: 'patient',
     label: 'Patient Health Portal',
     subtitle: 'View lab reports & prescription notes',
@@ -126,16 +126,16 @@ export default function LoginPage({
   setAuthError,
   onBackToLanding,
   onOpenBookingModal,
-  initialRole = 'doctor',
+  initialRole = 'admin',
   API_BASE = 'http://127.0.0.1:5000/api'
 }) {
-  // Navigation role state
-  const [selectedRoleKey, setSelectedRoleKey] = useState('doctor');
+  // Navigation role state (defaults to Admin on top)
+  const [selectedRoleKey, setSelectedRoleKey] = useState('admin');
   const [selectedDoctorId, setSelectedDoctorId] = useState('dr.rajesh');
 
   // Credentials inputs
-  const [username, setUsername] = useState('dr.rajesh');
-  const [password, setPassword] = useState('doc123');
+  const [username, setUsername] = useState('admin');
+  const [password, setPassword] = useState('admin123');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
