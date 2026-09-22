@@ -46,12 +46,18 @@ export default function AppointmentBookingModal({
   showToast,
   onBookingSuccess
 }) {
+  const resolvedApiBase = API_BASE || 
+    (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? '/api' 
+      : 'https://hospisyn-backend.onrender.com/api');
+
   const [step, setStep] = useState(1); // 1: Patient Details, 2: Triage & Doctor, 3: Confirmation Pass
   const [loading, setLoading] = useState(false);
   const [triageLoading, setTriageLoading] = useState(false);
   const [checkinLoading, setCheckinLoading] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   // Form State
   const [formData, setFormData] = useState({
@@ -62,7 +68,7 @@ export default function AppointmentBookingModal({
     email: '',
     city: '',
     chief_complaints: '',
-    doctor_id: '',
+    doctor_id: 1,
     triage_severity: 'Normal'
   });
 
@@ -82,7 +88,7 @@ export default function AppointmentBookingModal({
   // Fetch doctors on modal open
   useEffect(() => {
     if (isOpen) {
-      fetch(`${API_BASE}/doctors`)
+      fetch(`${resolvedApiBase}/doctors`)
         .then(r => r.ok ? r.json() : [])
         .then(data => {
           if (Array.isArray(data) && data.length > 0) {
@@ -94,7 +100,7 @@ export default function AppointmentBookingModal({
         })
         .catch(() => {});
     }
-  }, [isOpen, API_BASE]);
+  }, [isOpen, resolvedApiBase]);
 
   // Web Speech recognition for voice symptom intake
   const handleToggleVoice = () => {
@@ -161,8 +167,9 @@ export default function AppointmentBookingModal({
     }
 
     setTriageLoading(true);
+    setSubmitError('');
     try {
-      const res = await fetch(`${API_BASE}/ai/triage`, {
+      const res = await fetch(`${resolvedApiBase}/ai/triage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -177,6 +184,8 @@ export default function AppointmentBookingModal({
         setTriageResult(data);
         setFormData(prev => ({ ...prev, triage_severity: data.severity }));
         showToast?.(`AI Triage: ${data.severity} priority recommended`, 'info');
+      } else {
+        showToast?.('AI Triage offline, continuing with default priority', 'info');
       }
     } catch {
       showToast?.('AI Triage offline, continuing with default priority', 'info');
@@ -188,33 +197,46 @@ export default function AppointmentBookingModal({
   // Submit Booking
   const handleBookAppointment = async (e) => {
     if (e) e.preventDefault();
+    setSubmitError('');
+
     if (!formData.name.trim() || !formData.mobile.trim() || !formData.age || !formData.gender) {
-      showToast?.('Please fill required patient details (Name, Age, Gender, Mobile)', 'warning');
+      const missingMsg = 'Please fill required patient details (Name, Age, Gender, Mobile)';
+      setSubmitError(missingMsg);
+      showToast?.(missingMsg, 'warning');
       setStep(1);
       return;
     }
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/appointments/book`, {
+      const targetDoctorId = formData.doctor_id ? parseInt(formData.doctor_id, 10) : (doctors[0]?.id || 1);
+      const payload = {
+        name: formData.name.trim(),
+        age: parseInt(formData.age, 10),
+        gender: formData.gender,
+        mobile: formData.mobile.trim(),
+        email: formData.email.trim() || undefined,
+        city: formData.city.trim() || undefined,
+        chief_complaints: formData.chief_complaints.trim() || 'General OPD Consultation',
+        doctor_id: targetDoctorId,
+        triage_severity: formData.triage_severity || 'Normal'
+      };
+
+      const res = await fetch(`${resolvedApiBase}/appointments/book`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name.trim(),
-          age: parseInt(formData.age, 10),
-          gender: formData.gender,
-          mobile: formData.mobile.trim(),
-          email: formData.email.trim() || undefined,
-          city: formData.city.trim() || undefined,
-          chief_complaints: formData.chief_complaints.trim() || 'General OPD Consultation',
-          doctor_id: formData.doctor_id ? parseInt(formData.doctor_id, 10) : undefined,
-          triage_severity: formData.triage_severity || 'Normal'
-        })
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Failed to book appointment');
+        let errMsg = 'Failed to book appointment';
+        try {
+          const err = await res.json();
+          errMsg = err.detail || errMsg;
+        } catch {
+          errMsg = `Server error (${res.status}): Please check that backend server is running.`;
+        }
+        throw new Error(errMsg);
       }
 
       const data = await res.json();
@@ -223,7 +245,9 @@ export default function AppointmentBookingModal({
       showToast?.(`Appointment Confirmed! Token #${data.token_number}`, 'success');
       onBookingSuccess?.(data);
     } catch (err) {
-      showToast?.(err.message || 'Failed to book appointment', 'error');
+      const errorText = err.message || 'Failed to book appointment. Please check network/server connection.';
+      setSubmitError(errorText);
+      showToast?.(errorText, 'error');
     } finally {
       setLoading(false);
     }
@@ -234,7 +258,7 @@ export default function AppointmentBookingModal({
     if (!bookingResult?.visit_id) return;
     setCheckinLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/appointments/${bookingResult.visit_id}/checkin`, {
+      const res = await fetch(`${resolvedApiBase}/appointments/${bookingResult.visit_id}/checkin`, {
         method: 'POST'
       });
       if (!res.ok) throw new Error('Check-in failed');
@@ -632,6 +656,17 @@ export default function AppointmentBookingModal({
                   ))}
                 </div>
               </div>
+
+              {/* Error Notification Banner if Booking Fails */}
+              {submitError && (
+                <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 rounded-2xl text-rose-800 dark:text-rose-200 text-xs font-semibold flex items-start gap-2.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="font-black text-rose-900 dark:text-rose-100">Booking Notification</div>
+                    <div className="text-[11px] mt-0.5 leading-relaxed text-rose-700 dark:text-rose-300">{submitError}</div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

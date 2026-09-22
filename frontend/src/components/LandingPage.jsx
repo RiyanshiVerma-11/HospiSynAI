@@ -204,7 +204,7 @@ const trustItems = [
   { label: '🐳 Docker Containerized Deployment' }
 ];
 
-export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, API_BASE }) {
+export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, API_BASE, showToast }) {
   const [activeSimTab, setActiveSimTab] = useState('voice');
   const [activeLang, setActiveLang] = useState('hi');
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -1620,6 +1620,7 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
         isOpen={showBookingModal}
         onClose={() => setShowBookingModal(false)}
         API_BASE={API_BASE}
+        showToast={showToast}
         onBookingSuccess={(appt) => {
           // Keep modal open or trigger refresh if needed
         }}

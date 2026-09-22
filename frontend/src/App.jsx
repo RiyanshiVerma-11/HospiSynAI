@@ -1071,6 +1071,7 @@ function App() {
         <LandingPage
           onEnterWorkspace={() => setViewMode('login')}
           API_BASE={API_BASE}
+          showToast={showToast}
           onPatientAuthSuccess={(authData) => {
             sessionStorage.setItem('token', authData.access_token);
             sessionStorage.setItem('role', authData.role);
@@ -1208,6 +1209,7 @@ function App() {
             isOpen={showBookingModal}
             onClose={() => setShowBookingModal(false)}
             API_BASE={API_BASE}
+            showToast={showToast}
           />
         </div>
       </div>
