@@ -114,16 +114,24 @@ def on_startup():
         except Exception as e:
             print("Migration setup warning:", e)
 
-        # Seed default doctor if table is empty
-        if db.query(models.Doctor).count() == 0:
-            default_doctor = models.Doctor(
-                name="Dr. Shweta Grover",
-                degree="MBBS, MD (Pathology), PhD\nPDF (Dermatopathology, Hamburg, Germany)\nConsultant Pathologist",
-                consultation_fee=500.0,
-                consultation_validity_days=7
-            )
-            db.add(default_doctor)
-            db.commit()
+        # Seed default doctors if missing
+        doctors_to_seed = [
+            ("Dr. Shweta Grover", "MBBS, MD (Pathology), PhD\nPDF (Dermatopathology, Hamburg, Germany)\nConsultant Pathologist", 500.0, 7),
+            ("Dr. Rajesh Verma", "MBBS, MD (General Medicine), Senior Consultant Physician", 400.0, 7),
+            ("Dr. Priya Nair", "MBBS, MS (ENT Specialist), Consultant ENT Surgeon", 450.0, 7)
+        ]
+        for d_name, d_degree, d_fee, d_val in doctors_to_seed:
+            existing_doc = db.query(models.Doctor).filter(models.Doctor.name == d_name).first()
+            if not existing_doc:
+                db_doc = models.Doctor(
+                    name=d_name,
+                    degree=d_degree,
+                    consultation_fee=d_fee,
+                    consultation_validity_days=d_val,
+                    is_active=True
+                )
+                db.add(db_doc)
+        db.commit()
 
         # 1. Seed Users
         users_to_seed = [
@@ -3255,8 +3263,7 @@ def refund_payment(
 # ----------------------------------------------------
 @app.get("/api/doctors", response_model=List[schemas.DoctorResponse])
 def get_doctors(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant", "Doctor"]))
+    db: Session = Depends(get_db)
 ):
     return db.query(models.Doctor).filter(models.Doctor.is_active == True).order_by(models.Doctor.name).all()
 
