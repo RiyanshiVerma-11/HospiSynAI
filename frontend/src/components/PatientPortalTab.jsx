@@ -164,6 +164,34 @@ export default function PatientPortalTab({
     }
   };
 
+  const [checkingInVisitId, setCheckingInVisitId] = useState(null);
+
+  const handleCheckin = async (visitId) => {
+    try {
+      setCheckingInVisitId(visitId);
+      const res = await fetch(`${API_BASE}/appointments/${visitId}/checkin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(getHeaders ? getHeaders() : {})
+        }
+      });
+      const resData = await res.json();
+      if (res.ok) {
+        if (showToast) showToast('🎉 Arrival confirmed! You are now marked Arrived in the Doctor Queue.', 'success');
+        setFeedback({ type: 'success', msg: `Arrival checked-in for Token #${resData.token_number || ''}. Status: Arrived (Waiting Area)` });
+        await fetchRecords();
+      } else {
+        throw new Error(resData.detail || 'Could not complete arrival check-in');
+      }
+    } catch (err) {
+      if (showToast) showToast(err.message, 'error');
+      setFeedback({ type: 'error', msg: err.message });
+    } finally {
+      setCheckingInVisitId(null);
+    }
+  };
+
   const patient = data.patient || {};
   const visits = data.visits || [];
   const bills = data.bills || [];
@@ -174,7 +202,7 @@ export default function PatientPortalTab({
   const totalBalance = bills.reduce((sum, b) => sum + (Number(b.balance_amount) || 0), 0);
 
   // Active or waiting visit
-  const activeVisit = visits.find(v => v.status === 'Waiting' || v.status === 'In-Consultation');
+  const activeVisit = visits.find(v => ['Waiting', 'Scheduled', 'Arrived', 'In-Consultation'].includes(v.status));
 
   if (loading) {
     return (
@@ -192,21 +220,58 @@ export default function PatientPortalTab({
       <div className="space-y-5 max-w-7xl mx-auto">
 
         {/* ----------------------------------------------------
-            LIVE OPD QUEUE TOKEN ALERT (Only shown when an active consultation is in queue)
+            LIVE OPD QUEUE TOKEN ALERT & 1-TAP ARRIVAL CHECK-IN
             ---------------------------------------------------- */}
         {activeVisit && activeVisit.status !== 'Completed' && (
-          <div className="flex items-center justify-between gap-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 px-4 py-2.5 rounded-2xl text-emerald-800 dark:text-emerald-200 text-xs font-semibold shadow-xs">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Live OPD Queue: Token <strong>#{activeVisit.token_number || 'OPD'}</strong></span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-200/60 dark:bg-emerald-800/60 text-emerald-900 dark:text-emerald-100 font-bold">{activeVisit.status}</span>
+          <div className="bg-gradient-to-r from-teal-900/40 via-slate-900/60 to-emerald-950/40 border border-teal-500/30 p-4 sm:p-5 rounded-3xl text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-300 flex-shrink-0">
+                <QrCode className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <span className="text-base font-black text-white">Today's OPD Appointment</span>
+                  {activeVisit.token_number && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-teal-500 text-slate-950 font-black text-xs font-mono">
+                      Token #{activeVisit.token_number}
+                    </span>
+                  )}
+                  <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold border ${
+                    activeVisit.status === 'Arrived'
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                      : activeVisit.status === 'In-Consultation'
+                      ? 'bg-teal-500/20 text-teal-300 border-teal-500/40 animate-pulse'
+                      : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                  }`}>
+                    {activeVisit.status === 'Arrived' ? '● In Waiting Area' : activeVisit.status === 'In-Consultation' ? '🩺 In Cabin' : '⏳ Awaiting Arrival'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300">
+                  Doctor: <strong className="text-white">{activeVisit.doctor?.name || 'Assigned OPD Specialist'}</strong>
+                  {activeVisit.reason && <span> • Reason: <em>"{activeVisit.reason}"</em></span>}
+                </p>
+              </div>
             </div>
-            <button
-              onClick={() => setActiveSubTab('prescriptions')}
-              className="text-xs font-bold text-teal-700 dark:text-teal-300 hover:underline cursor-pointer"
-            >
-              View Consultation →
-            </button>
+
+            <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+              {activeVisit.status !== 'Arrived' && activeVisit.status !== 'In-Consultation' && (
+                <button
+                  type="button"
+                  disabled={checkingInVisitId === activeVisit.id}
+                  onClick={() => handleCheckin(activeVisit.id)}
+                  className="px-4 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black text-xs rounded-xl transition-all shadow-lg shadow-teal-500/20 active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {checkingInVisitId === activeVisit.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+                  <span>Mark "I Have Arrived" at Hospital</span>
+                </button>
+              )}
+              {activeVisit.status === 'Arrived' && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-bold">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Arrived — Doctor has your Token in queue</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

@@ -107,6 +107,8 @@ def on_startup():
             safe_add_column("visits", "patient_summary", "TEXT")
             safe_add_column("visits", "status", "VARCHAR DEFAULT 'Waiting'")
             safe_add_column("visits", "token_number", "INTEGER")
+            safe_add_column("visits", "checkin_time", "DATETIME")
+            safe_add_column("visits", "triage_severity", "VARCHAR DEFAULT 'Normal'")
             safe_add_column("patients", "abha_id", "VARCHAR")
             safe_add_column("patients", "email", "VARCHAR")
         except Exception as e:
@@ -718,6 +720,311 @@ def patient_portal_verify_otp(req: schemas.PatientOtpVerifyRequest, db: Session 
     }
 
 
+# ----------------------------------------------------
+# APPOINTMENT BOOKING, CHECK-IN & LIVE QUEUE ROUTERS
+# ----------------------------------------------------
+
+@app.post("/api/appointments/book", response_model=schemas.AppointmentBookingResponse)
+def book_appointment(
+    req: schemas.AppointmentBookingRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Public self-registration and OPD token appointment booking.
+    Creates or matches patient, assigns next persistent OPD token,
+    and returns digital pass confirmation.
+    """
+    # 1. Check if patient already exists by phone or email
+    patient = None
+    clean_mobile = re.sub(r"\D", "", req.mobile) if req.mobile else ""
+    if clean_mobile:
+        patient = db.query(models.Patient).filter(
+            models.Patient.mobile_number == clean_mobile,
+            models.Patient.is_active == True
+        ).first()
+
+    if not patient and req.email:
+        patient = db.query(models.Patient).filter(
+            models.Patient.email == req.email.strip().lower(),
+            models.Patient.is_active == True
+        ).first()
+
+    # 2. If new patient, register
+    if not patient:
+        pat_id = generate_unique_id(db, "PAT", models.Patient, models.Patient.patient_id)
+        patient = models.Patient(
+            patient_id=pat_id,
+            name=req.name.strip(),
+            age=req.age,
+            gender=req.gender,
+            mobile_number=clean_mobile or req.mobile.strip(),
+            email=req.email.strip().lower() if req.email else None,
+            address=req.city.strip() if req.city else None,
+            is_active=True
+        )
+        db.add(patient)
+        db.commit()
+        db.refresh(patient)
+
+    # 3. Resolve Doctor
+    doctor = None
+    if req.doctor_id:
+        doctor = db.query(models.Doctor).filter(models.Doctor.id == req.doctor_id, models.Doctor.is_active == True).first()
+    if not doctor:
+        doctor = db.query(models.Doctor).filter(models.Doctor.is_active == True).first()
+
+    # 4. Generate persistent OPD token for today
+    today_start = datetime.datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    max_token = db.query(func.max(models.Visit.token_number)).filter(
+        models.Visit.visit_date >= today_start,
+        models.Visit.is_active == True
+    ).scalar() or 0
+    next_token = max_token + 1
+
+    # 5. Create Visit
+    vis_id = generate_unique_id(db, "VIS", models.Visit, models.Visit.visit_id)
+    new_visit = models.Visit(
+        visit_id=vis_id,
+        patient_id=patient.id,
+        doctor_id=doctor.id if doctor else None,
+        token_number=next_token,
+        visit_date=datetime.datetime.utcnow(),
+        reason="Self OPD Appointment Booking",
+        chief_complaints=req.chief_complaints or "Consultation",
+        status="Scheduled",
+        triage_severity=req.triage_severity or "Normal",
+        is_active=True
+    )
+    db.add(new_visit)
+    db.commit()
+    db.refresh(new_visit)
+
+    # 6. Send email if email is provided
+    target_email = patient.email or (req.email.strip().lower() if req.email else None)
+    if target_email:
+        doc_name = doctor.name if doctor else "Dr. Shweta Grover"
+        subject = f"HospiSynAI OPD Appointment Confirmed: Token #{next_token}"
+        html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background: #ffffff;">
+          <div style="background: linear-gradient(135deg, #0f766e, #0d9488); padding: 18px; border-radius: 12px; text-align: center; color: white;">
+            <h2 style="margin: 0; font-size: 20px;">HospiSynAI · OPD Token Confirmation</h2>
+            <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.95;">Vedam Diagnostics & Super Speciality Hospital</p>
+          </div>
+          <div style="padding: 20px 8px;">
+            <p style="font-size: 15px; color: #1e293b;">Hello <strong>{patient.name}</strong>,</p>
+            <p style="font-size: 13px; color: #475569; line-height: 1.5;">
+              Your OPD appointment has been successfully scheduled. Here is your digital token pass:
+            </p>
+            <div style="margin: 20px 0; padding: 18px; background: #f0fdfa; border: 2px solid #0f766e; border-radius: 12px; text-align: center;">
+              <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #0d9488; font-weight: 700;">Your OPD Token</div>
+              <div style="font-size: 38px; font-weight: 900; color: #0f766e; margin: 4px 0;">Token #{next_token}</div>
+              <div style="font-size: 13px; color: #334155; font-weight: 600;">Consulting: {doc_name}</div>
+              <div style="font-size: 12px; color: #64748b; margin-top: 4px;">UHID: <code>{patient.patient_id}</code> · Visit ID: <code>{vis_id}</code></div>
+            </div>
+            <p style="font-size: 12px; color: #64748b; line-height: 1.5;">
+              📍 <strong>Hospital Arrival:</strong> When you arrive at the hospital reception or gate, scan the QR code to 1-tap Check-In. Doctor will be notified immediately!
+            </p>
+          </div>
+          <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 12px 0;">
+          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+            HospiSynAI Healthcare Platform · 24/7 Autonomous Patient Desk
+          </p>
+        </div>
+        """
+        try:
+            email_service._send_email(to_email=target_email, subject=subject, html_body=html)
+        except Exception as e:
+            print(f"[Appointment Email] Warning: {e}")
+
+    return schemas.AppointmentBookingResponse(
+        patient_id=patient.patient_id,
+        patient_name=patient.name,
+        visit_id=vis_id,
+        token_number=next_token,
+        doctor_name=doctor.name if doctor else "Assigned Consultant",
+        status="Scheduled",
+        created_at=new_visit.visit_date,
+        message=f"Appointment booked! Token #{next_token} issued for {patient.name}."
+    )
+
+
+@app.post("/api/appointments/{id}/checkin", response_model=schemas.CheckinResponse)
+def checkin_appointment(
+    id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    1-Tap Arrival Check-in when patient arrives at hospital gate or scans QR code.
+    Updates status to 'Arrived' and records arrival timestamp.
+    """
+    db_visit = None
+    if id.isdigit():
+        db_visit = db.query(models.Visit).filter(models.Visit.id == int(id), models.Visit.is_active == True).first()
+    if not db_visit:
+        db_visit = db.query(models.Visit).filter(models.Visit.visit_id.ilike(id), models.Visit.is_active == True).first()
+    if not db_visit:
+        # Also check by patient_id
+        patient = db.query(models.Patient).filter(
+            or_(models.Patient.patient_id.ilike(id), models.Patient.mobile_number == id),
+            models.Patient.is_active == True
+        ).first()
+        if patient:
+            # Find latest uncompleted visit
+            db_visit = db.query(models.Visit).filter(
+                models.Visit.patient_id == patient.id,
+                models.Visit.status != "Completed",
+                models.Visit.is_active == True
+            ).order_by(models.Visit.visit_date.desc()).first()
+
+    if not db_visit:
+        raise HTTPException(status_code=404, detail="No active appointment found to check in.")
+
+    now = datetime.datetime.utcnow()
+    db_visit.status = "Arrived"
+    db_visit.checkin_time = now
+    db.commit()
+    db.refresh(db_visit)
+
+    patient_name = db_visit.patient.name if db_visit.patient else "Patient"
+    return schemas.CheckinResponse(
+        visit_id=db_visit.visit_id,
+        patient_name=patient_name,
+        token_number=db_visit.token_number,
+        status="Arrived",
+        checkin_time=now,
+        message=f"Check-In confirmed! {patient_name} (Token #{db_visit.token_number}) marked as Arrived in Waiting Area."
+    )
+
+
+@app.get("/api/queue/live", response_model=schemas.LiveQueueStatusResponse)
+def get_live_queue_status(db: Session = Depends(get_db)):
+    """
+    Public real-time OPD Queue Tracker ("Zomato-style wait time").
+    Returns currently serving token, waiting count, arrived count, and estimated wait minutes.
+    """
+    today_start = datetime.datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_visits = db.query(models.Visit).filter(
+        models.Visit.visit_date >= today_start,
+        models.Visit.is_active == True
+    ).order_by(models.Visit.token_number.asc()).all()
+
+    serving_token = None
+    waiting_count = 0
+    arrived_count = 0
+    completed_count = 0
+
+    for v in today_visits:
+        st = (v.status or "").lower()
+        if st == "completed":
+            completed_count += 1
+        elif st == "in-consultation":
+            if serving_token is None:
+                serving_token = v.token_number
+            waiting_count += 1
+        elif st == "arrived":
+            arrived_count += 1
+            waiting_count += 1
+            if serving_token is None:
+                serving_token = v.token_number
+        else: # "scheduled" or "waiting"
+            waiting_count += 1
+            if serving_token is None:
+                serving_token = v.token_number
+
+    avg_wait = max(0, waiting_count * 10)
+
+    return schemas.LiveQueueStatusResponse(
+        current_serving_token=serving_token,
+        total_waiting=waiting_count,
+        total_arrived=arrived_count,
+        total_completed=completed_count,
+        estimated_wait_minutes=avg_wait,
+        active_tokens_today=len(today_visits)
+    )
+
+
+@app.post("/api/ai/triage", response_model=schemas.AITriageResponse)
+async def ai_symptom_triage(req: schemas.AITriageRequest):
+    """
+    AI-Powered Symptom Triage & Department Recommendation.
+    Analyzes chief complaints in Hindi or English, assigns Severity (Normal/Moderate/Urgent),
+    and suggests best specialty department.
+    """
+    complaints = req.chief_complaints.lower()
+
+    # Rule-based fast urgent check
+    is_urgent = any(w in complaints for w in [
+        "chest pain", "heart", "unconscious", "stroke", "paralysis", "severe bleeding", 
+        "breathless", "cannot breathe", "choking", "seizure", "convulsion", "cyanosis",
+        "chaati me dard", "saans nahi aa rahi", "behosh"
+    ])
+
+    if is_urgent:
+        return schemas.AITriageResponse(
+            severity="Urgent",
+            recommended_department="Emergency / Cardiology",
+            clinical_advisory="⚠️ Immediate emergency care recommended. Please proceed directly to the hospital Emergency Room.",
+            is_emergency=True
+        )
+
+    # Call Groq LLM for smart triage classification
+    prompt = f"""You are an emergency and OPD clinical triage AI for an Indian hospital.
+Analyze the patient's complaints and recommend the right medical department and urgency.
+
+Patient Age: {req.age or 'Not specified'}
+Patient Gender: {req.gender or 'Not specified'}
+Symptoms/Complaints: {req.chief_complaints}
+
+Classification Rules:
+- severity: MUST be one of ["Normal", "Moderate", "Urgent"]
+- recommended_department: MUST be one of ["General Medicine", "Cardiology", "Pediatrics", "ENT", "Orthopedics", "Dermatology", "Gynecology", "Pulmonology", "Gastroenterology", "Emergency"]
+- clinical_advisory: 1-2 sentence reassuring advice and guidance.
+- is_emergency: true only if symptoms are life-threatening, otherwise false.
+
+Output ONLY valid JSON with keys: severity, recommended_department, clinical_advisory, is_emergency."""
+
+    groq_res = await call_groq_api(
+        prompt=prompt,
+        response_format={"type": "json_object"},
+        temperature=0.1,
+        max_tokens=500
+    )
+
+    if groq_res and "severity" in groq_res:
+        sev = groq_res.get("severity", "Normal")
+        if sev not in ["Normal", "Moderate", "Urgent"]:
+            sev = "Normal"
+        return schemas.AITriageResponse(
+            severity=sev,
+            recommended_department=groq_res.get("recommended_department", "General Medicine"),
+            clinical_advisory=groq_res.get("clinical_advisory", "Consult a general physician for initial assessment."),
+            is_emergency=bool(groq_res.get("is_emergency", False))
+        )
+
+    # Heuristic fallback
+    dept = "General Medicine"
+    sev = "Normal"
+    if any(w in complaints for w in ["ear", "nose", "throat", "gala", "kaan", "sinus"]):
+        dept = "ENT"
+    elif any(w in complaints for w in ["bone", "fracture", "joint", "haddi", "knee", "back pain"]):
+        dept = "Orthopedics"
+        sev = "Moderate"
+    elif any(w in complaints for w in ["skin", "rash", "itch", "dandruff", "khujli"]):
+        dept = "Dermatology"
+    elif any(w in complaints for w in ["stomach", "pet dard", "vomit", "motion", "acidity"]):
+        dept = "Gastroenterology"
+        sev = "Moderate"
+    elif req.age and req.age < 14:
+        dept = "Pediatrics"
+
+    return schemas.AITriageResponse(
+        severity=sev,
+        recommended_department=dept,
+        clinical_advisory="Schedule an OPD consultation with our specialist doctor.",
+        is_emergency=False
+    )
+
+
 @app.get("/api/patient-portal/my-records")
 def get_patient_portal_records(
     db: Session = Depends(get_db),
@@ -770,7 +1077,9 @@ def get_patient_portal_records(
             "follow_up_date": v.follow_up_date,
             "patient_summary": v.patient_summary,
             "status": v.status,
-            "token_number": v.token_number
+            "token_number": v.token_number,
+            "checkin_time": v.checkin_time.isoformat() if getattr(v, 'checkin_time', None) else None,
+            "triage_severity": getattr(v, 'triage_severity', 'Normal') or 'Normal'
         }
 
     def serialize_bill(b):

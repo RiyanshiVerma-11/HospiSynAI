@@ -369,3 +369,85 @@ def test_build_medicine_schedule_ics_structure():
     assert "Follow-up Appointment with Dr. Shweta Grover" in ics_str
 
 
+from fastapi.testclient import TestClient
+from main import app
+
+@pytest.fixture
+def client():
+    from main import on_startup
+    on_startup()
+    with TestClient(app) as c:
+        yield c
+
+
+def test_appointment_self_booking_and_checkin(client):
+    """Verify public new patient self-registration, OPD token allocation, and 1-tap arrival check-in."""
+    # 1. Book appointment for new patient
+    booking_payload = {
+        "name": "Ananya Sharma",
+        "age": 28,
+        "gender": "Female",
+        "mobile": "9876543299",
+        "email": "ananya.sharma.test@example.com",
+        "city": "Noida",
+        "chief_complaints": "Persistent migraine and nausea",
+        "triage_severity": "Moderate"
+    }
+    res = client.post("/api/appointments/book", json=booking_payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["patient_name"] == "Ananya Sharma"
+    assert data["patient_id"].startswith("PAT-")
+    assert data["visit_id"].startswith("VIS-")
+    assert data["token_number"] >= 1
+    assert data["status"] == "Scheduled"
+    visit_id = data["visit_id"]
+
+    # 2. Check in when arriving at hospital gate
+    checkin_res = client.post(f"/api/appointments/{visit_id}/checkin")
+    assert checkin_res.status_code == 200
+    checkin_data = checkin_res.json()
+    assert checkin_data["status"] == "Arrived"
+    assert checkin_data["visit_id"] == visit_id
+    assert "Arrived in Waiting Area" in checkin_data["message"]
+
+
+def test_live_queue_status(client):
+    """Verify live OPD queue tracker returns real-time metrics."""
+    res = client.get("/api/queue/live")
+    assert res.status_code == 200
+    data = res.json()
+    assert "total_waiting" in data
+    assert "total_arrived" in data
+    assert "total_completed" in data
+    assert "estimated_wait_minutes" in data
+    assert isinstance(data["active_tokens_today"], int)
+
+
+def test_ai_symptom_triage_emergency_and_routine(client):
+    """Verify AI symptom triage accurately flags red-flag emergencies vs routine care."""
+    # Urgent/Emergency symptom
+    res_urgent = client.post("/api/ai/triage", json={
+        "chief_complaints": "Severe chest pain radiating to left arm and breathless",
+        "age": 55,
+        "gender": "Male"
+    })
+    assert res_urgent.status_code == 200
+    data_urgent = res_urgent.json()
+    assert data_urgent["severity"] == "Urgent"
+    assert data_urgent["is_emergency"] is True
+    assert "Emergency" in data_urgent["recommended_department"] or "Cardiology" in data_urgent["recommended_department"]
+
+    # Routine complaint
+    res_routine = client.post("/api/ai/triage", json={
+        "chief_complaints": "Mild cough and running nose since 2 days",
+        "age": 25,
+        "gender": "Female"
+    })
+    assert res_routine.status_code == 200
+    data_routine = res_routine.json()
+    assert data_routine["severity"] in ["Normal", "Moderate"]
+    assert data_routine["is_emergency"] is False
+
+
+

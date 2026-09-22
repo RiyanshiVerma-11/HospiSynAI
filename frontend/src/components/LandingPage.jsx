@@ -38,8 +38,17 @@ import {
   Scale,
   Receipt,
   ChevronDown,
-  HelpCircle
+  HelpCircle,
+  Ticket,
+  QrCode,
+  Clock,
+  Calendar,
+  Send,
+  AlertCircle,
+  Loader2,
+  Check
 } from 'lucide-react';
+import AppointmentBookingModal from './AppointmentBookingModal';
 
 // --- Animated Counter Hook ---
 function useCountUp(target, duration = 1800, start = false) {
@@ -202,6 +211,37 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
   const [showInstallBtn, setShowInstallBtn] = useState(true);
   const [showInstructionModal, setShowInstructionModal] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  // OPD Self-Booking & Live Queue State
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [liveQueue, setLiveQueue] = useState(null);
+
+  useEffect(() => {
+    const fetchQueue = async () => {
+      try {
+        const res = await fetch(`${API_BASE || '/api'}/queue/live`);
+        if (res.ok) {
+          const qData = await res.json();
+          setLiveQueue(qData);
+        }
+      } catch (e) {
+        // silent fallback
+      }
+    };
+    fetchQueue();
+    const qInterval = setInterval(fetchQueue, 20000);
+
+    // Auto-open modals if arrived from Hospital QR code poster
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get('action');
+    if (action === 'book' || action === 'register') {
+      setShowBookingModal(true);
+    } else if (action === 'checkin' || action === 'patient') {
+      setIsPatientModalOpen(true);
+    }
+
+    return () => clearInterval(qInterval);
+  }, [API_BASE]);
 
   // Patient OTP Modal State
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
@@ -503,21 +543,37 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setShowBookingModal(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-teal-300 hover:text-white bg-teal-950/50 hover:bg-teal-900/70 border border-teal-500/40 shadow-xs transition-all active:scale-95 cursor-pointer"
+          >
+            <Ticket className="w-3.5 h-3.5 text-teal-400" />
+            <span className="hidden sm:inline">Book OPD Token</span>
+            <span className="sm:hidden">Book</span>
+          </button>
+
+          <button
+            onClick={() => setIsPatientModalOpen(true)}
+            className="hidden md:flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer"
+          >
+            <Shield className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Patient Portal</span>
+          </button>
+
           {showInstallBtn && (
             <button
               onClick={handleInstallClick}
-              className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
+              className="hidden xl:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
             >
               <Download className="w-3.5 h-3.5 text-teal-400" />
               <span>Install App</span>
             </button>
           )}
 
-
           <button
             onClick={onEnterWorkspace}
-            className="relative px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-white flex items-center gap-2 group overflow-hidden transition-all active:scale-[0.97] shadow-lg shadow-teal-900/40"
+            className="relative px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-white flex items-center gap-2 group overflow-hidden transition-all active:scale-[0.97] shadow-lg shadow-teal-900/40 cursor-pointer"
             style={{ background: 'linear-gradient(135deg, #14b8a6, #0d9488)' }}
           >
             <span className="relative z-10 hidden sm:inline">Launch Console</span>
@@ -601,9 +657,41 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
               Doctors speak colloquially in <strong className="text-white font-bold">Hindi or Hinglish</strong> — HospiSynAI autonomously transcribes clinical notes, creates structured prescription plans, audits pre-invoice compliance against <strong className="text-teal-300 font-semibold">NHA CGHS benchmarks</strong>, and issues vernacular patient checklists in <strong className="text-emerald-300 font-semibold">11 native languages</strong>.
             </p>
 
+            {/* Live OPD Queue Status Banner */}
+            {liveQueue && (
+              <div
+                className="inline-flex flex-wrap items-center gap-2.5 px-4 py-2 rounded-2xl bg-teal-950/60 border border-teal-500/30 text-xs font-semibold text-teal-200 mb-5 backdrop-blur-md shadow-md mx-auto lg:mx-0"
+                style={{
+                  opacity: heroInView ? 1 : 0,
+                  transform: heroInView ? 'translateY(0)' : 'translateY(15px)',
+                  transition: 'opacity 0.7s ease 0.22s, transform 0.7s ease 0.22s'
+                }}
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-white font-bold">Live OPD Queue:</span>
+                <span className="bg-teal-900/90 text-teal-300 px-2 py-0.5 rounded-md font-mono font-bold">
+                  Serving #{liveQueue.currently_serving_token || '1'}
+                </span>
+                <span className="text-teal-500">•</span>
+                <span>{liveQueue.total_waiting} in Waiting Area</span>
+                <span className="text-teal-500">•</span>
+                <span className="text-slate-300">Avg Wait: ~{liveQueue.estimated_wait_minutes} mins</span>
+                <button
+                  type="button"
+                  onClick={() => setShowBookingModal(true)}
+                  className="ml-1 text-teal-300 hover:text-white underline font-bold text-[11px] cursor-pointer"
+                >
+                  Join Queue ➔
+                </button>
+              </div>
+            )}
+
             {/* Primary Action Group */}
             <div
-              className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 justify-center lg:justify-start mb-6"
+              className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 justify-center lg:justify-start mb-6"
               style={{
                 opacity: heroInView ? 1 : 0,
                 transform: heroInView ? 'translateY(0)' : 'translateY(20px)',
@@ -611,27 +699,35 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
               }}
             >
               <button
-                onClick={onEnterWorkspace}
-                className="group relative px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-white flex items-center justify-center gap-3 transition-all active:scale-[0.98] overflow-hidden shadow-2xl"
+                onClick={() => setShowBookingModal(true)}
+                className="group relative px-7 py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-slate-950 flex items-center justify-center gap-2.5 transition-all active:scale-[0.98] overflow-hidden shadow-2xl cursor-pointer"
                 style={{
-                  background: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 50%, #059669 100%)',
-                  boxShadow: '0 0 35px rgba(20,184,166,0.45), 0 4px 20px rgba(20,184,166,0.25)'
+                  background: 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 50%, #10b981 100%)',
+                  boxShadow: '0 0 35px rgba(45,212,191,0.5), 0 4px 20px rgba(20,184,166,0.3)'
                 }}
+              >
+                <Ticket className="w-4 h-4 text-slate-950" />
+                <span className="relative z-10">Book OPD Token</span>
+                <ArrowRight className="w-4 h-4 relative z-10 transition-transform group-hover:translate-x-1.5" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+              </button>
+
+              <button
+                onClick={onEnterWorkspace}
+                className="group relative px-7 py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-white flex items-center justify-center gap-2.5 transition-all active:scale-[0.98] overflow-hidden border border-white/20 bg-white/[0.06] hover:bg-white/[0.12] backdrop-blur-md shadow-xl cursor-pointer"
               >
                 <span className="relative z-10 flex items-center gap-2">
                   <span>Launch Hospital Console</span>
                 </span>
                 <ArrowRight className="w-4 h-4 relative z-10 transition-transform group-hover:translate-x-1.5" />
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
               </button>
-
 
               <a
                 href="#demo"
-                className="px-7 py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-teal-300 hover:text-white border border-teal-500/30 hover:border-teal-400 bg-teal-950/30 hover:bg-teal-900/40 backdrop-blur-md transition-all active:scale-[0.98] flex items-center justify-center gap-2.5 shadow-lg shadow-teal-950/40"
+                className="px-6 py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-teal-300 hover:text-white border border-teal-500/30 hover:border-teal-400 bg-teal-950/30 hover:bg-teal-900/40 backdrop-blur-md transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-teal-950/40"
               >
                 <Mic className="w-4 h-4 text-teal-400 animate-pulse" />
-                <span>Try Voice Scribe Demo</span>
+                <span>Voice Scribe Demo</span>
               </a>
             </div>
 
@@ -1562,6 +1658,16 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
           </div>
         </div>
       )}
+
+      {/* --- Patient Self-Booking & AI Triage Modal --- */}
+      <AppointmentBookingModal
+        isOpen={showBookingModal}
+        onClose={() => setShowBookingModal(false)}
+        API_BASE={API_BASE}
+        onBookingSuccess={(appt) => {
+          // Keep modal open or trigger refresh if needed
+        }}
+      />
     </div>
   );
 }

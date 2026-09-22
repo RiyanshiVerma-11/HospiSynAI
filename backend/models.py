@@ -70,6 +70,8 @@ class Visit(Base):
     follow_up_date = Column(String, nullable=True)
     patient_summary = Column(Text, nullable=True)
     status = Column(String, default="Waiting", nullable=True)
+    checkin_time = Column(DateTime, nullable=True)
+    triage_severity = Column(String, default="Normal", nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     deleted_at = Column(DateTime, nullable=True)
 

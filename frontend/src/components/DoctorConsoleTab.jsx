@@ -552,27 +552,83 @@ export default function DoctorConsoleTab({
     }
   };
 
-  // Save clinical note
-  const handleSaveSummary = async () => {
+  // Find next waiting/scheduled/arrived patient in queue
+  const getNextWaitingPatient = () => {
+    if (!visits || visits.length === 0) return null;
+    return visits.find(v => 
+      v.id !== selectedVisit?.id && 
+      (v.status || '').toLowerCase() !== 'completed'
+    );
+  };
+
+  const nextWaitingPatient = getNextWaitingPatient();
+
+  // Call next patient into the cabin
+  const handleCallNextPatient = async (targetVisit) => {
+    const nextV = targetVisit || getNextWaitingPatient();
+    if (!nextV) {
+      showToast('All caught up! No more waiting patients in queue.', 'info');
+      return;
+    }
+
+    try {
+      // Mark next patient as In-Consultation
+      await fetch(`${API_BASE}/visits/${nextV.id}/summary`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({ status: 'In-Consultation' })
+      });
+    } catch {
+      // Non-blocking
+    }
+
+    handleSelectVisit({ ...nextV, status: 'In-Consultation' });
+    const tokenDisplay = nextV.token_number ? `Token #${nextV.token_number}` : nextV.visit_id.slice(-6);
+    showToast(`⏭️ Called ${tokenDisplay} (${nextV.patient?.name || 'Patient'}) into consultation cabin!`, 'success');
+    fetchVisits();
+  };
+
+  // Save clinical note - automatically marks as Completed
+  const handleSaveSummary = async (autoComplete = true) => {
     setSummarySaving(true);
     setSummaryError('');
+    const newStatus = autoComplete ? 'Completed' : (summaryForm.status || 'Completed');
+    const payload = {
+      ...summaryForm,
+      status: newStatus
+    };
     try {
       const res = await fetch(`${API_BASE}/visits/${selectedVisit.id}/summary`, {
         method: 'PUT',
         headers: getHeaders(),
-        body: JSON.stringify(summaryForm)
+        body: JSON.stringify(payload)
       });
       if (!res.ok) {
         const errData = await res.json();
         throw new Error(errData.detail || 'Failed to save clinical notes');
       }
-      showToast('Clinical consultation notes saved successfully!');
-      fetchVisits();
+      setSummaryForm(prev => ({ ...prev, status: newStatus }));
+      setSelectedVisit(prev => prev ? ({ ...prev, status: newStatus }) : null);
+      showToast('✓ Clinical notes saved and marked as Completed!', 'success');
+      await fetchVisits();
     } catch (err) {
       setSummaryError(err.message);
       showToast(err.message, 'error');
     } finally {
       setSummarySaving(false);
+    }
+  };
+
+  // 1-Click Save Current Consultation AND Call Next Patient
+  const handleSaveAndCallNext = async () => {
+    await handleSaveSummary(true);
+    const nextV = getNextWaitingPatient();
+    if (nextV) {
+      setTimeout(() => {
+        handleCallNextPatient(nextV);
+      }, 400);
+    } else {
+      showToast('All waiting patients completed for today! 🎉', 'info');
     }
   };
 
@@ -847,11 +903,17 @@ export default function DoctorConsoleTab({
                 filteredQueue.map((vis) => {
                   const hasDiagnosis = !!vis.diagnosis;
                   const getStatusDetails = () => {
-                    if (vis.status === 'Critical') {
-                      return { label: 'Critical', style: 'bg-rose-100 text-rose-800 border-rose-200 animate-pulse font-black' };
+                    if (vis.status === 'Critical' || vis.triage_severity === 'Urgent') {
+                      return { label: 'Urgent / Critical', style: 'bg-rose-100 text-rose-800 border-rose-200 animate-pulse font-black' };
+                    }
+                    if (vis.status === 'In-Consultation') {
+                      return { label: 'In Cabin', style: 'bg-teal-100 text-teal-800 border-teal-300 font-bold' };
+                    }
+                    if (vis.status === 'Arrived') {
+                      return { label: 'Arrived', style: 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold ring-1 ring-emerald-400/40' };
                     }
                     if (vis.status === 'Completed' || hasDiagnosis) {
-                      return { label: 'Completed', style: 'bg-emerald-100 text-emerald-800 border-emerald-200 font-bold' };
+                      return { label: 'Completed', style: 'bg-slate-100 text-slate-600 border-slate-200 font-medium' };
                     }
                     return { label: 'Waiting', style: 'bg-amber-100 text-amber-800 border-amber-200 font-bold' };
                   };
@@ -867,7 +929,14 @@ export default function DoctorConsoleTab({
                       }`}
                     >
                       <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-mono uppercase">{vis.visit_id.slice(-8)}</span>
+                        <div className="flex items-center gap-1.5">
+                          {vis.token_number && (
+                            <span className="text-[10px] font-black bg-teal-700 text-white px-1.5 py-0.2 rounded shadow-xs">
+                              #{vis.token_number}
+                            </span>
+                          )}
+                          <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-mono uppercase">{vis.visit_id.slice(-8)}</span>
+                        </div>
                         <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full border ${statusInfo.style}`}>
                           {statusInfo.label}
                         </span>
@@ -980,14 +1049,29 @@ export default function DoctorConsoleTab({
                       }`}
                     >
                       <option value="Waiting">Waiting</option>
-                      <option value="Critical">Critical (Emergency)</option>
-                      <option value="Completed">Completed</option>
+                      <option value="Arrived">🟢 Arrived (In Waiting Area)</option>
+                      <option value="In-Consultation">🔵 In Consultation</option>
+                      <option value="Critical">🚨 Critical (Emergency)</option>
+                      <option value="Completed">✓ Completed</option>
                     </select>
                   </span>
                 </div>
               </div>
 
               <div className="flex gap-2 items-center flex-wrap">
+                {/* Direct Call Next Patient Button */}
+                {nextWaitingPatient && (
+                  <button
+                    type="button"
+                    onClick={() => handleCallNextPatient()}
+                    className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs px-3 py-1 rounded-md flex items-center gap-1.5 shadow-md shadow-teal-600/20 active:scale-95 transition cursor-pointer"
+                    title={`Call Next Patient: Token #${nextWaitingPatient.token_number || nextWaitingPatient.id} (${nextWaitingPatient.patient?.name || 'Patient'})`}
+                  >
+                    <span>⏭️ Next: Token #{nextWaitingPatient.token_number || nextWaitingPatient.id}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
+
                 {/* Queue Toggle Button */}
                 <button
                   type="button"
@@ -1783,25 +1867,38 @@ export default function DoctorConsoleTab({
                               onChange={(e) => setSummaryForm({ ...summaryForm, follow_up_date: e.target.value })}
                             />
                           </div>
-                          <div>
+                          <div className="flex flex-col sm:flex-row gap-2">
                             <button
                               type="button"
-                              onClick={handleSaveSummary}
+                              onClick={() => handleSaveSummary(true)}
                               disabled={summarySaving}
-                              className="w-full bg-gradient-to-r from-slate-900 via-teal-900 to-slate-900 hover:from-slate-800 hover:to-teal-800 text-white font-extrabold text-xs px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 shadow-xs hover:shadow-sm transition-all active:scale-[0.99] cursor-pointer"
+                              className="flex-1 bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 hover:from-slate-800 hover:to-teal-900 text-white font-extrabold text-xs px-3 py-2 rounded-lg flex items-center justify-center gap-1.5 shadow-xs hover:shadow-sm transition-all active:scale-[0.99] cursor-pointer"
+                              title="Save clinical notes and mark consultation as Completed"
                             >
                               {summarySaving ? (
                                 <>
                                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  <span>Saving Notes...</span>
+                                  <span>Saving...</span>
                                 </>
                               ) : (
                                 <>
                                   <Save className="w-3.5 h-3.5 text-teal-300" />
-                                  <span>Save Clinical Consultation Notes</span>
+                                  <span>Save Notes (Completed)</span>
                                 </>
                               )}
                             </button>
+
+                            {nextWaitingPatient && (
+                              <button
+                                type="button"
+                                onClick={handleSaveAndCallNext}
+                                disabled={summarySaving}
+                                className="flex-1 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs px-3 py-2 rounded-lg flex items-center justify-center gap-1.5 shadow-md shadow-teal-600/20 active:scale-[0.99] transition cursor-pointer"
+                                title="Saves current consultation and immediately calls next waiting patient into cabin"
+                              >
+                                <span>Save & Call Next (Token #{nextWaitingPatient.token_number || nextWaitingPatient.id}) ➔</span>
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>

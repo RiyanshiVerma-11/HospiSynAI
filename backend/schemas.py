@@ -104,6 +104,8 @@ class VisitBase(BaseModel):
     patient_summary: Optional[str] = None
     status: Optional[str] = "Waiting"
     token_number: Optional[int] = None
+    checkin_time: Optional[datetime] = None
+    triage_severity: Optional[str] = "Normal"
 
 class VisitSummaryUpdate(BaseModel):
     diagnosis: Optional[str] = None
@@ -114,6 +116,8 @@ class VisitSummaryUpdate(BaseModel):
     follow_up_date: Optional[str] = None
     patient_summary: Optional[str] = None
     status: Optional[str] = None
+    checkin_time: Optional[datetime] = None
+    triage_severity: Optional[str] = None
 
 class VisitCreate(VisitBase):
     patient_id: int
@@ -133,6 +137,60 @@ class VisitResponse(VisitBase):
 
     class Config:
         orm_mode = True
+
+
+# Appointment Booking & Check-in Schemas
+class AppointmentBookingRequest(BaseModel):
+    name: str
+    age: int
+    gender: str
+    mobile: str
+    email: Optional[str] = None
+    city: Optional[str] = None
+    chief_complaints: Optional[str] = None
+    doctor_id: Optional[int] = None
+    triage_severity: Optional[str] = "Normal"
+
+class AppointmentBookingResponse(BaseModel):
+    patient_id: str
+    patient_name: str
+    visit_id: str
+    token_number: int
+    doctor_name: str
+    status: str
+    created_at: datetime
+    message: str
+
+class CheckinRequest(BaseModel):
+    visit_id: Optional[str] = None
+    patient_id: Optional[str] = None
+
+class CheckinResponse(BaseModel):
+    visit_id: str
+    patient_name: str
+    token_number: Optional[int] = None
+    status: str
+    checkin_time: datetime
+    message: str
+
+class AITriageRequest(BaseModel):
+    chief_complaints: str
+    age: Optional[int] = None
+    gender: Optional[str] = None
+
+class AITriageResponse(BaseModel):
+    severity: str
+    recommended_department: str
+    clinical_advisory: str
+    is_emergency: bool
+
+class LiveQueueStatusResponse(BaseModel):
+    current_serving_token: Optional[int] = None
+    total_waiting: int
+    total_arrived: int
+    total_completed: int
+    estimated_wait_minutes: int
+    active_tokens_today: int
 
 
 
