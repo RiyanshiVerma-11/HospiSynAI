@@ -516,7 +516,7 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
           </div>
         </div>
 
-        {/* Center Nav & Live Status */}
+        {/* Center Nav */}
         <div className="hidden md:flex items-center gap-6">
           <nav className="flex items-center gap-1 text-xs font-semibold text-slate-300">
             <a href="#features" className="px-3.5 py-1.5 rounded-lg hover:bg-white/5 hover:text-teal-300 transition-colors">
@@ -532,39 +532,13 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
               FAQs
             </a>
           </nav>
-
-          {/* Live System Beacon */}
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/20 text-[11px] font-bold text-emerald-300">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span>Groq AI: Online (0.76s)</span>
-          </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => setShowBookingModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-teal-300 hover:text-white bg-teal-950/50 hover:bg-teal-900/70 border border-teal-500/40 shadow-xs transition-all active:scale-95 cursor-pointer"
-          >
-            <Ticket className="w-3.5 h-3.5 text-teal-400" />
-            <span className="hidden sm:inline">Book OPD Token</span>
-            <span className="sm:hidden">Book</span>
-          </button>
-
-          <button
-            onClick={() => setIsPatientModalOpen(true)}
-            className="hidden md:flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer"
-          >
-            <Shield className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Patient Portal</span>
-          </button>
-
+        <div className="flex items-center gap-3">
           {showInstallBtn && (
             <button
               onClick={handleInstallClick}
-              className="hidden xl:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
+              className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
             >
               <Download className="w-3.5 h-3.5 text-teal-400" />
               <span>Install App</span>
