@@ -705,7 +705,7 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
               ].map((r, i) => (
                 <button
                   key={i}
-                  onClick={onEnterWorkspace}
+                  onClick={() => onEnterWorkspace && onEnterWorkspace(r.role)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 bg-white/[0.04] border border-white/10 backdrop-blur-sm transition-all duration-200 flex items-center gap-1.5 ${r.color} hover:scale-105 active:scale-95`}
                 >
                   <span>{r.icon}</span>

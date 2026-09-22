@@ -1069,7 +1069,18 @@ function App() {
     if (viewMode === 'landing') {
       return (
         <LandingPage
-          onEnterWorkspace={() => setViewMode('login')}
+          onEnterWorkspace={(preferredRole) => {
+            setViewMode('login');
+            if (preferredRole === 'Doctor OPD') {
+              quickLogin('dr.rajesh', 'doc123');
+            } else if (preferredRole === 'Receptionist') {
+              quickLogin('receptionist', 'recep123');
+            } else if (preferredRole === 'Accountant') {
+              quickLogin('accountant', 'acct123');
+            } else if (preferredRole === 'Administrator') {
+              quickLogin('admin', 'admin123');
+            }
+          }}
           API_BASE={API_BASE}
           showToast={showToast}
           onPatientAuthSuccess={(authData) => {
@@ -1127,8 +1138,8 @@ function App() {
 
             {/* Quick demo login buttons */}
             <div className="mb-6">
-              <p className="text-slate-500 text-[10px] uppercase tracking-widest text-center mb-3">⚡ Quick Demo Login</p>
-              <div className="flex flex-wrap items-center justify-center gap-2">
+              <p className="text-slate-500 text-[10px] uppercase tracking-widest text-center mb-2.5">⚡ Quick Demo Login</p>
+              <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
                 {[
                   ['Receptionist','recep123','bg-teal-500/10 border-teal-500/30 text-teal-300 hover:bg-teal-500/25', '🧑‍💼'],
                   ['Doctor','doc123','bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25', '🩺'],
@@ -1137,12 +1148,51 @@ function App() {
                   ['Patient','pat123','bg-cyan-500/10 border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/25', '👤']
                 ].map(([role, pass, cls, emoji]) => (
                   <button key={role} type="button"
-                    onClick={() => quickLogin(role.toLowerCase(), pass)}
+                    onClick={() => quickLogin(role === 'Doctor' ? 'dr.rajesh' : role.toLowerCase(), pass)}
                     className={`border rounded-xl py-2 px-3 text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap ${cls}`}>
                     <span className="text-xs leading-none">{emoji}</span>
                     <span>{role}</span>
                   </button>
                 ))}
+              </div>
+
+              {/* 3 Hospital Doctors Quick Selection Roster */}
+              <div className="p-3 rounded-2xl bg-emerald-950/25 border border-emerald-500/20 text-left">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                    <Stethoscope className="w-3.5 h-3.5 text-emerald-400" />
+                    Doctor Portals (3 Roster Doctors):
+                  </span>
+                  <span className="text-[9px] text-emerald-400/80 font-mono bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">pass: doc123</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+                  {[
+                    { id: 'dr.shweta', name: 'Dr. Shweta Grover', dept: 'Pathology & Lab', chamber: 'Chamber 102' },
+                    { id: 'dr.rajesh', name: 'Dr. Rajesh Verma', dept: 'Gen. Medicine', chamber: 'Chamber 103' },
+                    { id: 'dr.priya', name: 'Dr. Priya Nair', dept: 'ENT Specialist', chamber: 'Chamber 104' }
+                  ].map(doc => {
+                    const isSelected = loginForm.username === doc.id || (doc.id === 'dr.shweta' && loginForm.username === 'doctor');
+                    return (
+                      <button
+                        key={doc.id}
+                        type="button"
+                        onClick={() => quickLogin(doc.id, 'doc123')}
+                        className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-500/20 border-emerald-400 text-white ring-1 ring-emerald-400 shadow-sm'
+                            : 'bg-white/[0.03] border-white/10 text-slate-300 hover:bg-emerald-500/10 hover:border-emerald-500/30'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-white truncate">{doc.name}</span>
+                          {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
+                        </div>
+                        <div className="text-[9.5px] text-emerald-400/90 font-medium truncate">{doc.dept}</div>
+                        <div className="text-[8.5px] text-slate-400 mt-0.5">{doc.chamber}</div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -1155,11 +1205,14 @@ function App() {
               )}
 
               <div>
-                <label className="block text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Username</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Username</label>
+                  <span className="text-[9.5px] text-teal-400/80 font-medium">dr.shweta / dr.rajesh / dr.priya</span>
+                </div>
                 <input type="text"
                   className="w-full rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all text-sm font-medium"
                   style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)'}}
-                  placeholder="receptionist / doctor / accountant / admin"
+                  placeholder="receptionist / dr.rajesh / dr.priya / doctor / admin"
                   value={loginForm.username}
                   onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
                   required />
@@ -2118,6 +2171,7 @@ function App() {
             getHeaders={getHeaders}
             showToast={showToast}
             userRole={userRole}
+            currentUser={{ username, name, role: userRole }}
             sidebarCollapsed={sidebarCollapsed}
             setSidebarCollapsed={setSidebarCollapsed}
           />

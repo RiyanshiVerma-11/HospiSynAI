@@ -139,6 +139,9 @@ def on_startup():
             ("receptionist", "recep123", "Receptionist", "Front Desk Receptionist"),
             ("accountant", "acct123", "Accountant", "Chief Accountant"),
             ("doctor", "doc123", "Doctor", "Dr. Shweta Grover"),
+            ("dr.shweta", "doc123", "Doctor", "Dr. Shweta Grover"),
+            ("dr.rajesh", "doc123", "Doctor", "Dr. Rajesh Verma"),
+            ("dr.priya", "doc123", "Doctor", "Dr. Priya Nair"),
             ("patient", "pat123", "Patient", "Nisha Patel")
         ]
         for username, password, role, name in users_to_seed:

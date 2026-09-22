@@ -28,13 +28,15 @@ export default function DoctorDashboardTab({
   doctors = [],
   setActiveTab,
   handleSelectPatient,
-  openDoctorVisitInConsole
+  openDoctorVisitInConsole,
+  currentUser
 }) {
   const [visits, setVisits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [doctorScope, setDoctorScope] = useState('all'); // 'all' | 'mine'
 
   // Fetch all active visits
   const fetchVisits = async () => {
@@ -77,10 +79,28 @@ export default function DoctorDashboardTab({
     return { statusKey: 'Waiting', label: 'Waiting', badgeColor: 'bg-amber-100 text-amber-800 border-amber-200' };
   };
 
+  // Visits assigned to logged in doctor
+  const myAssignedVisitsCount = useMemo(() => {
+    if (!currentUser?.name) return visits.length;
+    const lowerName = currentUser.name.toLowerCase();
+    return visits.filter(v => 
+      v.doctor?.name?.toLowerCase().includes(lowerName) || 
+      lowerName.includes(v.doctor?.name?.toLowerCase() || '')
+    ).length;
+  }, [visits, currentUser]);
+
   // Filter for current doctor or all OPD if doctor on duty
   const doctorVisits = useMemo(() => {
+    if (doctorScope === 'mine' && currentUser?.name) {
+      const lowerName = currentUser.name.toLowerCase();
+      const filtered = visits.filter(v => 
+        v.doctor?.name?.toLowerCase().includes(lowerName) || 
+        lowerName.includes(v.doctor?.name?.toLowerCase() || '')
+      );
+      return filtered.length > 0 ? filtered : visits;
+    }
     return visits;
-  }, [visits]);
+  }, [visits, doctorScope, currentUser]);
 
   // Stable Token Map: assigns a permanent token number to each visit based on chronological arrival order
   const tokenMap = useMemo(() => {
@@ -191,12 +211,14 @@ export default function DoctorDashboardTab({
       {/* ── TOP BANNER: DOCTOR OPD CLINICAL COMMAND CENTER ── */}
       <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 rounded-2xl p-3 md:p-4 text-white shadow-md flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2.5 border border-teal-800/40">
         <div className="space-y-0.5">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <span className="bg-teal-500/20 text-teal-300 border border-teal-500/30 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.2 rounded-full flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
               Clinical OPD Active
             </span>
-            <span className="text-slate-400 text-[10.5px]">• Chamber 102 / Dr. Shweta Grover</span>
+            <span className="text-slate-400 text-[10.5px]">
+              • {currentUser?.username === 'dr.priya' ? 'Chamber 104 (ENT)' : currentUser?.username === 'dr.rajesh' ? 'Chamber 103 (Gen Med)' : 'Chamber 102 (Pathology)'} / {currentUser?.name || 'Dr. Shweta Grover'}
+            </span>
           </div>
           <h2 className="text-base md:text-lg font-bold tracking-tight text-white leading-tight">
             Doctor OPD Clinical Command Center
@@ -208,6 +230,32 @@ export default function DoctorDashboardTab({
 
         {/* Action Buttons */}
         <div className="flex items-center flex-wrap gap-2 w-full lg:w-auto">
+          {/* Scope Toggle: All OPD vs My Patients */}
+          <div className="flex items-center bg-black/40 p-0.5 rounded-lg border border-white/15 text-[11px]">
+            <button
+              type="button"
+              onClick={() => setDoctorScope('all')}
+              className={`px-2 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                doctorScope === 'all'
+                  ? 'bg-teal-400 text-slate-950 shadow-xs'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              🏥 All OPD ({visits.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setDoctorScope('mine')}
+              className={`px-2 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                doctorScope === 'mine'
+                  ? 'bg-emerald-400 text-slate-950 shadow-xs'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              🧑‍⚕️ My Patients ({myAssignedVisitsCount})
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={handleCallNextPatient}

@@ -80,6 +80,7 @@ export default function DoctorConsoleTab({
   getHeaders,
   showToast,
   userRole,
+  currentUser,
   sidebarCollapsed,
   setSidebarCollapsed
 }) {
@@ -88,6 +89,7 @@ export default function DoctorConsoleTab({
   const [selectedVisit, setSelectedVisit] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [doctorQueueScope, setDoctorQueueScope] = useState('All'); // 'All' | 'Mine'
 
   // Form state
   const [summaryForm, setSummaryForm] = useState({
@@ -693,6 +695,13 @@ export default function DoctorConsoleTab({
     const queryWithoutHash = cleanQuery.replace(/^#/, '');
 
     const matched = visits.filter(v => {
+      // Doctor queue scope filter
+      if (doctorQueueScope === 'Mine' && currentUser?.name) {
+        const lowerName = currentUser.name.toLowerCase();
+        const matchesDoc = v.doctor?.name?.toLowerCase().includes(lowerName) || lowerName.includes(v.doctor?.name?.toLowerCase() || '');
+        if (!matchesDoc) return false;
+      }
+
       const tokenStr = v.token_number ? String(v.token_number) : '';
       const matchesSearch = 
         !cleanQuery ||
@@ -911,6 +920,34 @@ export default function DoctorConsoleTab({
               />
             </div>
 
+            {/* Doctor Queue Scope Selector */}
+            {currentUser?.name && (
+              <div className="flex items-center gap-1 mb-2 p-1 bg-slate-100 rounded-lg border border-slate-200 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setDoctorQueueScope('All')}
+                  className={`flex-1 py-1 rounded font-bold transition-all cursor-pointer ${
+                    doctorQueueScope === 'All'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  🏥 All OPD ({visits.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDoctorQueueScope('Mine')}
+                  className={`flex-1 py-1 rounded font-bold transition-all cursor-pointer ${
+                    doctorQueueScope === 'Mine'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  🧑‍⚕️ My Patients
+                </button>
+              </div>
+            )}
+
             {/* Status Filter Chips */}
             <div className="flex flex-wrap gap-1 mb-2 flex-shrink-0">
               {[
@@ -990,6 +1027,11 @@ export default function DoctorConsoleTab({
                         <p className="text-[10.5px] text-slate-500 mt-0.5 font-medium leading-none">
                           {vis.patient?.age} Yrs • {vis.patient?.gender} • {vis.patient?.mobile_number}
                         </p>
+                        {vis.doctor?.name && (
+                          <span className="text-[9.5px] text-teal-800 bg-teal-50/90 border border-teal-200/80 px-1.5 py-0.2 rounded font-semibold mt-1 inline-flex items-center gap-1">
+                            🩺 {vis.doctor.name}
+                          </span>
+                        )}
                         {vis.reason && (
                           <p className="text-[10px] text-slate-400 italic mt-0.5 font-medium truncate">"{vis.reason}"</p>
                         )}
@@ -1216,7 +1258,7 @@ export default function DoctorConsoleTab({
                       const url = buildMasterGoogleCalendarUrl({
                         medicinesText: selectedVisit.medicines_list,
                         patientName: selectedVisit.patient?.name || 'Patient',
-                        doctorName: selectedVisit.doctor?.name || 'Dr. Shweta Grover',
+                        doctorName: selectedVisit.doctor?.name || currentUser?.name || 'Dr. Shweta Grover',
                         hospitalName: 'Vedam Diagnostics'
                       });
                       window.open(url, '_blank');
@@ -1236,7 +1278,7 @@ export default function DoctorConsoleTab({
                       const url = buildFollowUpGoogleCalendarUrl({
                         followUpDate: selectedVisit.follow_up_date,
                         patientName: selectedVisit.patient?.name || 'Patient',
-                        doctorName: selectedVisit.doctor?.name || 'Dr. Shweta Grover',
+                        doctorName: selectedVisit.doctor?.name || currentUser?.name || 'Dr. Shweta Grover',
                         hospitalName: 'Vedam Diagnostics'
                       });
                       window.open(url, '_blank');
@@ -1257,7 +1299,7 @@ export default function DoctorConsoleTab({
                         medicinesText: selectedVisit.medicines_list,
                         followUpDate: selectedVisit.follow_up_date,
                         patientName: selectedVisit.patient?.name || 'Patient',
-                        doctorName: selectedVisit.doctor?.name || 'Dr. Shweta Grover',
+                        doctorName: selectedVisit.doctor?.name || currentUser?.name || 'Dr. Shweta Grover',
                         hospitalName: 'Vedam Diagnostics'
                       });
                       showToast("📅 Medicine schedule .ics downloaded for phone calendar!", "success");
