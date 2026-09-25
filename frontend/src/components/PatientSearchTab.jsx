@@ -470,6 +470,25 @@ export default function PatientSearchTab({
     }
   }, [intakeVoice.fullText, intakeVoice.transcript, guidedVoiceStep]);
 
+  // Alert user with a toast whenever speech recognition encounters an error or network block
+  React.useEffect(() => {
+    if (intakeVoice.error) {
+      showToast(intakeVoice.error, 'error');
+    }
+  }, [intakeVoice.error]);
+
+  React.useEffect(() => {
+    if (searchVoice.error) {
+      showToast(searchVoice.error, 'error');
+    }
+  }, [searchVoice.error]);
+
+  React.useEffect(() => {
+    if (clinicalVoice.error) {
+      showToast(clinicalVoice.error, 'error');
+    }
+  }, [clinicalVoice.error]);
+
   const startGuidedVoiceIntake = () => {
     if (searchVoice.isListening) searchVoice.stopListening();
     if (clinicalVoice.isListening) clinicalVoice.stopListening();
@@ -2405,7 +2424,7 @@ export default function PatientSearchTab({
                 {/* Left Form Column: Personal & Contact */}
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <label htmlFor="patient_name" className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <span>Patient Full Name *</span>
                         {guidedVoiceStep === 'name' && (
@@ -2428,8 +2447,11 @@ export default function PatientSearchTab({
                       </button>
                     </label>
                     <input
+                      id="patient_name"
+                      name="name"
                       ref={nameInputRef}
                       type="text"
+                      autoComplete="name"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
@@ -2452,7 +2474,7 @@ export default function PatientSearchTab({
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
+                      <label htmlFor="patient_age" className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
                         <span className="flex items-center gap-1.5">
                           <span>Age *</span>
                           {guidedVoiceStep === 'age_gender' && (
@@ -2475,6 +2497,8 @@ export default function PatientSearchTab({
                         </button>
                       </label>
                       <input
+                        id="patient_age"
+                        name="age"
                         ref={ageInputRef}
                         type="number"
                         onKeyDown={(e) => {
@@ -2497,10 +2521,12 @@ export default function PatientSearchTab({
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
+                      <label htmlFor="patient_gender" className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
                         <span>Gender *</span>
                       </label>
                       <select
+                        id="patient_gender"
+                        name="gender"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
@@ -2529,7 +2555,7 @@ export default function PatientSearchTab({
                   </div>
 
                   <div>
-                    <label className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <label htmlFor="patient_mobile" className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <span>Mobile Number *</span>
                         {guidedVoiceStep === 'mobile_number' && (
@@ -2552,8 +2578,11 @@ export default function PatientSearchTab({
                       </button>
                     </label>
                     <input
+                      id="patient_mobile"
+                      name="mobile_number"
                       ref={mobileInputRef}
-                      type="text"
+                      type="tel"
+                      autoComplete="tel"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
@@ -2575,13 +2604,16 @@ export default function PatientSearchTab({
                   </div>
 
                   <div>
-                    <label className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <label htmlFor="patient_email" className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <span>Email Address (For Digital Receipts & PDF Handouts)</span>
                       </span>
                     </label>
                     <input
+                      id="patient_email"
+                      name="email"
                       type="email"
+                      autoComplete="email"
                       className="w-full rounded-xl px-3.5 py-2.5 text-xs placeholder-slate-400 focus:outline-none transition-all font-medium bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500"
                       placeholder="patient@example.com (Optional)"
                       value={newPatient.email || ''}
@@ -2593,7 +2625,7 @@ export default function PatientSearchTab({
                 {/* Right Form Column: Address & Initial Symptoms */}
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <label htmlFor="patient_address" className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <span>Residential Address</span>
                         {guidedVoiceStep === 'address' && (
@@ -2616,6 +2648,8 @@ export default function PatientSearchTab({
                       </button>
                     </label>
                     <textarea
+                      id="patient_address"
+                      name="address"
                       ref={addressInputRef}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
@@ -2637,7 +2671,7 @@ export default function PatientSearchTab({
                   </div>
 
                   <div>
-                    <label className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <label htmlFor="patient_complaints" className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <span>Initial Reason for Visit / Chief Complaint (Optional)</span>
                         {guidedVoiceStep === 'chief_complaints' && (
@@ -2660,6 +2694,8 @@ export default function PatientSearchTab({
                       </button>
                     </label>
                     <input
+                      id="patient_complaints"
+                      name="chief_complaints"
                       ref={complaintsInputRef}
                       type="text"
                       onKeyDown={(e) => {

@@ -1436,6 +1436,8 @@ export default function DoctorConsoleTab({
                           audioLevel={ambientVoice.audioLevel}
                           transcript={ambientVoice.transcript}
                           interimTranscript={ambientVoice.interimTranscript}
+                          error={ambientVoice.error}
+                          onRequestPermission={() => ambientVoice.requestPermission()}
                           onStart={() => ambientVoice.startListening()}
                           onStop={() => {
                             ambientVoice.stopListening();

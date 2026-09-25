@@ -111,7 +111,7 @@ export function useSpeechRecognition({ defaultLang = 'en-IN' } = {}) {
     } catch (err) {
       console.warn('Microphone permission request error:', err);
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setError('Microphone permission blocked. Please click the camera/mic icon in your address bar to allow microphone access.');
+        setError('Microphone permission blocked. Please click the lock or camera icon in your address bar to set Microphone to "Allow".');
         setPermissionState('denied');
       } else if (err.name === 'NotFoundError') {
         setError('No microphone hardware detected on this device.');
@@ -122,8 +122,8 @@ export function useSpeechRecognition({ defaultLang = 'en-IN' } = {}) {
     }
   }, []);
 
-  // Start listening (synchronous call inside user gesture to avoid losing user activation)
-  const startListening = useCallback(({ customLang } = {}) => {
+  // Start listening (safely handles permission prompt first so Chrome does not abort SpeechRecognition prematurely)
+  const startListening = useCallback(async ({ customLang } = {}) => {
     if (!isSupported) {
       setError('Web Speech Recognition is not supported in this browser. Please use Google Chrome, Microsoft Edge, or Brave.');
       return;
@@ -132,6 +132,38 @@ export function useSpeechRecognition({ defaultLang = 'en-IN' } = {}) {
     setError(null);
     stopListening();
 
+    // 1. Ensure microphone permission is granted before starting recognition
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        let currentStatus = permissionState;
+        if (navigator.permissions && navigator.permissions.query) {
+          try {
+            const status = await navigator.permissions.query({ name: 'microphone' });
+            currentStatus = status.state;
+          } catch (e) {
+            // Some browsers do not support querying 'microphone' name
+          }
+        }
+        if (currentStatus !== 'granted') {
+          const testStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          testStream.getTracks().forEach(t => t.stop());
+          setPermissionState('granted');
+        }
+      } catch (err) {
+        console.warn('Microphone permission verification notice:', err);
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setError('Microphone permission blocked. Click the lock or settings icon in your browser address bar and set Microphone to "Allow".');
+          setPermissionState('denied');
+        } else if (err.name === 'NotFoundError') {
+          setError('No microphone hardware detected on this device.');
+        } else {
+          setError(`Microphone error: ${err.message || err.name}`);
+        }
+        return;
+      }
+    }
+
+    // 2. Initialize Speech Recognition engine
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     try {
@@ -174,14 +206,16 @@ export function useSpeechRecognition({ defaultLang = 'en-IN' } = {}) {
     recognition.onerror = (event) => {
       console.warn('Speech recognition error event:', event.error);
       if (event.error === 'not-allowed') {
-        setError('Microphone permission blocked. Click the lock/tune icon in your browser address bar (left of localhost:3001) and set Microphone to "Allow".');
+        setError('Microphone permission blocked. Click the lock or settings icon in your address bar and set Microphone to "Allow".');
         setPermissionState('denied');
         stopListening();
       } else if (event.error === 'network') {
-        setError('Network connection error: Speech service could not connect to Google speech servers. Check your internet connection.');
+        setError('Network notice: Chrome speech service could not connect to Google speech servers. Check your internet connection or disable ad blockers.');
         stopListening();
       } else if (event.error === 'no-speech') {
         // Just silent pause, keep listening
+      } else if (event.error === 'aborted') {
+        // Recognition aborted normally or restarted
       } else {
         setError(`Speech recognition notice: ${event.error}`);
       }
@@ -190,30 +224,45 @@ export function useSpeechRecognition({ defaultLang = 'en-IN' } = {}) {
     recognition.onend = () => {
       baseResultIndexRef.current = 0;
       latestResultsLengthRef.current = 0;
-      // If user still intends to be listening, restart (continuous loop)
+      // If user still intends to be listening, cleanly restart continuous recognition
       if (isListeningRef.current) {
-        try {
-          recognition.start();
-        } catch (e) {
-          stopListening();
-        }
+        setTimeout(() => {
+          if (isListeningRef.current) {
+            try {
+              const freshRec = new SpeechRec();
+              freshRec.continuous = true;
+              freshRec.interimResults = true;
+              freshRec.lang = selectedLang;
+              freshRec.onstart = recognition.onstart;
+              freshRec.onresult = recognition.onresult;
+              freshRec.onerror = recognition.onerror;
+              freshRec.onend = recognition.onend;
+              freshRec.start();
+              recognitionRef.current = freshRec;
+            } catch (e) {
+              console.warn('Restart speech recognition notice:', e);
+            }
+          }
+        }, 150);
       } else {
         stopListening();
       }
     };
 
-    // 1. Start speech recognition synchronously in the user click stack!
+    // Start speech recognition
     try {
       recognition.start();
       recognitionRef.current = recognition;
+      isListeningRef.current = true;
+      setIsListening(true);
     } catch (e) {
-      console.error('Failed to start speech recognition immediately:', e);
+      console.error('Failed to start speech recognition:', e);
       setError('Could not start microphone: ' + e.message);
       stopListening();
       return;
     }
 
-    // 2. Concurrently initialize Web Audio waveform analyzer (non-blocking)
+    // 3. Concurrently initialize Web Audio waveform analyzer safely
     if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       navigator.mediaDevices.getUserMedia({ audio: true })
         .then((stream) => {
@@ -227,6 +276,9 @@ export function useSpeechRecognition({ defaultLang = 'en-IN' } = {}) {
           const AudioContextClass = window.AudioContext || window.webkitAudioContext;
           if (AudioContextClass) {
             const audioCtx = new AudioContextClass();
+            if (audioCtx.state === 'suspended') {
+              audioCtx.resume().catch(() => {});
+            }
             audioContextRef.current = audioCtx;
             const source = audioCtx.createMediaStreamSource(stream);
             const analyser = audioCtx.createAnalyser();
@@ -251,12 +303,9 @@ export function useSpeechRecognition({ defaultLang = 'en-IN' } = {}) {
         })
         .catch((micErr) => {
           console.warn('Waveform audio capture notice (optional fallback):', micErr);
-          if (micErr.name === 'NotAllowedError') {
-            setPermissionState('denied');
-          }
         });
     }
-  }, [isSupported, lang, stopListening, cleanupAudioNodes]);
+  }, [isSupported, lang, permissionState, stopListening, cleanupAudioNodes]);
 
   const resetTranscript = useCallback(() => {
     baseResultIndexRef.current = latestResultsLengthRef.current;
