@@ -391,6 +391,7 @@ export default function PatientSearchTab({
   // Custom Speech Recognition Hooks
   const intakeVoice = useSpeechRecognition({ defaultLang: 'en-IN' });
   const searchVoice = useSpeechRecognition({ defaultLang: 'en-IN' });
+  const clinicalVoice = useSpeechRecognition({ defaultLang: 'en-IN' });
 
   // Guided Step-by-Step Voice Intake State (Enter ↵ on keyboard advances to next detail)
   const [guidedVoiceStep, setGuidedVoiceStep] = React.useState(null); 
@@ -472,22 +473,22 @@ export default function PatientSearchTab({
 
   // Alert user with a toast whenever speech recognition encounters an error or network block
   React.useEffect(() => {
-    if (intakeVoice.error) {
+    if (intakeVoice.error && typeof showToast === 'function') {
       showToast(intakeVoice.error, 'error');
     }
-  }, [intakeVoice.error]);
+  }, [intakeVoice.error, showToast]);
 
   React.useEffect(() => {
-    if (searchVoice.error) {
+    if (searchVoice.error && typeof showToast === 'function') {
       showToast(searchVoice.error, 'error');
     }
-  }, [searchVoice.error]);
+  }, [searchVoice.error, showToast]);
 
   React.useEffect(() => {
-    if (clinicalVoice.error) {
+    if (clinicalVoice.error && typeof showToast === 'function') {
       showToast(clinicalVoice.error, 'error');
     }
-  }, [clinicalVoice.error]);
+  }, [clinicalVoice.error, showToast]);
 
   const startGuidedVoiceIntake = () => {
     if (searchVoice.isListening) searchVoice.stopListening();
@@ -594,7 +595,6 @@ export default function PatientSearchTab({
   };
 
   // Voice Dictation for Doctor's Clinical Notes in Modal
-  const clinicalVoice = useSpeechRecognition({ defaultLang: 'en-IN' });
   const [activeClinicalFieldMic, setActiveClinicalFieldMic] = React.useState(null);
   const clinicalFieldBaseRef = React.useRef('');
 

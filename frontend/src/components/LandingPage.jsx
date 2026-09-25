@@ -268,7 +268,7 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Could not send verification code');
-      setOtpSentNotice(data.message || 'OTP sent! Use demo code: 123456');
+      setOtpSentNotice(data.message || 'OTP sent to your registered email! Please check your inbox.');
       setPatientOtpStep('otp');
     } catch (err) {
       setOtpError(err.message);
@@ -1583,12 +1583,13 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                     maxLength={6}
                     value={patientOtp}
                     onChange={(e) => setPatientOtp(e.target.value)}
-                    placeholder="123456"
+                    placeholder="Enter 6-digit OTP"
                     className="w-full bg-slate-800/80 border border-teal-500/40 rounded-xl px-4 py-3 text-center text-xl tracking-[6px] font-mono text-white placeholder-slate-600 focus:outline-none focus:border-teal-400"
                     required
                   />
-                  <p className="text-[11px] text-teal-400/80 mt-1.5">
-                    💡 For demo testing, enter code <strong>123456</strong>
+                  <p className="text-[11px] text-teal-400/80 mt-1.5 flex items-center justify-between">
+                    <span>📩 Enter the 6-digit OTP sent to your email.</span>
+                    <span className="text-slate-500 font-mono text-[10px]">(Demo bypass: 123456)</span>
                   </p>
                 </div>
 

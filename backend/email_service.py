@@ -19,6 +19,13 @@ import datetime
 import uuid
 
 
+from dotenv import load_dotenv
+dotenv_path = os.path.join(os.path.dirname(__file__), "..", ".env")
+if os.path.exists(dotenv_path):
+    load_dotenv(dotenv_path)
+else:
+    load_dotenv()
+
 # ── Env-based config (never hardcoded) ────────────────────────────────────────
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
