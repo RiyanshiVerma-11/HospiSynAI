@@ -371,11 +371,39 @@ async def call_groq_api(
 # ----------------------------------------------------
 @app.post("/api/auth/login", response_model=schemas.Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.username == form_data.username).first()
+    ident = form_data.username.strip()
+    
+    # 1. Direct match on username or name
+    user = db.query(models.User).filter(
+        or_(
+            func.lower(models.User.username) == ident.lower(),
+            func.lower(models.User.name) == ident.lower()
+        )
+    ).first()
+
+    # 2. If not found directly, check if ident is a patient's email, mobile, or UHID
+    if not user:
+        patient = db.query(models.Patient).filter(
+            or_(
+                func.lower(models.Patient.email) == ident.lower(),
+                func.lower(models.Patient.patient_id) == ident.lower(),
+                models.Patient.mobile_number == ident
+            ),
+            models.Patient.is_active == True
+        ).first()
+        if patient:
+            user = db.query(models.User).filter(
+                or_(
+                    func.lower(models.User.username) == patient.patient_id.lower(),
+                    func.lower(models.User.username) == (patient.email or "").lower(),
+                    func.lower(models.User.name) == patient.name.lower()
+                )
+            ).first()
+
     if not user or not auth.verify_password(form_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Incorrect username, Patient ID, or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token = auth.create_access_token(data={"sub": user.username, "role": user.role})
@@ -1253,6 +1281,15 @@ def get_patient_portal_records(
 
     def serialize_bill(b):
         paid = max(0.0, float(b.grand_total) - float(b.balance_amount))
+        latest_payment = db.query(models.Payment).filter(
+            models.Payment.bill_id == b.id,
+            models.Payment.is_active == True
+        ).order_by(models.Payment.payment_date.desc()).first()
+        receipt_pdf = None
+        receipt_id = None
+        if latest_payment and latest_payment.receipts:
+            receipt_pdf = latest_payment.receipts[0].pdf_path
+            receipt_id = latest_payment.receipts[0].receipt_id
         return {
             "id": b.id,
             "bill_id": b.bill_id,
@@ -1260,6 +1297,8 @@ def get_patient_portal_records(
             "paid_amount": paid,
             "balance_amount": float(b.balance_amount),
             "payment_status": b.payment_status,
+            "receipt_pdf": receipt_pdf,
+            "receipt_id": receipt_id,
             "created_at": b.created_at.isoformat() if b.created_at else None,
             "items": [
                 {
@@ -1288,6 +1327,93 @@ def get_patient_portal_records(
         },
         "visits": [serialize_visit(v) for v in visits],
         "bills": [serialize_bill(b) for b in bills]
+    }
+
+
+@app.post("/api/patient-portal/pay-bill")
+def patient_pay_bill(
+    req: schemas.PatientPayBillRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    bill = db.query(models.Bill).filter(models.Bill.id == req.bill_id, models.Bill.is_active == True).first()
+    if not bill:
+        raise HTTPException(status_code=404, detail="Bill not found")
+        
+    if bill.balance_amount <= 0:
+        raise HTTPException(status_code=400, detail="This bill has already been fully paid.")
+        
+    amount_to_pay = min(float(req.amount), float(bill.balance_amount))
+    payment_id = generate_unique_id(db, "PAY", models.Payment, models.Payment.payment_id)
+    is_full_settlement = (amount_to_pay >= bill.balance_amount)
+    payment_type = "Full" if is_full_settlement else "Partial"
+    
+    db_payment = models.Payment(
+        payment_id=payment_id,
+        bill_id=bill.id,
+        amount_paid=amount_to_pay,
+        payment_method=req.payment_method or "UPI",
+        payment_type=payment_type,
+        transaction_reference=req.transaction_reference or f"UPI-APP-{random.randint(100000, 999999)}",
+        recorded_by=current_user.id
+    )
+    db.add(db_payment)
+    
+    # Update Bill balance and status
+    bill.balance_amount -= amount_to_pay
+    if bill.balance_amount <= 0.01:
+        bill.balance_amount = 0.0
+        bill.payment_status = "Paid"
+    else:
+        bill.payment_status = "Partial Paid"
+        
+    db.commit()
+    db.refresh(db_payment)
+    
+    # Generate Receipt PDF
+    receipt_id = generate_unique_id(db, "REC", models.Receipt, models.Receipt.receipt_id)
+    pdf_filename = f"{receipt_id}.pdf"
+    pdf_path = os.path.join(RECEIPTS_DIR, pdf_filename)
+    
+    db_receipt = models.Receipt(
+        receipt_id=receipt_id,
+        payment_id=db_payment.id,
+        receipt_type="Final Settlement" if is_full_settlement else "OPD/Lab",
+        pdf_path=f"/receipts/{pdf_filename}"
+    )
+    db_payment.receipts.append(db_receipt)
+    db.commit()
+    
+    background_tasks.add_task(generate_receipt_pdf_bg, db_payment.id, pdf_path)
+    
+    # Also email the official hospital receipt to the patient's registered email
+    patient = bill.visit.patient if bill.visit else None
+    if patient and patient.email:
+        paid_total = max(0.0, float(bill.grand_total) - float(bill.balance_amount))
+        try:
+            email_service.send_invoice_email(
+                patient_name=patient.name,
+                patient_email=patient.email,
+                hospital_name="Vedam Diagnostics",
+                bill_id=bill.bill_id,
+                total_amount=float(bill.grand_total),
+                paid_amount=paid_total,
+                balance_due=float(bill.balance_amount),
+                payment_status=bill.payment_status
+            )
+        except Exception as mail_err:
+            print(f"Notice: Emailing receipt after payment failed: {mail_err}")
+            
+    log_action(db, current_user.id, "PATIENT_ONLINE_PAYMENT", "payments", str(db_payment.id), f"Patient paid ₹{amount_to_pay} online for bill {bill.bill_id}")
+    
+    return {
+        "success": True,
+        "message": f"Payment of ₹{amount_to_pay:,.2f} completed successfully! Official hospital receipt generated & emailed.",
+        "receipt_id": receipt_id,
+        "receipt_pdf": f"/receipts/{pdf_filename}",
+        "balance_remaining": bill.balance_amount,
+        "payment_status": bill.payment_status
     }
 
 

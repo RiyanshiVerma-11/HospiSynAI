@@ -113,9 +113,9 @@ const ROLES_CATALOG = [
     subtitle: 'View lab reports & prescription notes',
     icon: UserCheck,
     badgeText: 'Patient Access',
-    name: 'Nisha Patel',
-    defaultUsername: 'patient',
-    defaultPassword: 'pat123'
+    name: 'Palak',
+    defaultUsername: 'mailtopalak0002@gmail.com',
+    defaultPassword: 'palak@123'
   }
 ];
 
@@ -170,8 +170,8 @@ export default function LoginPage({
       setPassword('admin123');
     } else if (r.includes('patient')) {
       setSelectedRoleKey('patient');
-      setUsername('patient');
-      setPassword('pat123');
+      setUsername('mailtopalak0002@gmail.com');
+      setPassword('palak@123');
     }
   }, [initialRole]);
 
@@ -355,16 +355,33 @@ export default function LoginPage({
           </div>
         </div>
 
-        {/* Top Right: Register Patient Action */}
+        {/* Top Header Mode Toggle & Register Action */}
         <div className="flex items-center gap-2">
-          <span className="hidden md:inline-block text-[11px] text-slate-400 font-medium">New Patient or Need Token?</span>
+          <div className="hidden sm:flex items-center bg-white/[0.06] p-1 rounded-2xl border border-white/10 shadow-inner">
+            <button
+              type="button"
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-teal-400 text-slate-950 flex items-center gap-1.5 shadow-md shadow-teal-500/20"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Sign In (Login)</span>
+            </button>
+            <button
+              type="button"
+              onClick={onOpenBookingModal}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-white/[0.08] flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <Ticket className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Register as New Patient</span>
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={onOpenBookingModal}
-            className="bg-gradient-to-r from-teal-400 via-emerald-400 to-teal-300 hover:from-teal-300 hover:to-emerald-300 text-slate-950 font-extrabold text-xs px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-md shadow-teal-500/20 active:scale-95 transition-all cursor-pointer"
+            className="sm:hidden bg-gradient-to-r from-teal-400 to-emerald-400 text-slate-950 font-extrabold text-xs px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-md shadow-teal-500/20 cursor-pointer"
           >
             <Ticket className="w-3.5 h-3.5 text-slate-950" />
-            <span>Register Patient</span>
+            <span>Register</span>
           </button>
         </div>
       </header>
@@ -394,75 +411,134 @@ export default function LoginPage({
                 Choose your clinic workstation below. The login screen adapts to your selected role and chamber context.
               </p>
 
-              {/* Roles List */}
-              <div className="mt-4 space-y-2">
-                {ROLES_CATALOG.map((item) => {
-                  const isSelected = selectedRoleKey === item.key;
-                  const IconComponent = item.icon;
-                  return (
-                    <div
-                      key={item.key}
-                      onClick={() => handleSelectRole(item.key)}
-                      className={`p-3 rounded-2xl border transition-all cursor-pointer relative ${
-                        isSelected
-                          ? 'bg-teal-950/40 border-teal-400/60 shadow-lg shadow-teal-500/15 ring-1 ring-teal-400/40'
-                          : 'bg-white/[0.02] border-white/10 hover:bg-white/[0.05] hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
-                              isSelected
-                                ? 'bg-gradient-to-tr from-teal-400 to-emerald-400 text-slate-950 shadow-md shadow-teal-500/20'
-                                : 'bg-white/[0.05] text-slate-400 border border-white/10'
-                            }`}
-                          >
-                            <IconComponent className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <h2 className="text-xs font-bold text-white leading-tight">{item.label}</h2>
-                              {isSelected && (
-                                <span className="bg-teal-400/20 text-teal-300 text-[9px] font-black px-1.5 py-0.2 rounded border border-teal-400/40">
-                                  ACTIVE
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-[10.5px] text-slate-400 mt-0.5">{item.subtitle}</p>
-                          </div>
-                        </div>
+              {/* ======================================= */}
+              {/* SECTION 1: PATIENT PORTAL & REGISTER   */}
+              {/* ======================================= */}
+              <div className="mt-4">
+                <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-teal-400 mb-2">
+                  <span>1. Patient Portal & Registration</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-teal-500/20 border border-teal-500/30 font-bold">For Patients</span>
+                </div>
 
-                        <ChevronRight
-                          className={`w-4 h-4 transition-transform ${
-                            isSelected ? 'text-teal-400 translate-x-0.5' : 'text-slate-600'
-                          }`}
-                        />
+                {/* Patient Health Portal */}
+                <div
+                  onClick={() => handleSelectRole('patient')}
+                  className={`p-3 rounded-2xl border transition-all cursor-pointer relative ${
+                    selectedRoleKey === 'patient'
+                      ? 'bg-teal-950/40 border-teal-400/60 shadow-lg shadow-teal-500/15 ring-1 ring-teal-400/40'
+                      : 'bg-white/[0.02] border-white/10 hover:bg-white/[0.05] hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
+                          selectedRoleKey === 'patient'
+                            ? 'bg-gradient-to-tr from-teal-400 to-emerald-400 text-slate-950 shadow-md shadow-teal-500/20'
+                            : 'bg-white/[0.05] text-slate-400 border border-white/10'
+                        }`}
+                      >
+                        <UserCheck className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <h2 className="text-xs font-bold text-white leading-tight">Patient Health Portal</h2>
+                          {selectedRoleKey === 'patient' && (
+                            <span className="bg-teal-400/20 text-teal-300 text-[9px] font-black px-1.5 py-0.2 rounded border border-teal-400/40">
+                              ACTIVE
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10.5px] text-slate-400 mt-0.5">Login with Patient ID (UHID) or Email</p>
                       </div>
                     </div>
-                  );
-                })}
+                    <ChevronRight
+                      className={`w-4 h-4 transition-transform ${
+                        selectedRoleKey === 'patient' ? 'text-teal-400 translate-x-0.5' : 'text-slate-600'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* Register New Patient Action Card */}
+                <div className="mt-2.5 p-3 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-teal-950/30 to-slate-900 border border-emerald-500/30 shadow-md">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300">
+                        <Ticket className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-white">Register as New Patient</h4>
+                        <p className="text-[10px] text-slate-400">Book OPD consultation & get token</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={onOpenBookingModal}
+                      className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-emerald-400 text-slate-950 hover:bg-emerald-300 transition-all cursor-pointer shadow-sm active:scale-95"
+                    >
+                      Register Now →
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              {/* Patient Direct Register Action Card */}
-              <div className="mt-4 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/30 to-teal-950/30 border border-emerald-500/25">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300">
-                      <Ticket className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-white">Register as a Patient</h4>
-                      <p className="text-[10px] text-slate-400">Book OPD consultation & get token</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={onOpenBookingModal}
-                    className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-emerald-400 text-slate-950 hover:bg-emerald-300 transition-all cursor-pointer shadow-sm active:scale-95"
-                  >
-                    Register
-                  </button>
+              {/* ======================================= */}
+              {/* SECTION 2: HOSPITAL CLINICAL & ADMIN    */}
+              {/* ======================================= */}
+              <div className="mt-5">
+                <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">
+                  <span>2. Hospital Clinical & Admin Staff</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-slate-400 font-bold">Doctors & Staff</span>
+                </div>
+
+                <div className="space-y-1.5">
+                  {ROLES_CATALOG.filter(r => r.key !== 'patient').map((item) => {
+                    const isSelected = selectedRoleKey === item.key;
+                    const IconComponent = item.icon;
+                    return (
+                      <div
+                        key={item.key}
+                        onClick={() => handleSelectRole(item.key)}
+                        className={`p-2.5 rounded-xl border transition-all cursor-pointer relative ${
+                          isSelected
+                            ? 'bg-teal-950/40 border-teal-400/60 shadow-lg shadow-teal-500/15 ring-1 ring-teal-400/40'
+                            : 'bg-white/[0.02] border-white/10 hover:bg-white/[0.05] hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                                isSelected
+                                  ? 'bg-gradient-to-tr from-teal-400 to-emerald-400 text-slate-950 shadow-md shadow-teal-500/20'
+                                  : 'bg-white/[0.05] text-slate-400 border border-white/10'
+                              }`}
+                            >
+                              <IconComponent className="w-3.5 h-3.5" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <h2 className="text-xs font-bold text-white leading-tight">{item.label}</h2>
+                                {isSelected && (
+                                  <span className="bg-teal-400/20 text-teal-300 text-[8.5px] font-black px-1.5 py-0.2 rounded border border-teal-400/40">
+                                    ACTIVE
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-slate-400 mt-0.5">{item.subtitle}</p>
+                            </div>
+                          </div>
+
+                          <ChevronRight
+                            className={`w-3.5 h-3.5 transition-transform ${
+                              isSelected ? 'text-teal-400 translate-x-0.5' : 'text-slate-600'
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -648,20 +724,34 @@ export default function LoginPage({
                   {/* Username & Password Form */}
                   <form onSubmit={handlePasswordSubmit} className="space-y-3.5">
                     <div>
-                      <label className="block text-slate-300 text-[11px] font-bold uppercase tracking-wider mb-1">
-                        Username / ID
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-slate-300 text-[11px] font-bold uppercase tracking-wider">
+                          {selectedRoleKey === 'patient' 
+                            ? 'Patient ID (UHID) or Registered Email Address' 
+                            : 'Staff Username / Email / ID'}
+                        </label>
+                        {selectedRoleKey === 'patient' && (
+                          <span className="text-[10px] text-teal-400 font-mono">e.g. PAT-... or Gmail</span>
+                        )}
+                      </div>
                       <div className="relative">
                         <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
                         <input
                           type="text"
                           value={username}
                           onChange={(e) => setUsername(e.target.value)}
-                          placeholder="e.g. dr.rajesh, receptionist, admin"
+                          placeholder={selectedRoleKey === 'patient' 
+                            ? 'e.g. PAT-20260926-00001 or mailtopalak0002@gmail.com' 
+                            : 'e.g. dr.rajesh, receptionist, admin'}
                           className="w-full rounded-xl pl-10 pr-4 py-2.5 bg-[#070e1c] border border-white/15 text-white placeholder-slate-500 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 text-sm font-medium transition-all"
                           required
                         />
                       </div>
+                      {selectedRoleKey === 'patient' && (
+                        <p className="text-[11px] text-slate-400 mt-1">
+                          Enter your 14-digit UHID (e.g. <span className="text-teal-300 font-mono">PAT-20260926-00001</span>) or the registered email address used during OPD registration.
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -712,6 +802,63 @@ export default function LoginPage({
                         Sign In as {selectedRoleKey === 'doctor' ? currentDoctor.name.split(' ')[1] || 'Doctor' : currentRoleItem.label}
                       </span>
                     </button>
+
+                    {/* Quick Select Chips for the 5 Real Patients */}
+                    {selectedRoleKey === 'patient' && (
+                      <div className="pt-3 border-t border-white/10 space-y-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                          ⚡ 1-Click Select Real Patient Profile:
+                        </span>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                          {[
+                            { label: '1. Palak (Paid)', user: 'mailtopalak0002@gmail.com', pass: 'palak@123', status: 'Completed • Paid' },
+                            { label: '2. Mahesh (Paid)', user: 'maimahesh1192@gmail.com', pass: 'mahesh@123', status: 'Completed • Paid' },
+                            { label: '3. Yashvi (Wait)', user: 'yashviii1289@gmail.com', pass: 'yashvi@123', status: 'Waiting' },
+                            { label: '4. Pari (Critical)', user: 'pari43093@gmail.com', pass: 'pari@123', status: 'Critical' },
+                            { label: '5. Rohit (Pending)', user: 'mailrohitkumar002@gmail.com', pass: 'rohit@123', status: 'Bill Pending' }
+                          ].map((p, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                setUsername(p.user);
+                                setPassword(p.pass);
+                                if (setAuthError) setAuthError('');
+                              }}
+                              className={`text-left p-1.5 rounded-lg border text-[10.5px] transition-all cursor-pointer ${
+                                username === p.user
+                                  ? 'bg-teal-500/20 border-teal-400 text-teal-200 ring-1 ring-teal-400'
+                                  : 'bg-white/5 hover:bg-teal-500/10 border-white/10 hover:border-teal-500/30 text-slate-300'
+                              }`}
+                            >
+                              <span className="font-bold block truncate text-white">{p.label}</span>
+                              <span className="text-[9px] text-teal-400 block truncate">{p.status}</span>
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Clear Distinction: Registration Guidance */}
+                        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-teal-950/30 to-slate-900 border border-emerald-500/30 text-center mt-3 shadow-md">
+                          <div className="flex items-center justify-center gap-1.5 text-emerald-400 font-bold text-xs uppercase tracking-wider mb-1">
+                            <Ticket className="w-4 h-4" />
+                            <span>New Patient? Don't have an Account or UHID?</span>
+                          </div>
+                          <p className="text-[11.5px] text-slate-300 mb-2.5">
+                            Register as a new patient, choose your doctor chamber, specify symptoms, and generate your instant OPD queue token.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (onOpenBookingModal) onOpenBookingModal();
+                            }}
+                            className="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all active:scale-[0.99] cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <Ticket className="w-4 h-4 fill-slate-950" />
+                            <span>Register as New Patient & Get Token →</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </form>
                 </>
               ) : (

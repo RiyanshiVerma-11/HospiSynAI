@@ -52,6 +52,12 @@ class PatientOtpVerifyRequest(BaseModel):
     identifier: str
     otp: str
 
+class PatientPayBillRequest(BaseModel):
+    bill_id: int
+    amount: float
+    payment_method: Optional[str] = "UPI"
+    transaction_reference: Optional[str] = None
+
 class PatientSimpleResponse(PatientBase):
     id: int
     patient_id: str

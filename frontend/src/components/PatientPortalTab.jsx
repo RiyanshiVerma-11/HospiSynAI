@@ -61,6 +61,12 @@ export default function PatientPortalTab({
   const [copiedUhid, setCopiedUhid] = useState(false);
   const [calendarModalVisit, setCalendarModalVisit] = useState(null);
 
+  // Patient Self Bill Payment states
+  const [payingBill, setPayingBill] = useState(null);
+  const [payMethod, setPayMethod] = useState('UPI'); // 'UPI' | 'Card' | 'NetBanking'
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentSuccessData, setPaymentSuccessData] = useState(null);
+
   const fetchRecords = async () => {
     try {
       setRefreshing(true);
@@ -150,17 +156,49 @@ export default function PatientPortalTab({
 
       const resData = await res.json();
       if (res.ok) {
-        const msg = resData.message || 'Invoice receipt sent to your email!';
+        const msg = resData.message || 'Hospital receipt copy emailed to your registered email!';
         if (showToast) showToast(`🧾 ${msg}`, 'success');
         setFeedback({ type: 'success', msg });
       } else {
-        throw new Error(resData.detail || 'Failed to email invoice receipt.');
+        throw new Error(resData.detail || 'Failed to email hospital receipt.');
       }
     } catch (err) {
       if (showToast) showToast(err.message, 'error');
       setFeedback({ type: 'error', msg: err.message });
     } finally {
       setSendingEmailBillId(null);
+    }
+  };
+
+  const handlePayBillSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!payingBill) return;
+    setIsProcessingPayment(true);
+    try {
+      const res = await fetch(`${API_BASE}/patient-portal/pay-bill`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(getHeaders ? getHeaders() : {})
+        },
+        body: JSON.stringify({
+          bill_id: payingBill.id,
+          amount: payingBill.balance_amount,
+          payment_method: payMethod,
+          transaction_reference: `UPI-${Date.now().toString().slice(-8)}`
+        })
+      });
+      const resData = await res.json();
+      if (!res.ok) {
+        throw new Error(resData.detail || 'Payment could not be processed.');
+      }
+      setPaymentSuccessData(resData);
+      if (showToast) showToast(resData.message || 'Payment successful! Official receipt generated & emailed.', 'success');
+      await fetchRecords();
+    } catch (err) {
+      if (showToast) showToast(err.message, 'error');
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -846,21 +884,59 @@ export default function PatientPortalTab({
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-3">
                       <div className="text-right">
-                        <span className="text-xs text-slate-500 block">Total Amount</span>
-                        <span className="text-xl font-bold text-slate-900 dark:text-white">
+                        <span className="text-[11px] text-slate-500 block uppercase font-medium">Total Amount</span>
+                        <span className="text-xl font-black text-slate-900 dark:text-white">
                           ₹{Number(bill.total_amount).toLocaleString()}
                         </span>
+                        {!isPaid && bill.balance_amount > 0 && (
+                          <span className="text-[11px] font-bold text-rose-500 dark:text-rose-400 block">
+                            Due: ₹{Number(bill.balance_amount).toLocaleString()}
+                          </span>
+                        )}
                       </div>
-                      <button
-                        onClick={() => handleSendInvoiceEmail(bill.id)}
-                        disabled={sendingEmailBillId === bill.id}
-                        className="px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm shadow-teal-600/20 active:scale-95 disabled:opacity-50"
-                      >
-                        <Mail className="w-3.5 h-3.5" />
-                        {sendingEmailBillId === bill.id ? 'Sending...' : 'Email Receipt'}
-                      </button>
+
+                      {/* If bill is fully paid: Download official hospital receipt or email receipt copy */}
+                      {isPaid ? (
+                        <div className="flex items-center gap-2">
+                          {bill.receipt_pdf && (
+                            <a
+                              href={`${STATIC_BASE || ''}${bill.receipt_pdf}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95 cursor-pointer"
+                              title="Download official receipt generated by hospital"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>Download Receipt</span>
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleSendInvoiceEmail(bill.id)}
+                            disabled={sendingEmailBillId === bill.id}
+                            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 active:scale-95 disabled:opacity-50 cursor-pointer"
+                            title="Hospital will send receipt copy to your email"
+                          >
+                            <Mail className="w-3.5 h-3.5 text-teal-500" />
+                            <span>{sendingEmailBillId === bill.id ? 'Sending...' : 'Email Copy'}</span>
+                          </button>
+                        </div>
+                      ) : (
+                        /* Patient pays their bill */
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPayingBill(bill);
+                            setPaymentSuccessData(null);
+                          }}
+                          className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black rounded-xl text-xs transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-95 cursor-pointer"
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          <span>Pay Bill ₹{Number(bill.balance_amount).toLocaleString()}</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -1002,6 +1078,165 @@ export default function PatientPortalTab({
           hospitalName="Vedam Diagnostics"
           showToast={showToast}
         />
+      )}
+
+      {/* ----------------------------------------------------
+          PAYMENT MODAL (PATIENT SELF BILL SETTLEMENT)
+          ---------------------------------------------------- */}
+      {payingBill && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700/80 text-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative overflow-hidden">
+            <button
+              onClick={() => {
+                setPayingBill(null);
+                setPaymentSuccessData(null);
+              }}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full bg-white/5 hover:bg-white/10 transition-colors"
+            >
+              ✕
+            </button>
+
+            {paymentSuccessData ? (
+              <div className="text-center py-4 space-y-4">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-400 text-emerald-400 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
+                  <CheckCircle2 className="w-9 h-9" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white">Payment Successful!</h3>
+                  <p className="text-xs text-slate-300 mt-1">
+                    {paymentSuccessData.message || 'Your hospital bill has been paid.'}
+                  </p>
+                </div>
+
+                <div className="p-3.5 bg-slate-800/80 rounded-2xl border border-slate-700 text-xs space-y-1.5 text-left">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Bill Number:</span>
+                    <span className="font-mono font-bold text-white">{payingBill.bill_id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Receipt ID:</span>
+                    <span className="font-mono font-bold text-teal-400">{paymentSuccessData.receipt_id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Status:</span>
+                    <span className="font-bold text-emerald-400">Paid & Settled</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-2.5 pt-2">
+                  {paymentSuccessData.receipt_pdf && (
+                    <a
+                      href={`${STATIC_BASE || ''}${paymentSuccessData.receipt_pdf}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md transition-all"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Download Receipt (PDF)</span>
+                    </a>
+                  )}
+                  <button
+                    onClick={() => {
+                      setPayingBill(null);
+                      setPaymentSuccessData(null);
+                    }}
+                    className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handlePayBillSubmit} className="space-y-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                    <CreditCard className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-white">Pay Hospital OPD Bill</h3>
+                    <p className="text-xs text-slate-400">Settle your consultation & laboratory charges</p>
+                  </div>
+                </div>
+
+                <div className="p-3.5 bg-slate-800/80 rounded-2xl border border-slate-700 space-y-1.5 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Invoice:</span>
+                    <span className="font-mono font-bold text-white">{payingBill.bill_id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Patient:</span>
+                    <span className="font-bold text-white">{data.patient?.name || 'Patient'}</span>
+                  </div>
+                  <div className="flex justify-between pt-1 border-t border-slate-700/60 text-sm">
+                    <span className="font-bold text-slate-300">Amount Due:</span>
+                    <span className="font-black text-emerald-400">₹{Number(payingBill.balance_amount).toLocaleString()}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Select Payment Method:
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { key: 'UPI', label: 'UPI / QR', icon: QrCode },
+                      { key: 'Card', label: 'Debit / Card', icon: CreditCard },
+                      { key: 'NetBanking', label: 'Net Banking', icon: Activity }
+                    ].map((m) => {
+                      const Icon = m.icon;
+                      return (
+                        <button
+                          key={m.key}
+                          type="button"
+                          onClick={() => setPayMethod(m.key)}
+                          className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                            payMethod === m.key
+                              ? 'bg-teal-500/20 border-teal-400 text-teal-300 ring-1 ring-teal-400'
+                              : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+                          }`}
+                        >
+                          <Icon className="w-4 h-4 mx-auto mb-1" />
+                          <span className="text-[11px] font-bold block">{m.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {payMethod === 'UPI' && (
+                  <div className="p-3 bg-teal-950/30 border border-teal-500/20 rounded-2xl flex items-center gap-3">
+                    <div className="w-12 h-12 bg-white p-1 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <QrCode className="w-10 h-10 text-slate-900" />
+                    </div>
+                    <div className="text-xs">
+                      <span className="font-bold text-white block">UPI Instant Payment</span>
+                      <span className="text-teal-300 font-mono text-[11px]">vedamhospital@okhdfcbank</span>
+                      <span className="text-[10px] text-slate-400 block">Google Pay · PhonePe · Paytm</span>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isProcessingPayment}
+                  className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 disabled:opacity-50 cursor-pointer"
+                >
+                  {isProcessingPayment ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Processing Payment & Issuing Receipt...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Confirm & Pay ₹{Number(payingBill.balance_amount).toLocaleString()}</span>
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
       )}
       </div>
     </div>
