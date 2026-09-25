@@ -26,7 +26,7 @@ class UserCreate(UserBase):
 
 class UserResponse(UserBase):
     id: int
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     class Config:
         orm_mode = True
