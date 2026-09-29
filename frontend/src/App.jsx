@@ -2171,6 +2171,10 @@ function App() {
             newUserForm={newUserForm}
             setNewUserForm={setNewUserForm}
             handleCreateStaffUser={handleCreateStaffUser}
+            doctors={doctors}
+            patients={patients}
+            setActiveTab={setActiveTab}
+            setSelectedPatient={setSelectedPatient}
           />
         )}
 

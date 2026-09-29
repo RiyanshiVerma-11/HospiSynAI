@@ -3679,8 +3679,26 @@ def create_doctor(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.RoleChecker(["Admin"]))
 ):
+    clean_name = doctor_in.name.strip()
+    existing_doc = db.query(models.Doctor).filter(
+        func.lower(models.Doctor.name) == clean_name.lower()
+    ).first()
+    if existing_doc:
+        if existing_doc.is_active:
+            raise HTTPException(status_code=400, detail=f"Doctor '{clean_name}' already exists in the hospital directory.")
+        else:
+            existing_doc.is_active = True
+            existing_doc.degree = doctor_in.degree
+            if doctor_in.consultation_fee is not None:
+                existing_doc.consultation_fee = doctor_in.consultation_fee
+            if doctor_in.consultation_validity_days is not None:
+                existing_doc.consultation_validity_days = doctor_in.consultation_validity_days
+            db.commit()
+            db.refresh(existing_doc)
+            return existing_doc
+
     db_doctor = models.Doctor(
-        name=doctor_in.name,
+        name=clean_name,
         degree=doctor_in.degree,
         consultation_fee=doctor_in.consultation_fee if doctor_in.consultation_fee is not None else 500.0,
         consultation_validity_days=doctor_in.consultation_validity_days if doctor_in.consultation_validity_days is not None else 7
