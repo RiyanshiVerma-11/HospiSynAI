@@ -17,7 +17,8 @@ import {
   Calendar,
   Activity,
   UserCheck,
-  ArrowRight
+  ArrowRight,
+  Tv
 } from 'lucide-react';
 
 export default function DoctorDashboardTab({
@@ -281,6 +282,16 @@ export default function DoctorDashboardTab({
           >
             <FileText className="w-3.5 h-3.5 text-cyan-300" />
             <span>📋 Clinical Desk</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => window.open(window.location.origin + '?view=tv', '_blank')}
+            className="bg-teal-500/25 hover:bg-teal-500/40 text-teal-200 border border-teal-400/40 font-bold text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+            title="Open Waiting Room TV display in a new tab to cast to Lobby TV monitor"
+          >
+            <Tv className="w-3.5 h-3.5 text-teal-300" />
+            <span>Waiting Room TV ↗</span>
           </button>
 
           <button

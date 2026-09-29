@@ -56,6 +56,17 @@ export default function SettingsTab({
               </div>
 
               <div>
+                <label className="block text-slate-500 text-[9px] font-bold uppercase tracking-wider mb-1">Doctor Medical Reg No. (MCI / State Council)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. MCI-48291 / DMC-2018"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:bg-white focus:border-teal-500 font-mono font-semibold"
+                  value={adminSettingsForm.doctor_reg_no || ''}
+                  onChange={(e) => setAdminSettingsForm({ ...adminSettingsForm, doctor_reg_no: e.target.value })}
+                />
+              </div>
+
+              <div>
                 <label className="block text-slate-500 text-[9px] font-bold uppercase tracking-wider mb-1">Branding Qualifications</label>
                 <textarea
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:bg-white focus:border-teal-500 font-medium h-16 resize-none"
@@ -73,8 +84,8 @@ export default function SettingsTab({
                 />
               </div>
 
-              <div>
-                <div className="space-y-2">
+              <div className="sm:col-span-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-slate-500 text-[9px] font-bold uppercase tracking-wider mb-1">Hospital Tel / Contact Number</label>
                     <input
@@ -207,6 +218,7 @@ export default function SettingsTab({
                 <tr>
                   <th className="px-3 py-2">Doctor Name</th>
                   <th className="px-3 py-2">Qualifications</th>
+                  <th className="px-3 py-2">Reg & Signature</th>
                   <th className="px-3 py-2 text-right">Fee</th>
                   <th className="px-3 py-2 text-right">Validity</th>
                   <th className="px-3 py-2 text-right">Actions</th>
@@ -215,27 +227,38 @@ export default function SettingsTab({
               <tbody className="divide-y divide-slate-100 bg-white font-medium text-slate-700">
                 {doctors.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="px-3 py-6 text-center text-slate-400 italic">No doctors configured.</td>
+                    <td colSpan="6" className="px-3 py-6 text-center text-slate-400 italic">No doctors configured.</td>
                   </tr>
                 ) : (
                   doctors.map(doc => (
                     <tr key={doc.id} className="hover:bg-slate-50/50">
                       <td className="px-3 py-2 font-bold text-slate-950">{doc.name}</td>
                       <td className="px-3 py-2 whitespace-pre-line text-slate-500 text-[11px]">{doc.degree}</td>
+                      <td className="px-3 py-2 text-xs">
+                        <div className="font-mono text-[10px] text-teal-800 font-bold">{doc.registration_number || 'N/A'}</div>
+                        {doc.signature_url ? (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <span className="text-[9px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1 py-0.2 rounded font-bold">✓ Signed</span>
+                            <img src={doc.signature_url} alt="Sig" className="h-4 max-w-[45px] object-contain border border-slate-200 rounded bg-white" />
+                          </div>
+                        ) : (
+                          <span className="text-[9.5px] text-slate-400 italic">No signature</span>
+                        )}
+                      </td>
                       <td className="px-3 py-2 text-right font-extrabold text-teal-700">₹{(doc.consultation_fee ?? 500).toLocaleString()}</td>
                       <td className="px-3 py-2 text-right font-bold text-slate-600 text-[11px]">{doc.consultation_validity_days ?? 7} Days</td>
                       <td className="px-3 py-2 text-right space-x-2 whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => setEditingDoctor(doc)}
-                          className="text-teal-600 hover:text-teal-800 font-bold bg-teal-50 px-2 py-0.5 rounded transition-colors"
+                          className="text-teal-600 hover:text-teal-800 font-bold bg-teal-50 px-2 py-0.5 rounded transition-colors cursor-pointer"
                         >
                           Edit
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDeleteDoctor(doc.id)}
-                          className="text-rose-600 hover:text-rose-800 font-bold bg-rose-50 px-2 py-0.5 rounded transition-colors"
+                          className="text-rose-600 hover:text-rose-800 font-bold bg-rose-50 px-2 py-0.5 rounded transition-colors cursor-pointer"
                         >
                           Delete
                         </button>
@@ -262,6 +285,68 @@ export default function SettingsTab({
                     onChange={(e) => setEditingDoctor({ ...editingDoctor, name: e.target.value })}
                     required
                   />
+                </div>
+                <div>
+                  <label className="block text-slate-500 text-[9px] font-bold uppercase tracking-wider mb-1">Medical Reg No. (MCI / State Council)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. MCI-48291/DMC"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:bg-white focus:border-teal-500 font-mono font-bold"
+                    value={editingDoctor.registration_number || ''}
+                    onChange={(e) => setEditingDoctor({ ...editingDoctor, registration_number: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-500 text-[9px] font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <span>Doctor Digital Signature Image</span>
+                    {editingDoctor.signature_url && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingDoctor({ ...editingDoctor, signature_url: null })}
+                        className="text-rose-500 hover:text-rose-700 text-[9px] font-bold cursor-pointer"
+                      >
+                        Remove Signature
+                      </button>
+                    )}
+                  </label>
+                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-2">
+                    {editingDoctor.signature_url ? (
+                      <img
+                        src={editingDoctor.signature_url}
+                        alt="Signature Preview"
+                        className="h-10 max-w-[120px] object-contain border border-slate-200 rounded bg-white p-1"
+                      />
+                    ) : (
+                      <div className="h-10 w-24 border border-dashed border-slate-300 rounded bg-white flex items-center justify-center text-[10px] text-slate-400 italic">
+                        No Signature
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        id="edit-doc-sig"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (re) => {
+                              setEditingDoctor({ ...editingDoctor, signature_url: re.target?.result });
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor="edit-doc-sig"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 hover:border-teal-400 text-slate-700 hover:text-teal-700 text-[11px] font-bold rounded-lg cursor-pointer shadow-2xs transition-all"
+                      >
+                        <span>📁 {editingDoctor.signature_url ? 'Change Image' : 'Upload Signature'}</span>
+                      </label>
+                      <p className="text-[9.5px] text-slate-400 mt-0.5">Prints authentic signature image on generated prescriptions.</p>
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-slate-500 text-[9px] font-bold uppercase tracking-wider mb-1">Qualifications / Degree (Multiline)</label>
@@ -303,14 +388,14 @@ export default function SettingsTab({
                 <div className="flex gap-2">
                   <button
                     type="submit"
-                    className="flex-1 bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs py-1.5 rounded shadow transition-all"
+                    className="flex-1 bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs py-1.5 rounded shadow transition-all cursor-pointer"
                   >
                     Save
                   </button>
                   <button
                     type="button"
                     onClick={() => setEditingDoctor(null)}
-                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-1.5 rounded transition-colors"
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-1.5 rounded transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -331,6 +416,68 @@ export default function SettingsTab({
                     onChange={(e) => setNewDoctor({ ...newDoctor, name: e.target.value })}
                     required
                   />
+                </div>
+                <div>
+                  <label className="block text-slate-500 text-[9px] font-bold uppercase tracking-wider mb-1">Medical Reg No. (MCI / State Council)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. MCI-48291/DMC"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:bg-white focus:border-teal-500 font-mono font-bold"
+                    value={newDoctor.registration_number || ''}
+                    onChange={(e) => setNewDoctor({ ...newDoctor, registration_number: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-500 text-[9px] font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <span>Doctor Digital Signature Image</span>
+                    {newDoctor.signature_url && (
+                      <button
+                        type="button"
+                        onClick={() => setNewDoctor({ ...newDoctor, signature_url: '' })}
+                        className="text-rose-500 hover:text-rose-700 text-[9px] font-bold cursor-pointer"
+                      >
+                        Remove Signature
+                      </button>
+                    )}
+                  </label>
+                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-2">
+                    {newDoctor.signature_url ? (
+                      <img
+                        src={newDoctor.signature_url}
+                        alt="Signature Preview"
+                        className="h-10 max-w-[120px] object-contain border border-slate-200 rounded bg-white p-1"
+                      />
+                    ) : (
+                      <div className="h-10 w-24 border border-dashed border-slate-300 rounded bg-white flex items-center justify-center text-[10px] text-slate-400 italic">
+                        No Signature
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        id="new-doc-sig"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (re) => {
+                              setNewDoctor({ ...newDoctor, signature_url: re.target?.result });
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor="new-doc-sig"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 hover:border-teal-400 text-slate-700 hover:text-teal-700 text-[11px] font-bold rounded-lg cursor-pointer shadow-2xs transition-all"
+                      >
+                        <span>📁 {newDoctor.signature_url ? 'Change Image' : 'Upload Signature'}</span>
+                      </label>
+                      <p className="text-[9.5px] text-slate-400 mt-0.5">Upload doctor's signature to print on prescriptions.</p>
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-slate-500 text-[9px] font-bold uppercase tracking-wider mb-1">Qualifications / Degree</label>
@@ -372,7 +519,7 @@ export default function SettingsTab({
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs py-1.5 rounded shadow transition-all"
+                  className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs py-1.5 rounded shadow transition-all cursor-pointer"
                 >
                   Add Doctor
                 </button>

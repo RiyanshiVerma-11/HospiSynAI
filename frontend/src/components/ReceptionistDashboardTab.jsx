@@ -18,7 +18,14 @@ import {
   Building2,
   ChevronRight,
   Receipt,
-  BadgeAlert
+  BadgeAlert,
+  Activity,
+  Heart,
+  Thermometer,
+  X,
+  Save,
+  AlertTriangle,
+  Tv
 } from 'lucide-react';
 
 export default function ReceptionistDashboardTab({
@@ -40,6 +47,54 @@ export default function ReceptionistDashboardTab({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [refreshing, setRefreshing] = useState(false);
+
+  // Nurse Vitals Station Modal State
+  const [vitalsModalVisit, setVitalsModalVisit] = useState(null);
+  const [vitalsForm, setVitalsForm] = useState({
+    blood_pressure: '',
+    pulse: '',
+    temperature: '',
+    spo2: '',
+    weight: '',
+    blood_sugar: '',
+    vitals_recorded_by: ''
+  });
+  const [vitalsSaving, setVitalsSaving] = useState(false);
+
+  const handleOpenVitalsModal = (vis) => {
+    setVitalsModalVisit(vis);
+    setVitalsForm({
+      blood_pressure: vis.blood_pressure || '',
+      pulse: vis.pulse || '',
+      temperature: vis.temperature || '',
+      spo2: vis.spo2 || '',
+      weight: vis.weight || '',
+      blood_sugar: vis.blood_sugar || '',
+      vitals_recorded_by: vis.vitals_recorded_by || 'Nurse Staff'
+    });
+  };
+
+  const handleSaveVitals = async (e) => {
+    e.preventDefault();
+    if (!vitalsModalVisit) return;
+    setVitalsSaving(true);
+    try {
+      const res = await fetch(`${API_BASE}/visits/${vitalsModalVisit.id}/vitals`, {
+        method: 'PUT',
+        headers: getHeaders ? getHeaders() : { 'Content-Type': 'application/json' },
+        body: JSON.stringify(vitalsForm)
+      });
+      if (!res.ok) throw new Error("Failed to save patient vitals");
+      const updatedVisit = await res.json();
+      showToast(`Vitals recorded for ${vitalsModalVisit.patient?.name || 'Patient'}! Triage: ${updatedVisit.triage_severity}`);
+      setVitalsModalVisit(null);
+      fetchVisits();
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setVitalsSaving(false);
+    }
+  };
 
   // Fetch all active visits
   const fetchVisits = async () => {
@@ -260,6 +315,16 @@ export default function ReceptionistDashboardTab({
             <Calendar className="w-3.5 h-3.5 text-cyan-300" />
             <span>🎟️ Issue Token</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => window.open(window.location.origin + '?view=tv', '_blank')}
+            className="bg-teal-500/25 hover:bg-teal-500/40 text-teal-200 border border-teal-400/40 font-bold text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+            title="Open Waiting Room TV display in a new tab to cast to Lobby Smart TV monitor"
+          >
+            <Tv className="w-3.5 h-3.5 text-teal-300" />
+            <span>Waiting Room TV ↗</span>
+          </button>
         </div>
       </div>
 
@@ -454,6 +519,29 @@ export default function ReceptionistDashboardTab({
 
                   {/* Actions */}
                   <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                    {/* Vitals Quick Chip or Log Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenVitalsModal(vis)}
+                      className={`text-[10.5px] font-bold px-2 py-1 rounded-lg border transition-all flex items-center gap-1 cursor-pointer ${
+                        vis.blood_pressure || vis.temperature || vis.spo2
+                          ? vis.triage_severity === 'Critical'
+                            ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 ring-1 ring-rose-400/40'
+                            : vis.triage_severity === 'Warning'
+                            ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                            : 'bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100'
+                          : 'bg-slate-100 hover:bg-teal-50 text-slate-600 hover:text-teal-700 border-slate-200 hover:border-teal-300'
+                      }`}
+                      title="Record or view clinical vitals (BP, Pulse, Temp, SpO2, Weight, Sugar)"
+                    >
+                      <Activity className="w-3 h-3 text-teal-600 shrink-0" />
+                      <span>
+                        {vis.blood_pressure || vis.temperature
+                          ? `${vis.blood_pressure ? `BP: ${vis.blood_pressure}` : ''}${vis.temperature ? ` • ${vis.temperature}°F` : ''}`
+                          : 'Log Vitals'}
+                      </span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => {
@@ -566,6 +654,188 @@ export default function ReceptionistDashboardTab({
         </div>
 
       </div>
+
+      {/* 🩺 Nurse / Compounder Triage Vitals Modal */}
+      {vitalsModalVisit && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-teal-700 via-teal-800 to-slate-900 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-teal-300">
+                  <Activity className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold flex items-center gap-2">
+                    <span>Nurse Triage & Vitals Station</span>
+                    <span className="text-[10px] bg-teal-400/20 text-teal-200 border border-teal-400/30 px-2 py-0.5 rounded-full font-mono">
+                      Token #{tokenMap.get(vitalsModalVisit.id) || 1}
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-teal-100/80">
+                    {vitalsModalVisit.patient?.name || 'Walk-in'} • {vitalsModalVisit.patient?.age}Y/{vitalsModalVisit.patient?.gender} • {vitalsModalVisit.visit_id}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setVitalsModalVisit(null)}
+                className="p-1 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSaveVitals} className="p-4 space-y-4">
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-[11px] text-slate-600 flex items-center justify-between">
+                <span>Standard pre-consultation checkup before doctor room entry.</span>
+                <span className="font-semibold text-teal-700 flex items-center gap-1">
+                  <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+                  Auto-syncs to Doctor Console & PDF
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {/* Blood Pressure */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Blood Pressure
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      placeholder="120/80"
+                      value={vitalsForm.blood_pressure}
+                      onChange={(e) => setVitalsForm({ ...vitalsForm, blood_pressure: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-teal-500"
+                    />
+                    <span className="text-[10px] text-slate-400 font-medium">mmHg</span>
+                  </div>
+                </div>
+
+                {/* Pulse Rate */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Pulse Rate
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      placeholder="72"
+                      value={vitalsForm.pulse}
+                      onChange={(e) => setVitalsForm({ ...vitalsForm, pulse: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-teal-500"
+                    />
+                    <span className="text-[10px] text-slate-400 font-medium">bpm</span>
+                  </div>
+                </div>
+
+                {/* Body Temperature */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Body Temp
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      placeholder="98.6"
+                      value={vitalsForm.temperature}
+                      onChange={(e) => setVitalsForm({ ...vitalsForm, temperature: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-teal-500"
+                    />
+                    <span className="text-[10px] text-slate-400 font-medium">°F</span>
+                  </div>
+                </div>
+
+                {/* SpO2 */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Oxygen (SpO2)
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      placeholder="99"
+                      value={vitalsForm.spo2}
+                      onChange={(e) => setVitalsForm({ ...vitalsForm, spo2: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-teal-500"
+                    />
+                    <span className="text-[10px] text-slate-400 font-medium">%</span>
+                  </div>
+                </div>
+
+                {/* Weight */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Body Weight
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      placeholder="65"
+                      value={vitalsForm.weight}
+                      onChange={(e) => setVitalsForm({ ...vitalsForm, weight: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-teal-500"
+                    />
+                    <span className="text-[10px] text-slate-400 font-medium">kg</span>
+                  </div>
+                </div>
+
+                {/* Blood Sugar / RBS */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Blood Sugar (RBS)
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      placeholder="110"
+                      value={vitalsForm.blood_sugar}
+                      onChange={(e) => setVitalsForm({ ...vitalsForm, blood_sugar: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-teal-500"
+                    />
+                    <span className="text-[10px] text-slate-400 font-medium">mg/dL</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recorded By Staff Name */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                  Recorded By (Nurse / Triage Officer)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Nurse Sunita or Compounder"
+                  value={vitalsForm.vitals_recorded_by}
+                  onChange={(e) => setVitalsForm({ ...vitalsForm, vitals_recorded_by: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-800 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setVitalsModalVisit(null)}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={vitalsSaving}
+                  className="px-4 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{vitalsSaving ? 'Saving...' : 'Save & Sync Vitals'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

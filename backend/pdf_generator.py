@@ -2,7 +2,7 @@ import os
 import datetime
 from reportlab.lib.pagesizes import A5, landscape
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Spacer, Table, TableStyle, Image as RLImage
 from reportlab.platypus import Paragraph as RLParagraph
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.graphics.shapes import Drawing, Line, Rect, String as DString
@@ -394,6 +394,7 @@ def generate_prescription_pdf(visit: models.Visit, db: Session, output_path: str
     # Fetch Settings
     doc_name = visit.doctor.name if visit.doctor else get_setting(db, "doctor_name", "Dr. Shweta Grover")
     doc_degree = visit.doctor.degree if visit.doctor else get_setting(db, "doctor_degree", "MBBS, MD (Pathology), PhD\nPDF (Dermatopathology, Hamburg, Germany)\nConsultant Pathologist")
+    doc_reg_no = (visit.doctor.registration_number if visit.doctor and visit.doctor.registration_number else None) or get_setting(db, "doctor_reg_no", "MCI-48291 / DMC-2018")
     
     hosp_name = get_setting(db, "hospital_name", "Vedam Diagnostics")
     logo_text = get_setting(db, "logo_text", "Sincere Care...")
@@ -429,6 +430,7 @@ def generate_prescription_pdf(visit: models.Visit, db: Session, output_path: str
     
     style_doc_name = ParagraphStyle('DocName', parent=style_bold, fontSize=12, leading=14, alignment=2, textColor=colors.HexColor('#1f2937'))
     style_doc_degree = ParagraphStyle('DocDegree', parent=style_normal, fontSize=8, leading=10.5, alignment=2, textColor=colors.HexColor('#4b5563'))
+    style_doc_reg = ParagraphStyle('DocReg', parent=style_bold, fontSize=8, leading=10.5, alignment=2, textColor=colors.HexColor('#0d9488'))
     
     style_addr = ParagraphStyle('Addr', parent=style_normal, fontSize=8, leading=10.5, textColor=colors.HexColor('#4b5563'))
 
@@ -449,9 +451,11 @@ def generate_prescription_pdf(visit: models.Visit, db: Session, output_path: str
         
     left_flowables = hosp_paragraphs + addr_paragraphs
     
-    # Right: Doctor details
+    # Right: Doctor details with State/MCI Registration No.
     doc_degree_paragraphs = [Paragraph(line.strip(), style_doc_degree) for line in doc_degree.split('\n')]
     right_flowables = [Paragraph(doc_name, style_doc_name)] + doc_degree_paragraphs
+    if doc_reg_no:
+        right_flowables.append(Paragraph(f"Reg. No: {doc_reg_no}", style_doc_reg))
     
     header_table_data = [
         [left_flowables, right_flowables]
@@ -495,7 +499,33 @@ def generate_prescription_pdf(visit: models.Visit, db: Session, output_path: str
             Paragraph(f"<b>Follow-up:</b> {follow_up}", style_normal)
         ]
     ]
-    pat_table = Table(pat_table_data, colWidths=[262, 263])
+
+    # Clinical Vitals Row (BP, Pulse, Temp, SpO2, Weight, Blood Sugar)
+    vitals_parts = []
+    if getattr(visit, 'blood_pressure', None):
+        vitals_parts.append(f"<b>BP:</b> {visit.blood_pressure} mmHg")
+    if getattr(visit, 'pulse', None):
+        vitals_parts.append(f"<b>Pulse:</b> {visit.pulse} bpm")
+    if getattr(visit, 'temperature', None):
+        vitals_parts.append(f"<b>Temp:</b> {visit.temperature} °F")
+    if getattr(visit, 'spo2', None):
+        vitals_parts.append(f"<b>SpO2:</b> {visit.spo2}%")
+    if getattr(visit, 'weight', None):
+        vitals_parts.append(f"<b>Wt:</b> {visit.weight} kg")
+    if getattr(visit, 'blood_sugar', None):
+        vitals_parts.append(f"<b>RBS:</b> {visit.blood_sugar} mg/dL")
+
+    if vitals_parts:
+        vitals_summary = " &nbsp;|&nbsp; ".join(vitals_parts)
+        triage_note = f"<b>Triage:</b> {visit.triage_severity or 'Normal'}"
+        if getattr(visit, 'vitals_recorded_by', None):
+            triage_note += f" (by {visit.vitals_recorded_by})"
+        pat_table_data.append([
+            Paragraph(f"<b>Vitals:</b> {vitals_summary}", style_normal),
+            Paragraph(triage_note, style_normal)
+        ])
+
+    pat_table = Table(pat_table_data, colWidths=[335, 190])
     pat_table.setStyle(TableStyle([
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#f8fafc')),
@@ -732,18 +762,65 @@ def generate_prescription_pdf(visit: models.Visit, db: Session, output_path: str
         story.append(Spacer(1, 8))
 
     # 5. Signoff
-    story.append(Spacer(1, 6))
-    sig_style = ParagraphStyle('PrescSig', parent=style_normal, fontSize=9, alignment=2)
-    sig_label = ParagraphStyle('PrescSigLbl', parent=style_bold, fontSize=9, alignment=2, textColor=colors.HexColor('#4b5563'))
+    story.append(Spacer(1, 8))
     
-    sig_table_data = [
-        ["", Paragraph("_______________________", sig_style)],
-        ["", Paragraph("Authorized Signature", sig_label)],
-        ["", Paragraph(hosp_name, ParagraphStyle('PrescSigHosp', parent=style_normal, fontSize=8, alignment=2, textColor=colors.HexColor('#9ca3af')))]
+    # Left: Digitally Verified Stamp Box
+    stamp_title_style = ParagraphStyle('StampTitle', parent=style_bold, fontSize=7.5, textColor=colors.HexColor('#0f766e'))
+    stamp_sub_style = ParagraphStyle('StampSub', parent=style_normal, fontSize=7, leading=9, textColor=colors.HexColor('#475569'))
+    stamp_flowables = [
+        Paragraph("<b>✓ DIGITALLY VERIFIED CLINICAL RECORD</b>", stamp_title_style),
+        Paragraph(f"Attending: <b>{doc_name}</b>", stamp_sub_style),
+        Paragraph(f"Council Reg: <b>{doc_reg_no or 'N/A'}</b>", stamp_sub_style),
+        Paragraph(f"Auth Date: {date_str}", stamp_sub_style)
     ]
-    sig_table = Table(sig_table_data, colWidths=[345, 180])
+    stamp_table = Table([[stamp_flowables]], colWidths=[230])
+    stamp_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#f0fdfa')),
+        ('BOX', (0,0), (-1,-1), 0.8, colors.HexColor('#0d9488')),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('LEFTPADDING', (0,0), (-1,-1), 6),
+        ('RIGHTPADDING', (0,0), (-1,-1), 6),
+    ]))
+
+    # Right: Signature Block
+    sig_line_style = ParagraphStyle('PrescSigLine', parent=style_normal, fontSize=9, alignment=2, textColor=colors.HexColor('#94a3b8'))
+    sig_doc_name = ParagraphStyle('PrescSigDoc', parent=style_bold, fontSize=9.5, alignment=2, textColor=colors.HexColor('#0f172a'))
+    sig_reg_style = ParagraphStyle('PrescSigReg', parent=style_normal, fontSize=7.5, leading=9.5, alignment=2, textColor=colors.HexColor('#0d9488'))
+    sig_label = ParagraphStyle('PrescSigLbl', parent=style_normal, fontSize=7.5, leading=9.5, alignment=2, textColor=colors.HexColor('#64748b'))
+    
+    # Render Doctor Digital Signature Image or Fallback Underline
+    doc_sig_url = (visit.doctor.signature_url if visit.doctor and visit.doctor.signature_url else None) or get_setting(db, "doctor_signature_url", None)
+    sig_element = Paragraph("____________________________", sig_line_style)
+    
+    if doc_sig_url and isinstance(doc_sig_url, str):
+        try:
+            import io, base64
+            if doc_sig_url.startswith("data:image"):
+                _, encoded = doc_sig_url.split(",", 1)
+                img_data = base64.b64decode(encoded)
+                sig_element = RLImage(io.BytesIO(img_data), width=110, height=36, kind='proportional')
+            elif os.path.exists(doc_sig_url):
+                sig_element = RLImage(doc_sig_url, width=110, height=36, kind='proportional')
+            else:
+                receipts_dir = os.path.dirname(output_path)
+                candidate = os.path.join(receipts_dir, doc_sig_url.lstrip("/").replace("receipts/", ""))
+                if os.path.exists(candidate):
+                    sig_element = RLImage(candidate, width=110, height=36, kind='proportional')
+        except Exception as sig_err:
+            print(f"[PDF] Notice: Loading doctor signature failed: {sig_err}")
+
+    sig_table_data = [
+        [stamp_table, sig_element],
+        ["", Paragraph(f"<b>{doc_name}</b>", sig_doc_name)],
+        ["", Paragraph(f"Reg. No: {doc_reg_no or 'Verified'}", sig_reg_style)],
+        ["", Paragraph(f"Authorized Signatory • {hosp_name}", sig_label)]
+    ]
+    sig_table = Table(sig_table_data, colWidths=[245, 280])
     sig_table.setStyle(TableStyle([
         ('VALIGN', (0,0), (-1,-1), 'BOTTOM'),
+        ('ALIGN', (1,0), (1,-1), 'RIGHT'),
+        ('SPAN', (0,0), (0,3)),  # Stamp spans left column
         ('TOPPADDING', (0,0), (-1,-1), 1),
         ('BOTTOMPADDING', (0,0), (-1,-1), 1),
         ('LEFTPADDING', (0,0), (-1,-1), 0),

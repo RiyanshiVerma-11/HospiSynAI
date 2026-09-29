@@ -29,7 +29,15 @@ import {
   Minimize2,
   ExternalLink,
   ArrowRight,
-  Stethoscope
+  Stethoscope,
+  Activity,
+  Heart,
+  Thermometer,
+  Repeat,
+  History,
+  Edit3,
+  ClipboardList,
+  Zap
 } from 'lucide-react';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import VoiceVisualizer from './VoiceVisualizer';
@@ -74,6 +82,75 @@ const COMMON_ADVICE = [
   'Warm saline gargles 3-4 times a day', 'Avoid cold drinks and oily food', 
   'Monitor temperature and BP daily', 'Maintain a light, low-sugar diet', 
   'Avoid heavy physical activity'
+];
+
+const CLINICAL_RX_TEMPLATES = [
+  {
+    id: 'viral_fever',
+    label: '🌡️ Viral Fever / URTI',
+    shortDesc: 'Dolo 650 TDS + Levocet + Pan 40',
+    diagnosis: 'Acute Viral Fever with Upper Respiratory Tract Infection (URTI)',
+    chief_complaints: 'High grade fever, Generalized body ache, Chills, Mild dry cough (2 days)',
+    medicines_list: 'Dolo 650mg (Paracetamol) — 1 tab Thrice Daily (TID), After Meals for 3 Days\nLevocet 5mg (Levocetirizine) — 1 tab Once Daily (OD), At Bedtime (HS) for 5 Days\nPan 40mg (Pantoprazole) — 1 tab Once Daily (OD), Empty Stomach in Morning for 5 Days',
+    tests_list: 'CBC (Complete Blood Count)\nWidal Test / Malarial Antigen (if fever persists > 3 days)',
+    advice: 'Drink warm water frequently and maintain complete bed rest for 2 days. Cold sponging if temperature exceeds 101°F.',
+    follow_up_date: '3 Days'
+  },
+  {
+    id: 'acute_bronchitis',
+    label: '🫁 Acute Bronchitis',
+    shortDesc: 'Augmentin 625 + Ascoril LS + Pan 40',
+    diagnosis: 'Acute Bronchitis with Productive Cough',
+    chief_complaints: 'Productive wet cough, Throat irritation, Chest tightness (4 days)',
+    medicines_list: 'Augmentin 625mg (Amoxicillin + Clavulanate) — 1 tab Twice Daily (BD), After Meals for 5 Days\nAscoril LS Syrup — 10ml Thrice Daily (TID), After Meals for 5 Days\nPan 40mg (Pantoprazole) — 1 tab Once Daily (OD), Empty Stomach for 5 Days',
+    tests_list: 'Chest X-Ray PA View\nCBC (Complete Blood Count)',
+    advice: 'Steam inhalation twice daily. Avoid chilled drinks, ice creams, and exposure to cold air. Do not skip antibiotic doses.',
+    follow_up_date: '5 Days'
+  },
+  {
+    id: 'gerd_gastritis',
+    label: '🔥 Acid Peptic / GERD',
+    shortDesc: 'Pantocid 40 + Omez + Lifestyle',
+    diagnosis: 'Gastroesophageal Reflux Disease (GERD) / Acute Gastritis',
+    chief_complaints: 'Epigastric burning sensation, Heartburn, Acid regurgitation, Bloating',
+    medicines_list: 'Pantocid 40mg (Pantoprazole) — 1 tab Once Daily (OD), 30 mins Before Breakfast for 14 Days\nOmez 20mg (Omeprazole) — 1 cap Once Daily (OD), At Bedtime for 7 Days',
+    tests_list: 'Ultrasound Abdomen (if recurrent)\nSerum Amylase / Lipase',
+    advice: 'Avoid spicy, oily, deep-fried food and caffeine. Eat small frequent meals. Do not lie down within 2 hours of dinner.',
+    follow_up_date: '7 Days'
+  },
+  {
+    id: 'hypertension_refill',
+    label: '🩸 Hypertension (Refill)',
+    shortDesc: 'Telma 40 OD + Low salt diet',
+    diagnosis: 'Essential Hypertension (Stage-1 / Follow-up)',
+    chief_complaints: 'Routine blood pressure check, Occasional morning occipital headache',
+    medicines_list: 'Telma 40mg (Telmisartan) — 1 tab Once Daily (OD), Morning After Breakfast (Long-term)\nPan 40mg (Pantoprazole) — 1 tab Once Daily (OD), Empty Stomach for 10 Days',
+    tests_list: 'Lipid Profile\nKFT (Kidney Function Test)\nECG 12 Lead\nSerum Electrolytes',
+    advice: 'Strict dietary salt restriction (< 5g/day). 30 minutes of brisk walking 5 days a week. Keep a home BP monitoring chart.',
+    follow_up_date: '30 Days'
+  },
+  {
+    id: 'diabetes_t2',
+    label: '🍬 Type-2 Diabetes',
+    shortDesc: 'Glycomet 500 BD + Fasting checks',
+    diagnosis: 'Type-2 Diabetes Mellitus (Glycemic Control)',
+    chief_complaints: 'Follow-up blood sugar check, Mild weakness, Polyuria',
+    medicines_list: 'Glycomet 500mg (Metformin) — 1 tab Twice Daily (BD), Immediately After Meals (Long-term)\nPan 40mg (Pantoprazole) — 1 tab Once Daily (OD), Empty Stomach for 10 Days',
+    tests_list: 'Fasting Blood Sugar (FBS)\nPost-Prandial Blood Sugar (PPBS)\nHbA1c (Glycated Hemoglobin)\nUrine Microalbumin',
+    advice: 'Avoid direct refined sugar, jaggery, sweets, and sweetened beverages. Daily foot inspection. Regular morning walk.',
+    follow_up_date: '30 Days'
+  },
+  {
+    id: 'allergic_rhinitis',
+    label: '🤧 Allergic Rhinitis',
+    shortDesc: 'Montair LC HS + Dolo SOS',
+    diagnosis: 'Allergic Rhinitis with Acute Sinusitis',
+    chief_complaints: 'Paroxysmal sneezing bouts, Watery rhinorrhea, Itchy eyes, Nasal block',
+    medicines_list: 'Montair LC (Montelukast + Levocetirizine) — 1 tab Once Daily (OD), At Bedtime (HS) for 7 Days\nDolo 650mg (Paracetamol) — 1 tab SOS for headache\nPan 40mg (Pantoprazole) — 1 tab Once Daily (OD), Empty Stomach for 7 Days',
+    tests_list: 'Absolute Eosinophil Count (AEC)\nX-Ray PNS Water\'s View',
+    advice: 'Daily steam inhalation. Avoid dust exposure, sudden temperature fluctuations, and direct fan/AC air on face.',
+    follow_up_date: '7 Days'
+  }
 ];
 
 export default function DoctorConsoleTab({
@@ -143,6 +220,24 @@ export default function DoctorConsoleTab({
     const saved = localStorage.getItem('hospisyn_auto_collapse_queue');
     return saved !== null ? saved === 'true' : false;
   });
+
+  // Patient Clinical History & Repeat Rx States
+  const [pastVisits, setPastVisits] = useState([]);
+  const [pastVisitsLoading, setPastVisitsLoading] = useState(false);
+  const [showPastHistoryDrawer, setShowPastHistoryDrawer] = useState(false);
+
+  // Doctor Inline Vitals Modal
+  const [doctorVitalsModalOpen, setDoctorVitalsModalOpen] = useState(false);
+  const [doctorVitalsForm, setDoctorVitalsForm] = useState({
+    blood_pressure: '',
+    pulse: '',
+    temperature: '',
+    spo2: '',
+    weight: '',
+    blood_sugar: '',
+    vitals_recorded_by: ''
+  });
+  const [doctorVitalsSaving, setDoctorVitalsSaving] = useState(false);
 
   // Desk Inner Sections Resizing & Layout (Clinical Records vs. Bilingual Handout)
   const [recordsWidthPct, setRecordsWidthPct] = useState(() => {
@@ -425,10 +520,112 @@ export default function DoctorConsoleTab({
     setMedicineSuggestions([]);
     setPdfPreviewUrl('');
     setActiveWorkspaceTab('clinical');
+    setShowPastHistoryDrawer(false);
+
+    // Fetch prior consultations & prescription history for chronic repeat Rx
+    if (visit.patient_id) {
+      fetchPatientHistory(visit.patient_id, visit.id);
+    }
+  };
+
+  const fetchPatientHistory = async (patientId, currentVisitId) => {
+    try {
+      setPastVisitsLoading(true);
+      const res = await fetch(`${API_BASE}/patients/${patientId}/visits`, {
+        headers: getHeaders ? getHeaders() : {}
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const prior = (Array.isArray(data) ? data : []).filter(v => v.id !== currentVisitId);
+        setPastVisits(prior);
+      }
+    } catch (err) {
+      console.warn("Could not load past visits:", err);
+    } finally {
+      setPastVisitsLoading(false);
+    }
+  };
+
+  // 1-Click Repeat Previous Prescription
+  const handleRepeatPreviousRx = (targetVisit = null) => {
+    let sourceVisit = targetVisit;
+    if (!sourceVisit) {
+      // Find the most recent visit with medicines
+      sourceVisit = pastVisits.find(v => v.medicines_list && v.medicines_list.trim().length > 0);
+    }
+    if (!sourceVisit) {
+      showToast("No previous prescription found for this patient.", "error");
+      return;
+    }
+
+    setSummaryForm(prev => ({
+      ...prev,
+      medicines_list: sourceVisit.medicines_list || prev.medicines_list,
+      advice: sourceVisit.advice || prev.advice,
+      tests_list: sourceVisit.tests_list || prev.tests_list,
+      diagnosis: prev.diagnosis?.trim() ? prev.diagnosis : (sourceVisit.diagnosis || '')
+    }));
+
+    const dateStr = sourceVisit.visit_date ? new Date(sourceVisit.visit_date).toLocaleDateString() : 'prior visit';
+    showToast(`🔁 Repeated prescription from ${dateStr}! Doses and advice loaded.`);
+  };
+
+  // 1-Click Apply Offline Rx Macro Template
+  const handleApplyRxTemplate = (tmpl) => {
+    setSummaryForm(prev => ({
+      ...prev,
+      diagnosis: tmpl.diagnosis,
+      chief_complaints: tmpl.chief_complaints,
+      medicines_list: tmpl.medicines_list,
+      tests_list: tmpl.tests_list,
+      advice: tmpl.advice,
+      follow_up_date: tmpl.follow_up_date
+    }));
+    showToast(`⚡ Loaded "${tmpl.label}" macro in 0.1s! Customize doses as needed.`);
+  };
+
+  // Doctor Vitals Handlers
+  const handleOpenDoctorVitalsModal = () => {
+    if (!selectedVisit) return;
+    setDoctorVitalsForm({
+      blood_pressure: selectedVisit.blood_pressure || '',
+      pulse: selectedVisit.pulse || '',
+      temperature: selectedVisit.temperature || '',
+      spo2: selectedVisit.spo2 || '',
+      weight: selectedVisit.weight || '',
+      blood_sugar: selectedVisit.blood_sugar || '',
+      vitals_recorded_by: currentUser?.name || 'Dr. Attending'
+    });
+    setDoctorVitalsModalOpen(true);
+  };
+
+  const handleSaveDoctorVitals = async (e) => {
+    e.preventDefault();
+    if (!selectedVisit) return;
+    setDoctorVitalsSaving(true);
+    try {
+      const res = await fetch(`${API_BASE}/visits/${selectedVisit.id}/vitals`, {
+        method: 'PUT',
+        headers: getHeaders ? getHeaders() : { 'Content-Type': 'application/json' },
+        body: JSON.stringify(doctorVitalsForm)
+      });
+      if (!res.ok) throw new Error("Failed to save clinical vitals");
+      const updatedVisit = await res.json();
+      setSelectedVisit(prev => ({ ...prev, ...updatedVisit }));
+      setVisits(prev => prev.map(v => v.id === updatedVisit.id ? { ...v, ...updatedVisit } : v));
+      showToast(`Vitals updated! Clinical triage: ${updatedVisit.triage_severity}`);
+      setDoctorVitalsModalOpen(false);
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setDoctorVitalsSaving(false);
+    }
   };
 
   const handleCloseDesk = () => {
     setSelectedVisit(null);
+    setPastVisits([]);
+    setShowPastHistoryDrawer(false);
     // Expand queue back so doctor can pick next patient
     setQueueCollapsed(false);
   };
@@ -1442,6 +1639,93 @@ export default function DoctorConsoleTab({
               </div>
             </div>
 
+            {/* Clinical Vitals Strip */}
+            <div className="bg-slate-50 border border-slate-200/90 rounded-xl px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 shadow-2xs mt-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-lg shadow-2xs">
+                  <Activity className="w-3.5 h-3.5 text-teal-600" />
+                  <span>Clinical Vitals:</span>
+                </div>
+
+                {selectedVisit.blood_pressure ? (
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                    parseInt(selectedVisit.blood_pressure) >= 140
+                      ? 'bg-rose-50 text-rose-700 border-rose-300 ring-1 ring-rose-400/30'
+                      : 'bg-white text-slate-800 border-slate-200'
+                  }`}>
+                    <Heart className="w-3 h-3 text-rose-500 fill-rose-500/20" />
+                    BP: <b>{selectedVisit.blood_pressure}</b> mmHg
+                  </span>
+                ) : null}
+
+                {selectedVisit.pulse ? (
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md border bg-white text-slate-800 border-slate-200 flex items-center gap-1">
+                    Pulse: <b>{selectedVisit.pulse}</b> bpm
+                  </span>
+                ) : null}
+
+                {selectedVisit.temperature ? (
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                    parseFloat(selectedVisit.temperature) >= 100
+                      ? 'bg-amber-50 text-amber-800 border-amber-300 ring-1 ring-amber-400/30'
+                      : 'bg-white text-slate-800 border-slate-200'
+                  }`}>
+                    <Thermometer className="w-3 h-3 text-amber-500" />
+                    Temp: <b>{selectedVisit.temperature}</b>°F
+                  </span>
+                ) : null}
+
+                {selectedVisit.spo2 ? (
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                    parseFloat(selectedVisit.spo2) < 95
+                      ? 'bg-rose-50 text-rose-700 border-rose-300 ring-1 ring-rose-400/30'
+                      : 'bg-white text-slate-800 border-slate-200'
+                  }`}>
+                    SpO2: <b>{selectedVisit.spo2}</b>%
+                  </span>
+                ) : null}
+
+                {selectedVisit.weight ? (
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md border bg-white text-slate-800 border-slate-200">
+                    Weight: <b>{selectedVisit.weight}</b> kg
+                  </span>
+                ) : null}
+
+                {selectedVisit.blood_sugar ? (
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${
+                    parseFloat(selectedVisit.blood_sugar) > 140
+                      ? 'bg-amber-50 text-amber-800 border-amber-300'
+                      : 'bg-white text-slate-800 border-slate-200'
+                  }`}>
+                    RBS: <b>{selectedVisit.blood_sugar}</b> mg/dL
+                  </span>
+                ) : null}
+
+                {!selectedVisit.blood_pressure && !selectedVisit.temperature && !selectedVisit.spo2 && !selectedVisit.pulse && (
+                  <span className="text-[11px] text-slate-400 italic">
+                    No nurse vitals recorded yet.
+                  </span>
+                )}
+
+                {selectedVisit.vitals_recorded_by && (
+                  <span className="text-[10px] text-slate-400 font-medium ml-1">
+                    (by {selectedVisit.vitals_recorded_by})
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleOpenDoctorVitalsModal()}
+                  className="text-[11px] font-bold text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <Edit3 className="w-3 h-3" />
+                  <span>{selectedVisit.blood_pressure ? 'Edit Vitals' : '+ Record Vitals'}</span>
+                </button>
+              </div>
+            </div>
+
             {/* TAB CONTENT */}
             <div className="flex-1 min-h-0 mt-2 overflow-hidden">
               {activeWorkspaceTab === 'clinical' ? (
@@ -1504,6 +1788,37 @@ export default function DoctorConsoleTab({
                           {showAmbientScribe ? 'Close Scribe' : '🎙️ Doctor Scribe'}
                         </button>
 
+                        {/* Repeat Previous Prescription Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleRepeatPreviousRx()}
+                          className={`text-[11px] font-extrabold px-3 py-1 rounded-lg shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                            pastVisits.length > 0 && pastVisits.some(v => v.medicines_list && v.medicines_list.trim().length > 0)
+                              ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20'
+                              : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                          }`}
+                          disabled={!pastVisits.some(v => v.medicines_list && v.medicines_list.trim().length > 0)}
+                          title="1-Click repeat previous prescription medications and instructions for chronic follow-up"
+                        >
+                          <Repeat className="w-3.5 h-3.5" />
+                          <span>🔁 Repeat Last Rx</span>
+                        </button>
+
+                        {/* Past Clinical History Drawer Button */}
+                        <button
+                          type="button"
+                          onClick={() => setShowPastHistoryDrawer(prev => !prev)}
+                          className={`text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+                            showPastHistoryDrawer
+                              ? 'bg-indigo-700 text-white'
+                              : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
+                          }`}
+                          title="View past visits, previous vitals, diagnosis, and prescriptions side-by-side"
+                        >
+                          <History className="w-3.5 h-3.5" />
+                          <span>Past History ({pastVisits.length})</span>
+                        </button>
+
                         <button
                           type="button"
                           onClick={handleAiSuggestTreatment}
@@ -1526,6 +1841,33 @@ export default function DoctorConsoleTab({
                             </>
                           )}
                         </button>
+                      </div>
+                    </div>
+
+                    {/* ⚡ Doctor Quick Rx Protocols (0.1s Zero-Latency Macro Bar) */}
+                    <div className="bg-gradient-to-r from-amber-50/80 via-orange-50/40 to-slate-50 border border-amber-200/90 rounded-xl p-2.5 space-y-1.5 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10.5px] font-extrabold text-amber-900 flex items-center gap-1.5 uppercase tracking-wider">
+                          <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-500/20" />
+                          <span>Doctor Quick Rx Protocols (0.1s Offline Macros)</span>
+                        </span>
+                        <span className="text-[10px] text-amber-700 font-medium hidden sm:inline">
+                          Instant 1-click clinical standard dosing • Zero Wi-Fi dependency
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {CLINICAL_RX_TEMPLATES.map((tmpl) => (
+                          <button
+                            key={tmpl.id}
+                            type="button"
+                            onClick={() => handleApplyRxTemplate(tmpl)}
+                            className="text-[11px] font-bold bg-white hover:bg-amber-100/80 text-slate-800 hover:text-amber-950 border border-amber-200/90 hover:border-amber-400 px-2.5 py-1 rounded-lg transition-all shadow-2xs cursor-pointer flex items-center gap-1 active:scale-95"
+                            title={`${tmpl.label} — ${tmpl.shortDesc}`}
+                          >
+                            <span>{tmpl.label}</span>
+                          </button>
+                        ))}
                       </div>
                     </div>
 
@@ -2299,6 +2641,220 @@ export default function DoctorConsoleTab({
           </div>
         )}
       </div>
+
+      {/* 🕒 Past Clinical History Drawer */}
+      {showPastHistoryDrawer && (
+        <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 bg-white shadow-2xl border-l border-slate-200 flex flex-col animate-in slide-in-from-right duration-200">
+          <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <History className="w-4 h-4 text-teal-400" />
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider">Patient Clinical History</h3>
+                <p className="text-[11px] text-slate-300 font-medium">
+                  {selectedVisit?.patient?.name} • {pastVisits.length} previous visits
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowPastHistoryDrawer(false)}
+              className="p-1 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-3 space-y-3 compact-scroll bg-slate-50/50">
+            {pastVisitsLoading && (
+              <div className="py-8 flex flex-col items-center justify-center text-slate-400 gap-2">
+                <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
+                <span className="text-xs">Loading past records...</span>
+              </div>
+            )}
+
+            {!pastVisitsLoading && pastVisits.length === 0 && (
+              <div className="py-12 text-center text-slate-400 text-xs px-4">
+                <ClipboardList className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <p className="font-semibold text-slate-600">No Prior Visits Found</p>
+                <p className="text-[11px] mt-1 text-slate-400">This is the patient's first recorded OPD consultation in HospiSynAI.</p>
+              </div>
+            )}
+
+            {!pastVisitsLoading && pastVisits.map((pv, idx) => (
+              <div
+                key={pv.id}
+                className="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs space-y-2 hover:border-teal-400 transition-colors"
+              >
+                <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 font-mono">{pv.visit_id}</span>
+                    <span className="text-[10px] text-slate-400 block">
+                      {pv.visit_date ? new Date(pv.visit_date).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }) : 'Past Visit'}
+                    </span>
+                  </div>
+                  {pv.medicines_list && (
+                    <button
+                      type="button"
+                      onClick={() => handleRepeatPreviousRx(pv)}
+                      className="text-[10px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-md flex items-center gap-1 cursor-pointer transition-colors"
+                      title="Load this exact past prescription into active consultation"
+                    >
+                      <Repeat className="w-3 h-3" />
+                      <span>Use This Rx</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Past Vitals */}
+                {(pv.blood_pressure || pv.temperature || pv.pulse || pv.blood_sugar) && (
+                  <div className="text-[10.5px] bg-slate-50 border border-slate-200/60 rounded-lg p-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-slate-600">
+                    {pv.blood_pressure && <span>BP: <b>{pv.blood_pressure}</b></span>}
+                    {pv.pulse && <span>Pulse: <b>{pv.pulse}</b></span>}
+                    {pv.temperature && <span>Temp: <b>{pv.temperature}°F</b></span>}
+                    {pv.blood_sugar && <span>RBS: <b>{pv.blood_sugar}</b></span>}
+                  </div>
+                )}
+
+                {/* Past Diagnosis */}
+                {pv.diagnosis && (
+                  <div className="text-[11px]">
+                    <span className="text-[9.5px] font-bold uppercase tracking-wider text-slate-400 block">Diagnosis</span>
+                    <span className="font-semibold text-slate-800">{pv.diagnosis}</span>
+                  </div>
+                )}
+
+                {/* Past Prescribed Medicines */}
+                {pv.medicines_list ? (
+                  <div className="text-[11px] bg-teal-50/50 border border-teal-100 rounded-lg p-2">
+                    <span className="text-[9.5px] font-bold uppercase tracking-wider text-teal-800 block mb-1">Prescribed Medicines</span>
+                    <p className="text-slate-700 whitespace-pre-line text-[10.5px] font-mono leading-tight">
+                      {pv.medicines_list}
+                    </p>
+                  </div>
+                ) : (
+                  <span className="text-[10px] text-slate-400 italic">No medications recorded</span>
+                )}
+
+                {/* Past Advice */}
+                {pv.advice && (
+                  <div className="text-[10px] text-slate-500 italic">
+                    Advice: {pv.advice}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 🩺 Doctor Inline Vitals Modal */}
+      {doctorVitalsModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-gradient-to-r from-teal-700 via-teal-800 to-slate-900 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Activity className="w-5 h-5 text-teal-300" />
+                <div>
+                  <h3 className="text-sm font-bold">Record Clinical Vitals</h3>
+                  <p className="text-[11px] text-teal-100/80">
+                    {selectedVisit?.patient?.name} • Visit {selectedVisit?.visit_id}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDoctorVitalsModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveDoctorVitals} className="p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Blood Pressure</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 120/80"
+                    value={doctorVitalsForm.blood_pressure}
+                    onChange={(e) => setDoctorVitalsForm({ ...doctorVitalsForm, blood_pressure: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-teal-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Pulse (bpm)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 74"
+                    value={doctorVitalsForm.pulse}
+                    onChange={(e) => setDoctorVitalsForm({ ...doctorVitalsForm, pulse: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-teal-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Temperature (°F)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 98.6"
+                    value={doctorVitalsForm.temperature}
+                    onChange={(e) => setDoctorVitalsForm({ ...doctorVitalsForm, temperature: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-teal-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">SpO2 (%)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 99"
+                    value={doctorVitalsForm.spo2}
+                    onChange={(e) => setDoctorVitalsForm({ ...doctorVitalsForm, spo2: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-teal-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Weight (kg)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 68"
+                    value={doctorVitalsForm.weight}
+                    onChange={(e) => setDoctorVitalsForm({ ...doctorVitalsForm, weight: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-teal-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Blood Sugar (RBS)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 110"
+                    value={doctorVitalsForm.blood_sugar}
+                    onChange={(e) => setDoctorVitalsForm({ ...doctorVitalsForm, blood_sugar: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-teal-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setDoctorVitalsModalOpen(false)}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={doctorVitalsSaving}
+                  className="px-4 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{doctorVitalsSaving ? 'Saving...' : 'Update Vitals'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

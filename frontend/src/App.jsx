@@ -39,7 +39,8 @@ import {
   Shield,
   User,
   ArrowRight,
-  Ticket
+  Ticket,
+  Tv
 } from 'lucide-react';
 import DashboardTab from './components/DashboardTab';
 import ReceptionistDashboardTab from './components/ReceptionistDashboardTab';
@@ -59,6 +60,7 @@ import LandingPage from './components/LandingPage';
 import LoginPage from './components/LoginPage';
 import PatientPortalTab from './components/PatientPortalTab';
 import AppointmentBookingModal from './components/AppointmentBookingModal';
+import WaitingRoomTvDisplay from './components/WaitingRoomTvDisplay';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
@@ -151,7 +153,7 @@ function App() {
   const [newVisitDoctorId, setNewVisitDoctorId] = useState('');
   const [showVisitModal, setShowVisitModal] = useState(false);
   const [doctors, setDoctors] = useState([]);
-  const [newDoctor, setNewDoctor] = useState({ name: '', degree: '', consultation_fee: 500, consultation_validity_days: 7 });
+  const [newDoctor, setNewDoctor] = useState({ name: '', degree: '', registration_number: '', signature_url: '', consultation_fee: 500, consultation_validity_days: 7 });
   const [editingDoctor, setEditingDoctor] = useState(null);
   const [newAdvancePayment, setNewAdvancePayment] = useState({
     amount_paid: '',
@@ -875,6 +877,8 @@ function App() {
       const payload = {
         name: newDoctor.name,
         degree: newDoctor.degree,
+        registration_number: newDoctor.registration_number || '',
+        signature_url: newDoctor.signature_url || null,
         consultation_fee: parseFloat(newDoctor.consultation_fee) || 500,
         consultation_validity_days: parseInt(newDoctor.consultation_validity_days) || 7
       };
@@ -885,7 +889,7 @@ function App() {
       });
       if (!res.ok) throw new Error("Failed to add doctor");
       showToast(`Doctor "${newDoctor.name}" added successfully.`);
-      setNewDoctor({ name: '', degree: '', consultation_fee: 500, consultation_validity_days: 7 });
+      setNewDoctor({ name: '', degree: '', registration_number: '', signature_url: '', consultation_fee: 500, consultation_validity_days: 7 });
       fetchDoctors();
     } catch (err) {
       showToast(err.message, 'error');
@@ -901,6 +905,8 @@ function App() {
         body: JSON.stringify({
           name: editingDoctor.name,
           degree: editingDoctor.degree,
+          registration_number: editingDoctor.registration_number || '',
+          signature_url: editingDoctor.signature_url || null,
           consultation_fee: parseFloat(editingDoctor.consultation_fee) || 500,
           consultation_validity_days: parseInt(editingDoctor.consultation_validity_days) || 7
         })
@@ -1068,6 +1074,24 @@ function App() {
     }
     return str + " Only";
   };
+
+  // Direct Waiting Room TV Monitor View (No login needed for lobby Smart TVs)
+  const isDirectTv = typeof window !== 'undefined' && (window.location.search.includes('view=tv') || window.location.hash === '#tv');
+  if (isDirectTv) {
+    return (
+      <WaitingRoomTvDisplay
+        API_BASE={API_BASE}
+        getHeaders={getHeaders}
+        hospitalName={adminSettingsForm?.hospital_name || "Vedam Diagnostics"}
+        onExit={() => {
+          if (typeof window !== 'undefined') {
+            window.history.replaceState({}, '', window.location.pathname);
+            window.location.reload();
+          }
+        }}
+      />
+    );
+  }
 
   // Render Login page if not authenticated
   if (!token) {
@@ -1587,6 +1611,29 @@ function App() {
                       )}
                     </button>
                   )}
+
+                  {['Admin', 'Receptionist', 'Doctor'].includes(userRole) && (
+                    <button
+                      onClick={() => { setActiveTab('tv_display'); setMobileMenuOpen(false); }}
+                      title="Waiting Room TV (Lobby Queue Monitor)"
+                      className={`w-full flex items-center gap-2.5 rounded-lg text-xs font-semibold transition-all group ${
+                        sidebarCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-1.5'
+                      } ${
+                        activeTab === 'tv_display' ? 'text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      style={activeTab === 'tv_display' ? (sidebarCollapsed ? {background:'rgba(20,184,166,0.22)', border:'1px solid rgba(20,184,166,0.4)'} : {background:'linear-gradient(90deg, rgba(20,184,166,0.22), rgba(20,184,166,0.06))', borderLeft:'3px solid #14b8a6', paddingLeft:'7px'}) : {}}
+                    >
+                      <Tv className={`w-4 h-4 flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'tv_display' ? 'text-teal-400' : ''}`} />
+                      {!sidebarCollapsed && (
+                        <>
+                          <span>Waiting Room TV</span>
+                          <span className="ml-auto flex items-center gap-1 bg-emerald-500/15 text-emerald-300 text-[8.5px] font-bold px-1.5 py-0.2 rounded-full">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />LIVE
+                          </span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -2058,6 +2105,18 @@ function App() {
         )}
 
         {/* ----------------------------------------------------
+            TAB 1D: WAITING ROOM TV TOKEN DISPLAY (LOBBY MONITOR)
+            ---------------------------------------------------- */}
+        {activeTab === 'tv_display' && (
+          <WaitingRoomTvDisplay
+            API_BASE={API_BASE}
+            getHeaders={getHeaders}
+            hospitalName={adminSettingsForm?.hospital_name || "Vedam Diagnostics"}
+            onExit={() => setActiveTab('dashboard')}
+          />
+        )}
+
+        {/* ----------------------------------------------------
             TAB 2: PATIENT SEARCH & REGISTER DESK
             ---------------------------------------------------- */}
         {activeTab === 'search_register' && (
@@ -2493,6 +2552,7 @@ function App() {
                     { id: 'dashboard', label: 'Executive Dashboard Overview', icon: Grid, category: 'Analytics', roles: ['Admin', 'Accountant', 'Receptionist', 'Doctor'] },
                     { id: 'doctor_dashboard', label: 'Doctor OPD Command Center & Live Queue', icon: Stethoscope, category: 'Clinical', roles: ['Admin', 'Doctor'] },
                     { id: 'doctor_console', label: 'Doctor Clinical Workspace & AI Assistant', icon: Brain, category: 'Clinical', roles: ['Admin', 'Doctor', 'Receptionist'] },
+                    { id: 'tv_display', label: 'Waiting Room TV Token Display (Lobby Screen)', icon: Tv, category: 'Clinical', roles: ['Admin', 'Receptionist', 'Doctor'] },
                     { id: 'search_register', label: 'Patient Desk & Registration', icon: Search, category: 'Clinical', roles: ['Admin', 'Receptionist', 'Accountant', 'Doctor'] },
                     { id: 'billing_history', label: 'Billing Operations & Settlement Queue', icon: CreditCard, category: 'Financial', roles: ['Admin', 'Accountant'] },
                     { id: 'catalog', label: 'Services & Diagnostic Test Catalog', icon: FileText, category: 'Financial', roles: ['Admin'] },

@@ -84,6 +84,8 @@ class PatientResponse(PatientBase):
 class DoctorBase(BaseModel):
     name: str
     degree: str
+    registration_number: Optional[str] = None
+    signature_url: Optional[str] = None
     consultation_fee: Optional[float] = 500.0
     consultation_validity_days: Optional[int] = 7
 
@@ -112,6 +114,15 @@ class VisitBase(BaseModel):
     token_number: Optional[int] = None
     checkin_time: Optional[datetime] = None
     triage_severity: Optional[str] = "Normal"
+    # Nurse / Triage Vitals
+    blood_pressure: Optional[str] = None
+    pulse: Optional[str] = None
+    temperature: Optional[str] = None
+    spo2: Optional[str] = None
+    weight: Optional[str] = None
+    blood_sugar: Optional[str] = None
+    vitals_recorded_by: Optional[str] = None
+    vitals_recorded_at: Optional[datetime] = None
 
 class VisitSummaryUpdate(BaseModel):
     diagnosis: Optional[str] = None
@@ -124,6 +135,23 @@ class VisitSummaryUpdate(BaseModel):
     status: Optional[str] = None
     checkin_time: Optional[datetime] = None
     triage_severity: Optional[str] = None
+    # Optional vitals during consultation update
+    blood_pressure: Optional[str] = None
+    pulse: Optional[str] = None
+    temperature: Optional[str] = None
+    spo2: Optional[str] = None
+    weight: Optional[str] = None
+    blood_sugar: Optional[str] = None
+    vitals_recorded_by: Optional[str] = None
+
+class VitalsUpdate(BaseModel):
+    blood_pressure: Optional[str] = None
+    pulse: Optional[str] = None
+    temperature: Optional[str] = None
+    spo2: Optional[str] = None
+    weight: Optional[str] = None
+    blood_sugar: Optional[str] = None
+    vitals_recorded_by: Optional[str] = None
 
 class VisitCreate(VisitBase):
     patient_id: int

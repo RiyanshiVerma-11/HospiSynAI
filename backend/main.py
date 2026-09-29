@@ -104,6 +104,8 @@ def on_startup():
 
             safe_add_column("doctors", "consultation_fee", "FLOAT DEFAULT 500.0")
             safe_add_column("doctors", "consultation_validity_days", "INTEGER DEFAULT 7")
+            safe_add_column("doctors", "registration_number", "VARCHAR")
+            safe_add_column("doctors", "signature_url", "TEXT")
             safe_add_column("visits", "doctor_id", "INTEGER REFERENCES doctors(id)")
             safe_add_column("visits", "diagnosis", "VARCHAR")
             safe_add_column("visits", "chief_complaints", "VARCHAR")
@@ -116,6 +118,15 @@ def on_startup():
             safe_add_column("visits", "token_number", "INTEGER")
             safe_add_column("visits", "checkin_time", "DATETIME")
             safe_add_column("visits", "triage_severity", "VARCHAR DEFAULT 'Normal'")
+            # Vitals columns
+            safe_add_column("visits", "blood_pressure", "VARCHAR")
+            safe_add_column("visits", "pulse", "VARCHAR")
+            safe_add_column("visits", "temperature", "VARCHAR")
+            safe_add_column("visits", "spo2", "VARCHAR")
+            safe_add_column("visits", "weight", "VARCHAR")
+            safe_add_column("visits", "blood_sugar", "VARCHAR")
+            safe_add_column("visits", "vitals_recorded_by", "VARCHAR")
+            safe_add_column("visits", "vitals_recorded_at", "DATETIME")
             safe_add_column("patients", "abha_id", "VARCHAR")
             safe_add_column("patients", "email", "VARCHAR")
         except Exception as e:
@@ -123,21 +134,24 @@ def on_startup():
 
         # Seed default doctors if missing
         doctors_to_seed = [
-            ("Dr. Shweta Grover", "MBBS, MD (Pathology), PhD\nPDF (Dermatopathology, Hamburg, Germany)\nConsultant Pathologist", 500.0, 7),
-            ("Dr. Rajesh Verma", "MBBS, MD (General Medicine), Senior Consultant Physician", 400.0, 7),
-            ("Dr. Priya Nair", "MBBS, MS (ENT Specialist), Consultant ENT Surgeon", 450.0, 7)
+            ("Dr. Shweta Grover", "MBBS, MD (Pathology), PhD\nPDF (Dermatopathology, Hamburg, Germany)\nConsultant Pathologist", "MCI-48291/DMC", 500.0, 7),
+            ("Dr. Rajesh Verma", "MBBS, MD (General Medicine), Senior Consultant Physician", "UPMC-78104", 400.0, 7),
+            ("Dr. Priya Nair", "MBBS, MS (ENT Specialist), Consultant ENT Surgeon", "KMC-65239", 450.0, 7)
         ]
-        for d_name, d_degree, d_fee, d_val in doctors_to_seed:
+        for d_name, d_degree, d_reg, d_fee, d_val in doctors_to_seed:
             existing_doc = db.query(models.Doctor).filter(models.Doctor.name == d_name).first()
             if not existing_doc:
                 db_doc = models.Doctor(
                     name=d_name,
                     degree=d_degree,
+                    registration_number=d_reg,
                     consultation_fee=d_fee,
                     consultation_validity_days=d_val,
                     is_active=True
                 )
                 db.add(db_doc)
+            elif not existing_doc.registration_number:
+                existing_doc.registration_number = d_reg
         db.commit()
 
         # 1. Seed Users
@@ -169,6 +183,8 @@ def on_startup():
             "logo_text": "Sincere Care...",
             "doctor_name": "Dr. Shweta Grover",
             "doctor_degree": "MBBS, MD (Pathology), PhD\nPDF (Dermatopathology, Hamburg, Germany)\nConsultant Pathologist",
+            "doctor_reg_no": "MCI-48291 / DMC-2018",
+            "doctor_signature_url": "",
             "collection_centre": "Collection Centre:\n4 Harilok, Dhanvantari Saket Road,\nNear Rohtash Sweets,\nMeerut 250003",
             "contact_number": "+91 98765 43210",
             "gst_number": "27AAAAA1111A1Z1",
@@ -1161,6 +1177,45 @@ def get_live_queue_status(db: Session = Depends(get_db)):
     )
 
 
+@app.get("/api/visits/tv-queue")
+def get_tv_queue(db: Session = Depends(get_db)):
+    """
+    Public sanitized live OPD token queue for Waiting Room TV display.
+    Returns today's active tokens with patient details, consulting doctor, token number, and status.
+    No sensitive medical diagnoses or medicines are exposed.
+    """
+    today_start = datetime.datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    visits = db.query(models.Visit).options(
+        joinedload(models.Visit.patient),
+        joinedload(models.Visit.doctor)
+    ).filter(
+        models.Visit.visit_date >= today_start,
+        models.Visit.is_active == True
+    ).order_by(models.Visit.token_number.asc()).all()
+
+    return [
+        {
+            "id": v.id,
+            "token_number": v.token_number,
+            "visit_id": v.visit_id,
+            "status": v.status or "Waiting",
+            "visit_date": v.visit_date.isoformat() if v.visit_date else None,
+            "triage_severity": getattr(v, "triage_severity", "Normal"),
+            "patient": {
+                "id": v.patient.id if v.patient else None,
+                "name": v.patient.name if v.patient else "Patient",
+                "patient_id": v.patient.patient_id if v.patient else ""
+            },
+            "doctor": {
+                "id": v.doctor.id if v.doctor else None,
+                "name": v.doctor.name if v.doctor else "Assigned Consultant",
+                "degree": v.doctor.degree if v.doctor else ""
+            }
+        }
+        for v in visits
+    ]
+
+
 @app.post("/api/ai/triage", response_model=schemas.AITriageResponse)
 async def ai_symptom_triage(req: schemas.AITriageRequest):
     """
@@ -1662,6 +1717,23 @@ async def update_visit_summary(
     if visit_update.patient_summary is not None:
         db_visit.patient_summary = visit_update.patient_summary
 
+    # Vitals update during clinical consultation
+    if visit_update.blood_pressure is not None:
+        db_visit.blood_pressure = visit_update.blood_pressure
+    if visit_update.pulse is not None:
+        db_visit.pulse = visit_update.pulse
+    if visit_update.temperature is not None:
+        db_visit.temperature = visit_update.temperature
+    if visit_update.spo2 is not None:
+        db_visit.spo2 = visit_update.spo2
+    if visit_update.weight is not None:
+        db_visit.weight = visit_update.weight
+    if visit_update.blood_sugar is not None:
+        db_visit.blood_sugar = visit_update.blood_sugar
+    if visit_update.vitals_recorded_by is not None:
+        db_visit.vitals_recorded_by = visit_update.vitals_recorded_by
+        db_visit.vitals_recorded_at = datetime.datetime.utcnow()
+
     # Call AI if requested
     if generate_ai_summary:
         api_key = os.getenv("GROQ_API_KEY")
@@ -1842,6 +1914,66 @@ Strict Output Format (follow exactly, do not add extra markdown or headers):
     db.refresh(db_visit)
 
     log_action(db, current_user.id, "UPDATE_VISIT_SUMMARY", "visits", str(db_visit.id), f"Updated consultation summary and notes for visit {db_visit.visit_id}")
+    return db_visit
+
+
+@app.put("/api/visits/{id}/vitals", response_model=schemas.VisitResponse)
+def update_visit_vitals(
+    id: int,
+    vitals: schemas.VitalsUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant", "Doctor"]))
+):
+    db_visit = db.query(models.Visit).filter(models.Visit.id == id, models.Visit.is_active == True).first()
+    if not db_visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+
+    if vitals.blood_pressure is not None:
+        db_visit.blood_pressure = vitals.blood_pressure.strip()
+    if vitals.pulse is not None:
+        db_visit.pulse = vitals.pulse.strip()
+    if vitals.temperature is not None:
+        db_visit.temperature = vitals.temperature.strip()
+    if vitals.spo2 is not None:
+        db_visit.spo2 = vitals.spo2.strip()
+    if vitals.weight is not None:
+        db_visit.weight = vitals.weight.strip()
+    if vitals.blood_sugar is not None:
+        db_visit.blood_sugar = vitals.blood_sugar.strip()
+    
+    db_visit.vitals_recorded_by = vitals.vitals_recorded_by or current_user.name
+    db_visit.vitals_recorded_at = datetime.datetime.utcnow()
+
+    # Intelligent Triage Alert Classification
+    bp_sys = 0
+    if db_visit.blood_pressure and '/' in db_visit.blood_pressure:
+        try:
+            bp_sys = int(db_visit.blood_pressure.split('/')[0].strip())
+        except Exception:
+            pass
+    spo2_val = 100.0
+    if db_visit.spo2:
+        try:
+            spo2_val = float(re.sub(r'[^0-9.]', '', db_visit.spo2))
+        except Exception:
+            pass
+    temp_val = 98.6
+    if db_visit.temperature:
+        try:
+            temp_val = float(re.sub(r'[^0-9.]', '', db_visit.temperature))
+        except Exception:
+            pass
+
+    if bp_sys >= 160 or spo2_val < 93.0 or temp_val >= 102.0:
+        db_visit.triage_severity = "Critical"
+    elif bp_sys >= 140 or spo2_val < 95.0 or temp_val >= 100.0:
+        db_visit.triage_severity = "Warning"
+    else:
+        db_visit.triage_severity = "Normal"
+
+    db.commit()
+    db.refresh(db_visit)
+    log_action(db, current_user.id, "UPDATE_VITALS", "visits", str(db_visit.id), f"Recorded clinical vitals for visit {db_visit.visit_id}")
     return db_visit
 
 
@@ -3714,6 +3846,8 @@ def create_doctor(
     db_doctor = models.Doctor(
         name=clean_name,
         degree=doctor_in.degree,
+        registration_number=getattr(doctor_in, 'registration_number', None),
+        signature_url=getattr(doctor_in, 'signature_url', None),
         consultation_fee=doctor_in.consultation_fee if doctor_in.consultation_fee is not None else 500.0,
         consultation_validity_days=doctor_in.consultation_validity_days if doctor_in.consultation_validity_days is not None else 7
     )
@@ -3757,6 +3891,10 @@ def update_doctor(
         raise HTTPException(status_code=404, detail="Doctor not found")
     db_doctor.name = doctor_in.name
     db_doctor.degree = doctor_in.degree
+    if getattr(doctor_in, 'registration_number', None) is not None:
+        db_doctor.registration_number = doctor_in.registration_number
+    if getattr(doctor_in, 'signature_url', None) is not None:
+        db_doctor.signature_url = doctor_in.signature_url
     if doctor_in.consultation_fee is not None:
         db_doctor.consultation_fee = doctor_in.consultation_fee
     if doctor_in.consultation_validity_days is not None:

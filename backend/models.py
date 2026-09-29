@@ -46,6 +46,8 @@ class Doctor(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True, nullable=False)
     degree = Column(Text, nullable=False)
+    registration_number = Column(String, nullable=True)  # e.g., MCI-48291/DMC
+    signature_url = Column(Text, nullable=True)          # Base64 or image URL
     consultation_fee = Column(Float, default=500.0, nullable=True)
     consultation_validity_days = Column(Integer, default=7, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
@@ -72,6 +74,15 @@ class Visit(Base):
     status = Column(String, default="Waiting", nullable=True)
     checkin_time = Column(DateTime, nullable=True)
     triage_severity = Column(String, default="Normal", nullable=True)
+    # Nurse / Triage Vitals
+    blood_pressure = Column(String, nullable=True)      # e.g. "120/80"
+    pulse = Column(String, nullable=True)               # e.g. "76" bpm
+    temperature = Column(String, nullable=True)         # e.g. "98.6" F
+    spo2 = Column(String, nullable=True)                # e.g. "99" %
+    weight = Column(String, nullable=True)              # e.g. "68.5" kg
+    blood_sugar = Column(String, nullable=True)         # e.g. "115" mg/dL
+    vitals_recorded_by = Column(String, nullable=True)  # Name / role of nurse
+    vitals_recorded_at = Column(DateTime, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     deleted_at = Column(DateTime, nullable=True)
 
