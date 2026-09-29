@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Search,
   Trash2,
@@ -1149,7 +1149,7 @@ export default function PatientSearchTab({
     }
   };
 
-  const [sendingPrescriptionEmailId, setSendingPrescriptionEmailId] = useState(null);
+  const [sendingPrescriptionEmailId, setSendingPrescriptionEmailId] = React.useState(null);
 
   const handleSendPrescriptionEmail = async (visitId) => {
     const targetVisitId = (typeof visitId === 'string' || typeof visitId === 'number') ? visitId : selectedVisit?.id;

@@ -28,7 +28,8 @@ import {
   Maximize2,
   Minimize2,
   ExternalLink,
-  ArrowRight
+  ArrowRight,
+  Stethoscope
 } from 'lucide-react';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import VoiceVisualizer from './VoiceVisualizer';
@@ -89,7 +90,11 @@ export default function DoctorConsoleTab({
   const [selectedVisit, setSelectedVisit] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [doctorQueueScope, setDoctorQueueScope] = useState('Mine'); // Default: strictly show only this doctor's patients
+  const [doctorsList, setDoctorsList] = useState([]);
+  const [selectedDoctorFilter, setSelectedDoctorFilter] = useState('ALL');
+  const [doctorQueueScope, setDoctorQueueScope] = useState(() => {
+    return currentUser?.role === 'Doctor' ? 'Mine' : 'All';
+  });
 
   // Form state
   const [summaryForm, setSummaryForm] = useState({
@@ -390,6 +395,11 @@ export default function DoctorConsoleTab({
 
   useEffect(() => {
     fetchVisits();
+    // Load doctors for doctor filter dropdown
+    fetch(`${API_BASE}/doctors`, { headers: getHeaders() })
+      .then(r => r.ok ? r.json() : [])
+      .then(docs => setDoctorsList(Array.isArray(docs) ? docs : []))
+      .catch(err => console.error("Could not load doctors", err));
   }, []);
 
   const handleSelectVisit = (visit) => {
@@ -694,16 +704,31 @@ export default function DoctorConsoleTab({
     const cleanQuery = searchQuery.trim().toLowerCase();
     const queryWithoutHash = cleanQuery.replace(/^#/, '');
 
-    const matched = visits.filter(v => {
-      // Doctor queue scope filter
-      if (doctorQueueScope === 'Mine' && currentUser?.name) {
+    // 1. Filter by Doctor Scope & Dropdown Filter
+    const scopedVisits = visits.filter(v => {
+      // A. Specific Doctor Dropdown filter (selected by Admin or user)
+      if (selectedDoctorFilter !== 'ALL') {
+        const docIdNum = Number(selectedDoctorFilter);
+        const matchesDocId = v.doctor_id === docIdNum || (v.doctor && v.doctor.id === docIdNum);
+        const targetDoc = doctorsList.find(d => d.id === docIdNum);
+        const matchesDocName = targetDoc && v.doctor?.name && 
+          v.doctor.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === targetDoc.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+        if (!matchesDocId && !matchesDocName) return false;
+      }
+
+      // B. Doctor Queue Scope ('Mine' applies strictly if user is a Doctor)
+      if (doctorQueueScope === 'Mine' && currentUser?.role === 'Doctor' && currentUser?.name) {
         if (!v.doctor?.name) return false;
-        const lowerName = currentUser.name.toLowerCase();
-        const docName = v.doctor.name.toLowerCase();
-        const matchesDoc = docName.includes(lowerName) || lowerName.includes(docName);
+        const cleanUser = (currentUser.name || currentUser.username || '').toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+        const cleanDoc = v.doctor.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+        const matchesDoc = cleanDoc.includes(cleanUser) || cleanUser.includes(cleanDoc);
         if (!matchesDoc) return false;
       }
 
+      return true;
+    });
+
+    const matched = scopedVisits.filter(v => {
       const tokenStr = v.token_number ? String(v.token_number) : '';
       const matchesSearch = 
         !cleanQuery ||
@@ -747,11 +772,33 @@ export default function DoctorConsoleTab({
       const bToken = b.token_number || b.id || 999999;
       return aToken - bToken;
     });
-  }, [visits, searchQuery, statusFilter]);
+  }, [visits, searchQuery, statusFilter, selectedDoctorFilter, doctorQueueScope, doctorsList, currentUser]);
 
-  const criticalCount = visits.filter(v => v.status === 'Critical').length;
-  const waitingCount = visits.filter(v => v.status !== 'Critical' && v.status !== 'Completed' && !v.diagnosis).length;
-  const completedCount = visits.filter(v => v.status === 'Completed' || v.diagnosis).length;
+  // Compute status counts reflecting currently selected doctor scope
+  const scopedListForCounts = useMemo(() => {
+    return visits.filter(v => {
+      if (selectedDoctorFilter !== 'ALL') {
+        const docIdNum = Number(selectedDoctorFilter);
+        const matchesDocId = v.doctor_id === docIdNum || (v.doctor && v.doctor.id === docIdNum);
+        const targetDoc = doctorsList.find(d => d.id === docIdNum);
+        const matchesDocName = targetDoc && v.doctor?.name && 
+          v.doctor.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === targetDoc.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+        if (!matchesDocId && !matchesDocName) return false;
+      }
+      if (doctorQueueScope === 'Mine' && currentUser?.role === 'Doctor' && currentUser?.name) {
+        if (!v.doctor?.name) return false;
+        const cleanUser = (currentUser.name || currentUser.username || '').toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+        const cleanDoc = v.doctor.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+        const matchesDoc = cleanDoc.includes(cleanUser) || cleanUser.includes(cleanDoc);
+        if (!matchesDoc) return false;
+      }
+      return true;
+    });
+  }, [visits, selectedDoctorFilter, doctorQueueScope, doctorsList, currentUser]);
+
+  const criticalCount = scopedListForCounts.filter(v => v.status === 'Critical').length;
+  const waitingCount = scopedListForCounts.filter(v => v.status !== 'Critical' && v.status !== 'Completed' && !v.diagnosis).length;
+  const completedCount = scopedListForCounts.filter(v => v.status === 'Completed' || v.diagnosis).length;
 
   return (
     <div 
@@ -922,38 +969,89 @@ export default function DoctorConsoleTab({
               />
             </div>
 
-            {/* Doctor Queue Scope Selector */}
-            {currentUser?.name && (
-              <div className="flex items-center gap-1 mb-2 p-1 bg-slate-100 rounded-lg border border-slate-200 text-[10px]">
+            {/* Doctor Filter Dropdown (Allows Admin and doctors to filter queue by specific doctor) */}
+            <div className="mb-2 space-y-1.5">
+              <div className="flex items-center gap-1.5 bg-slate-100/90 p-1.5 rounded-xl border border-slate-200">
+                <Stethoscope className="w-3.5 h-3.5 text-teal-600 flex-shrink-0 ml-1" />
+                <select
+                  value={selectedDoctorFilter}
+                  onChange={(e) => {
+                    setSelectedDoctorFilter(e.target.value);
+                    if (e.target.value !== 'ALL') {
+                      setDoctorQueueScope('All');
+                    }
+                  }}
+                  className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-800 focus:outline-none focus:border-teal-500 cursor-pointer shadow-2xs"
+                >
+                  <option value="ALL">🏥 All Doctors ({visits.length} Patients)</option>
+                  {doctorsList.map(doc => {
+                    const docCount = visits.filter(v => {
+                      const matchesId = v.doctor_id === doc.id || v.doctor?.id === doc.id;
+                      const matchesName = v.doctor?.name && 
+                        v.doctor.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === doc.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+                      return matchesId || matchesName;
+                    }).length;
+                    return (
+                      <option key={doc.id} value={doc.id}>
+                        🩺 {doc.name} ({docCount} Patients)
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              {/* Quick Scope Toggle (Available for Doctors or to reset filter to All) */}
+              <div className="flex items-center gap-1 p-0.5 bg-slate-100 rounded-lg border border-slate-200 text-[10px]">
                 <button
                   type="button"
-                  onClick={() => setDoctorQueueScope('All')}
+                  onClick={() => {
+                    setDoctorQueueScope('All');
+                    setSelectedDoctorFilter('ALL');
+                  }}
                   className={`flex-1 py-1 rounded font-bold transition-all cursor-pointer ${
-                    doctorQueueScope === 'All'
+                    doctorQueueScope === 'All' && selectedDoctorFilter === 'ALL'
                       ? 'bg-slate-900 text-white shadow-xs'
                       : 'text-slate-600 hover:bg-slate-200'
                   }`}
                 >
                   🏥 All OPD ({visits.length})
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setDoctorQueueScope('Mine')}
-                  className={`flex-1 py-1 rounded font-bold transition-all cursor-pointer ${
-                    doctorQueueScope === 'Mine'
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  🧑‍⚕️ My Patients
-                </button>
+                {currentUser?.role === 'Doctor' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDoctorQueueScope('Mine');
+                      setSelectedDoctorFilter('ALL');
+                    }}
+                    className={`flex-1 py-1 rounded font-bold transition-all cursor-pointer ${
+                      doctorQueueScope === 'Mine'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    🧑‍⚕️ My Patients
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={selectedDoctorFilter === 'ALL'}
+                    onClick={() => setSelectedDoctorFilter('ALL')}
+                    className={`flex-1 py-1 rounded font-bold transition-all ${
+                      selectedDoctorFilter !== 'ALL'
+                        ? 'bg-teal-600 text-white shadow-xs cursor-pointer'
+                        : 'text-slate-400 cursor-default'
+                    }`}
+                  >
+                    {selectedDoctorFilter !== 'ALL' ? 'Clear Filter ✕' : 'Filter By Doctor ⏷'}
+                  </button>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Status Filter Chips */}
             <div className="flex flex-wrap gap-1 mb-2 flex-shrink-0">
               {[
-                { id: 'All', label: 'All', count: visits.length, activeClass: 'bg-slate-900 text-white border-slate-900', inactiveClass: 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100' },
+                { id: 'All', label: 'All', count: scopedListForCounts.length, activeClass: 'bg-slate-900 text-white border-slate-900', inactiveClass: 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100' },
                 { id: 'Waiting', label: 'Waiting', count: waitingCount, activeClass: 'bg-amber-600 text-white border-amber-600 shadow-sm', inactiveClass: 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100/70' },
                 { id: 'Critical', label: 'Critical', count: criticalCount, activeClass: 'bg-rose-600 text-white border-rose-600 shadow-sm', inactiveClass: 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100/70 animate-pulse' },
                 { id: 'Completed', label: 'Completed', count: completedCount, activeClass: 'bg-emerald-600 text-white border-emerald-600 shadow-sm', inactiveClass: 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100/70' }
