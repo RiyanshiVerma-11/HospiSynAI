@@ -740,9 +740,16 @@ export default function DoctorConsoleTab({
       if (!matchesSearch) return false;
       if (statusFilter === 'All') return true;
       
+      const isUrgentOrCritical = (item) => {
+        if (!item) return false;
+        const s = (item.status || '').toLowerCase();
+        const sev = (item.triage_severity || '').toLowerCase();
+        return s === 'critical' || s === 'urgent' || s.includes('critical') || sev === 'urgent' || sev === 'critical';
+      };
+
       const hasDiagnosis = !!v.diagnosis;
       let visitStatus = 'Waiting';
-      if (v.status === 'Critical') {
+      if (isUrgentOrCritical(v) && v.status !== 'Completed' && !hasDiagnosis) {
         visitStatus = 'Critical';
       } else if (v.status === 'Completed' || hasDiagnosis) {
         visitStatus = 'Completed';
@@ -757,11 +764,18 @@ export default function DoctorConsoleTab({
     // 3. Waiting / Critical / Scheduled (by ascending token)
     // 4. Completed (most recent diagnosis at bottom)
     return matched.sort((a, b) => {
+      const isUrgentOrCritical = (item) => {
+        if (!item) return false;
+        const s = (item.status || '').toLowerCase();
+        const sev = (item.triage_severity || '').toLowerCase();
+        return s === 'critical' || s === 'urgent' || s.includes('critical') || sev === 'urgent' || sev === 'critical';
+      };
+
       const getPriority = (v) => {
         const s = (v.status || '').toLowerCase();
         if (s === 'in-consultation' || s === 'in cabin') return 0;
         if (s === 'arrived') return 1;
-        if (s === 'critical' || v.triage_severity === 'Urgent') return 2;
+        if (isUrgentOrCritical(v) && v.status !== 'Completed' && !v.diagnosis) return 2;
         if (s === 'completed' || !!v.diagnosis) return 4;
         return 3; // 'waiting' or 'scheduled'
       };
@@ -773,6 +787,13 @@ export default function DoctorConsoleTab({
       return aToken - bToken;
     });
   }, [visits, searchQuery, statusFilter, selectedDoctorFilter, doctorQueueScope, doctorsList, currentUser]);
+
+  const isUrgentOrCritical = (item) => {
+    if (!item) return false;
+    const s = (item.status || '').toLowerCase();
+    const sev = (item.triage_severity || '').toLowerCase();
+    return s === 'critical' || s === 'urgent' || s.includes('critical') || sev === 'urgent' || sev === 'critical';
+  };
 
   // Compute status counts reflecting currently selected doctor scope
   const scopedListForCounts = useMemo(() => {
@@ -796,8 +817,8 @@ export default function DoctorConsoleTab({
     });
   }, [visits, selectedDoctorFilter, doctorQueueScope, doctorsList, currentUser]);
 
-  const criticalCount = scopedListForCounts.filter(v => v.status === 'Critical').length;
-  const waitingCount = scopedListForCounts.filter(v => v.status !== 'Critical' && v.status !== 'Completed' && !v.diagnosis).length;
+  const criticalCount = scopedListForCounts.filter(v => isUrgentOrCritical(v) && v.status !== 'Completed' && !v.diagnosis).length;
+  const waitingCount = scopedListForCounts.filter(v => !isUrgentOrCritical(v) && v.status !== 'Completed' && !v.diagnosis).length;
   const completedCount = scopedListForCounts.filter(v => v.status === 'Completed' || v.diagnosis).length;
 
   return (
@@ -1083,7 +1104,7 @@ export default function DoctorConsoleTab({
                 filteredQueue.map((vis) => {
                   const hasDiagnosis = !!vis.diagnosis;
                   const getStatusDetails = () => {
-                    if (vis.status === 'Critical' || vis.triage_severity === 'Urgent') {
+                    if ((isUrgentOrCritical(vis) || vis.status === 'Critical' || vis.triage_severity === 'Urgent') && vis.status !== 'Completed' && !hasDiagnosis) {
                       return { label: 'Urgent / Critical', style: 'bg-rose-100 text-rose-800 border-rose-200 animate-pulse font-black' };
                     }
                     if (vis.status === 'In-Consultation') {
