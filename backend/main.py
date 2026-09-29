@@ -509,7 +509,7 @@ def auth_send_otp(req: schemas.PatientOtpRequest, db: Session = Depends(get_db))
     except Exception as e:
         print(f"[AUTH OTP] SMTP notice: {e}")
 
-    print(f"[AUTH OTP SENT] Identifier: {ident} | OTP: {otp} | Target: {target_email}")
+    print(f"[AUTH OTP SENT] Identifier: {ident} | OTP: {'*' * len(otp)} | Target: {masked_email}")
 
     return {
         "message": f"Verification code dispatched to {masked_email}",
@@ -528,11 +528,16 @@ def auth_verify_otp(req: schemas.PatientOtpVerifyRequest, db: Session = Depends(
     user = None
     is_valid = False
 
-    if submitted_otp == "123456":
+    ALLOW_DEMO_OTP = os.getenv("ALLOW_DEMO_OTP", "true").lower() in ("true", "1")
+    if ALLOW_DEMO_OTP and submitted_otp == "123456":
         if "@" in ident:
-            user = db.query(models.User).filter(func.lower(models.User.username) == ident.split("@")[0].lower()).first()
-            if not user:
-                user = db.query(models.User).filter(models.User.role == "Patient").first()
+            derived_username = ident.split("@")[0].lower()
+            user = db.query(models.User).filter(
+                or_(
+                    func.lower(models.User.username) == derived_username,
+                    func.lower(models.User.username) == ident.lower()
+                )
+            ).first()
         else:
             user = db.query(models.User).filter(func.lower(models.User.username) == ident.lower()).first()
         if user:
@@ -550,6 +555,10 @@ def auth_verify_otp(req: schemas.PatientOtpVerifyRequest, db: Session = Depends(
             status_code=400,
             detail="Invalid or expired verification code. Enter the 6-digit code from your email or 123456."
         )
+
+    # Invalidate OTP immediately to prevent replay attacks
+    if ident.lower() in AUTH_OTP_CACHE:
+        del AUTH_OTP_CACHE[ident.lower()]
 
     access_token = auth.create_access_token(data={"sub": user.username, "role": user.role})
     log_action(db, user.id, "USER_LOGIN_OTP", "users", str(user.id), f"User {user.username} logged in via Email OTP.")
@@ -719,9 +728,11 @@ def create_visit(
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
-    # Generate persistent sequential OPD token across all active visits
+    # Generate persistent sequential OPD token across all active visits for today
+    start_of_today = datetime.datetime.combine(datetime.date.today(), datetime.time.min)
     max_token = db.query(func.max(models.Visit.token_number)).filter(
-        models.Visit.is_active == True
+        models.Visit.is_active == True,
+        models.Visit.visit_date >= start_of_today
     ).scalar() or 0
     token_number = max_token + 1
 
@@ -962,9 +973,11 @@ def book_appointment(
     if not doctor:
         doctor = db.query(models.Doctor).filter(models.Doctor.is_active == True).first()
 
-    # 4. Generate persistent sequential OPD token across all active visits
+    # 4. Generate persistent sequential OPD token across all active visits for today
+    start_of_today = datetime.datetime.combine(datetime.date.today(), datetime.time.min)
     max_token = db.query(func.max(models.Visit.token_number)).filter(
-        models.Visit.is_active == True
+        models.Visit.is_active == True,
+        models.Visit.visit_date >= start_of_today
     ).scalar() or 0
     next_token = max_token + 1
 
@@ -1095,12 +1108,6 @@ def get_live_queue_status(db: Session = Depends(get_db)):
         models.Visit.is_active == True
     ).order_by(models.Visit.token_number.asc()).all()
 
-    # Fallback to all active visits if no visits today (e.g. initial demo/seed state)
-    if not queue_visits:
-        queue_visits = db.query(models.Visit).filter(
-            models.Visit.is_active == True
-        ).order_by(models.Visit.token_number.asc()).all()
-
     serving_token = None
     waiting_count = 0
     arrived_count = 0
@@ -1114,7 +1121,7 @@ def get_live_queue_status(db: Session = Depends(get_db)):
         elif st == "in-consultation":
             # Highest priority: Doctor is currently consulting this patient in the cabin
             serving_token = v.token_number
-            waiting_count += 1
+            # Active consultation is already being served, not waiting in queue
         elif st == "arrived":
             arrived_count += 1
             waiting_count += 1
@@ -1126,7 +1133,7 @@ def get_live_queue_status(db: Session = Depends(get_db)):
                 next_waiting_token = v.token_number
 
     if serving_token is None:
-        serving_token = next_waiting_token or (queue_visits[0].token_number if queue_visits else 1)
+        serving_token = next_waiting_token
 
     avg_wait = max(0, waiting_count * 10)
 
@@ -1149,11 +1156,12 @@ async def ai_symptom_triage(req: schemas.AITriageRequest):
     """
     complaints = req.chief_complaints.lower()
 
-    # Rule-based fast urgent check
+    # Rule-based fast urgent check (English, Hinglish, and Hindi Devanagari)
     is_urgent = any(w in complaints for w in [
-        "chest pain", "heart", "unconscious", "stroke", "paralysis", "severe bleeding", 
-        "breathless", "cannot breathe", "choking", "seizure", "convulsion", "cyanosis",
-        "chaati me dard", "saans nahi aa rahi", "behosh"
+        "chest pain", "heart", "heart attack", "cardiac", "unconscious", "stroke", "paralysis", 
+        "severe bleeding", "breathless", "cannot breathe", "choking", "seizure", "convulsion", "cyanosis",
+        "chaati me dard", "saans nahi aa rahi", "behosh", "behosh ho gaya", "dora",
+        "छाती में दर्द", "बेहोश", "सांस फूलना", "दौरा", "खून बह रहा", "हार्ट अटैक"
     ])
 
     if is_urgent:
@@ -1224,6 +1232,7 @@ Output ONLY valid JSON with keys: severity, recommended_department, clinical_adv
 
 @app.get("/api/patient-portal/my-records")
 def get_patient_portal_records(
+    patient_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -1232,13 +1241,25 @@ def get_patient_portal_records(
         patient = db.query(models.Patient).filter(
             or_(
                 models.Patient.patient_id == current_user.username,
-                models.Patient.name.ilike(current_user.name or "")
+                models.Patient.mobile_number == current_user.username
             ),
             models.Patient.is_active == True
         ).first()
-
-    if not patient:
-        patient = db.query(models.Patient).filter(models.Patient.is_active == True).first()
+        if not patient and current_user.name:
+            patient = db.query(models.Patient).filter(
+                models.Patient.name.ilike(current_user.name),
+                models.Patient.is_active == True
+            ).first()
+    else:
+        # Front-desk / Admin viewing patient records
+        if patient_id:
+            patient = db.query(models.Patient).filter(
+                or_(
+                    models.Patient.patient_id == patient_id,
+                    models.Patient.mobile_number == patient_id
+                ),
+                models.Patient.is_active == True
+            ).first()
 
     if not patient:
         raise HTTPException(status_code=404, detail="Patient profile not found")
@@ -1337,16 +1358,28 @@ def patient_pay_bill(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    if req.amount <= 0:
+        raise HTTPException(status_code=400, detail="Payment amount must be greater than zero.")
+
     bill = db.query(models.Bill).filter(models.Bill.id == req.bill_id, models.Bill.is_active == True).first()
     if not bill:
         raise HTTPException(status_code=404, detail="Bill not found")
+
+    if current_user.role == "Patient":
+        # IDOR prevention: verify bill belongs to this patient
+        visit = db.query(models.Visit).filter(models.Visit.id == bill.visit_id).first()
+        if not visit or not visit.patient or (
+            visit.patient.patient_id != current_user.username and 
+            visit.patient.mobile_number != current_user.username
+        ):
+            raise HTTPException(status_code=403, detail="Access denied: You can only pay bills issued for your own visits.")
         
     if bill.balance_amount <= 0:
         raise HTTPException(status_code=400, detail="This bill has already been fully paid.")
         
     amount_to_pay = min(float(req.amount), float(bill.balance_amount))
     payment_id = generate_unique_id(db, "PAY", models.Payment, models.Payment.payment_id)
-    is_full_settlement = (amount_to_pay >= bill.balance_amount)
+    is_full_settlement = (amount_to_pay >= bill.balance_amount - 0.01)
     payment_type = "Full" if is_full_settlement else "Partial"
     
     db_payment = models.Payment(
@@ -1360,8 +1393,8 @@ def patient_pay_bill(
     )
     db.add(db_payment)
     
-    # Update Bill balance and status
-    bill.balance_amount -= amount_to_pay
+    # Update Bill balance and status with floating point rounding
+    bill.balance_amount = round(float(bill.balance_amount) - amount_to_pay, 2)
     if bill.balance_amount <= 0.01:
         bill.balance_amount = 0.0
         bill.payment_status = "Paid"
@@ -1478,7 +1511,8 @@ def send_visit_prescription_email(
 @app.get("/api/visits/{id}/medicine-calendar")
 def download_visit_medicine_calendar(
     id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
 ):
     """
     Downloads a .ics calendar file containing recurring daily medicine dosage alarms
@@ -1491,6 +1525,13 @@ def download_visit_medicine_calendar(
         db_visit = db.query(models.Visit).filter(models.Visit.visit_id.ilike(id), models.Visit.is_active == True).first()
     if not db_visit:
         raise HTTPException(status_code=404, detail="Visit not found")
+
+    if current_user.role == "Patient":
+        if not db_visit.patient or (
+            db_visit.patient.patient_id != current_user.username and 
+            db_visit.patient.mobile_number != current_user.username
+        ):
+            raise HTTPException(status_code=403, detail="Access denied: You can only view your own medicine calendar.")
 
     patient_name = db_visit.patient.name if db_visit.patient else "Patient"
     doc_name = db_visit.doctor.name if db_visit.doctor else "Dr. Shweta Grover"
@@ -1819,6 +1860,13 @@ def get_visit_prescription_pdf(
     db_visit = db.query(models.Visit).filter(models.Visit.id == id, models.Visit.is_active == True).first()
     if not db_visit:
         raise HTTPException(status_code=404, detail="Visit not found")
+
+    if current_user.role == "Patient":
+        if not db_visit.patient or (
+            db_visit.patient.patient_id != current_user.username and 
+            db_visit.patient.mobile_number != current_user.username
+        ):
+            raise HTTPException(status_code=403, detail="Access denied: You can only view your own prescriptions.")
 
     filename = f"prescription_{db_visit.visit_id}.pdf"
     pdf_path = os.path.join(RECEIPTS_DIR, filename)
@@ -2369,7 +2417,7 @@ def get_prescription_suggested_items(
 async def get_service_recommendations(
     req: schemas.RecommendationRequest,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist"]))
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Doctor"]))
 ):
     # 1. Resolve patient details and visit prescription status
     age = req.age
@@ -2610,8 +2658,32 @@ def run_local_anomaly_checks(
             # check for adult formulations billed instead of pediatric syrups
             if any(w in name_lower for w in adult_markers) and not any(w in name_lower for w in pediatric_markers):
                 issues.append(f"Clinical Safety Warning: Pediatric patient (Age {patient_age}) billed for adult tablet formulation '{item.service_name}' instead of pediatric suspension.")
+
+    # 7. Gender-specific procedure mismatch / clinical contraindications
+    if patient_gender:
+        gen_lower = patient_gender.lower().strip()
+        is_female = gen_lower in ["female", "f", "woman"]
+        is_male = gen_lower in ["male", "m", "man"]
+        male_only_markers = ["prostate", "psa", "semen", "transrectal ultrasound", "trus", "circumcision"]
+        female_only_markers = ["pap smear", "mammography", "mammogram", "cervical cytology", "obstetric", "pregnancy test", "beta hcg", "antenatal"]
+        for item in items:
+            name_lower = item.service_name.lower()
+            if is_female and any(m in name_lower for m in male_only_markers):
+                issues.append(f"Clinical Gender Mismatch: Female patient billed for male-specific procedure '{item.service_name}'.")
+            elif is_male and any(f in name_lower for f in female_only_markers):
+                issues.append(f"Clinical Gender Mismatch: Male patient billed for female-specific procedure '{item.service_name}'.")
+
+    # 8. Statutory NHA / CGHS Tariff Overpricing
+    for item in items:
+        name_lower = item.service_name.lower()
+        for bm in NHA_BENCHMARKS:
+            if any(kw in name_lower for kw in bm.get("keywords", [])):
+                mrp_cap = bm.get("mrp_cap", 0.0)
+                if mrp_cap > 0 and item.amount > mrp_cap:
+                    issues.append(f"Tariff Overpricing: '{item.service_name}' billed at ₹{item.amount:.2f} exceeds statutory NHA/CGHS cap of ₹{mrp_cap:.2f}.")
+                break
                 
-    # 7. High Value Audit Limit
+    # 9. High Value Audit Limit
     for item in items:
         if item.amount > 5000 and not any(w in item.service_name.lower() for w in ["mri", "icu", "room rent"]):
             issues.append(f"Financial Alert: Item '{item.service_name}' has high amount of ₹{item.amount:.2f}. Verify pricing.")
@@ -2622,7 +2694,8 @@ def generate_auto_corrections(
     items: List[schemas.BillItemAnomaly], 
     patient_age: Optional[int], 
     issues: List[str],
-    diagnosis: Optional[str] = None
+    diagnosis: Optional[str] = None,
+    patient_gender: Optional[str] = None
 ) -> Optional[schemas.AutoCorrectionDetails]:
     if not issues:
         return None
@@ -2646,6 +2719,16 @@ def generate_auto_corrections(
     gst_room_rent_lines = []
     gst_cosmetic_lines = []
 
+    # Gender parsing
+    is_female = False
+    is_male = False
+    if patient_gender:
+        gen_lower = patient_gender.lower().strip()
+        is_female = gen_lower in ["female", "f", "woman"]
+        is_male = gen_lower in ["male", "m", "man"]
+    male_only_markers = ["prostate", "psa", "semen", "transrectal ultrasound", "trus", "circumcision"]
+    female_only_markers = ["pap smear", "mammography", "mammogram", "cervical cytology", "obstetric", "pregnancy test", "beta hcg", "antenatal"]
+
     for item in items:
         name_lower = item.service_name.lower().strip()
         
@@ -2655,12 +2738,23 @@ def generate_auto_corrections(
             continue
         seen_names.add(name_lower)
 
-        # 2. Inpatient ICU vs General Ward Room Rent redundancy
+        # Track clinical category for retained unique items
+        if any(w in name_lower for w in ["consultation", "opd fee", "doctor fee", "physician", "specialist"]):
+            has_consultation = True
+        if any(w in name_lower for w in ["blood", "test", "cbc", "xray", "ecg", "lft", "kft", "profile", "ultrasound", "glucose"]):
+            has_lab = True
+
+        # 2. Gender mismatch removal
+        if (is_female and any(m in name_lower for m in male_only_markers)) or (is_male and any(f in name_lower for f in female_only_markers)):
+            actions.append(f"Removed contraindicated gender-mismatched test '{item.service_name}' (saved ₹{item.amount:.2f})")
+            continue
+
+        # 3. Inpatient ICU vs General Ward Room Rent redundancy
         if has_icu and "room rent" in name_lower and "icu" not in name_lower:
             actions.append(f"Removed redundant general room rent '{item.service_name}' for ICU admission (saved ₹{item.amount:.2f})")
             continue
 
-        # 3. Inpatient ICU vs OPD Consultation / Registration mismatch
+        # 4. Inpatient ICU vs OPD Consultation / Registration mismatch
         if has_icu and any(w in name_lower for w in ["opd registration", "physician consultation", "specialist consultation"]):
             if "registration" in name_lower:
                 actions.append(f"Removed outpatient registration fee '{item.service_name}' for inpatient ICU admission (saved ₹{item.amount:.2f})")
@@ -2676,7 +2770,7 @@ def generate_auto_corrections(
                 has_consultation = True
                 continue
 
-        # 4. Pediatric age formulation safety replacement (patient_age < 12)
+        # 5. Pediatric age formulation safety replacement (patient_age < 12)
         if patient_age is not None and patient_age < 12:
             adult_markers = ["625mg", "650mg", "500mg", "400mg", "200mg", "tablet", "tab", "capsule", "cap"]
             pediatric_markers = ["suspension", "syrup", "susp", "syr", "drops", "drop", "pediatric"]
@@ -2693,7 +2787,7 @@ def generate_auto_corrections(
                 ))
                 continue
 
-        # 5. Room Rent GST Threshold (> ₹5,000)
+        # 6. Room Rent GST Threshold (> ₹5,000)
         if "room rent" in name_lower and "icu" not in name_lower and item.amount > 5000:
             gst_amount = round(item.amount * 0.05, 2)
             gst_room_rent_lines.append(schemas.AutoCorrectionItem(
@@ -2703,7 +2797,7 @@ def generate_auto_corrections(
             ))
             actions.append(f"Added statutory 5% GST (₹{gst_amount:.2f}) for Room Rent exceeding ₹5,000")
 
-        # 6. Cosmetic / Plastic Surgery GST (18%)
+        # 7. Cosmetic / Plastic Surgery GST (18%)
         if "cosmetic" in name_lower or "plastic surgery" in name_lower:
             if not is_accident_reconstructive:
                 gst_amount = round(item.amount * 0.18, 2)
@@ -2716,24 +2810,23 @@ def generate_auto_corrections(
             else:
                 actions.append(f"Certified '{item.service_name}' as GST-exempt under reconstructive diagnosis")
 
-        # 7. High-Value Audit Alert (> ₹5,000 excluding MRI, ICU, Room Rent)
-        if item.amount > 5000 and not any(w in name_lower for w in ["mri", "icu", "room rent"]):
-            matched_cap = None
-            for bm in NHA_BENCHMARKS:
-                if any(kw in name_lower for kw in bm["keywords"]):
-                    matched_cap = bm["mrp_cap"]
-                    break
-            if matched_cap and item.amount > matched_cap:
-                savings_high = item.amount - matched_cap
-                actions.append(f"Aligned overpriced item '{item.service_name}' with NHA tariff cap of ₹{matched_cap:.2f} (saved ₹{savings_high:.2f})")
-                corrected.append(schemas.AutoCorrectionItem(
-                    service_name=item.service_name,
-                    amount=matched_cap,
-                    correction_reason="Aligned with NHA statutory tariff cap"
-                ))
-                continue
-            else:
-                actions.append(f"Verified high-value tariff for '{item.service_name}' (₹{item.amount:.2f})")
+        # 8. Statutory NHA/CGHS Tariff Cap Alignment (Overpricing correction)
+        matched_cap = None
+        for bm in NHA_BENCHMARKS:
+            if any(kw in name_lower for kw in bm.get("keywords", [])):
+                matched_cap = bm.get("mrp_cap")
+                break
+        if matched_cap and item.amount > matched_cap:
+            savings_high = round(item.amount - matched_cap, 2)
+            actions.append(f"Aligned overpriced item '{item.service_name}' with NHA tariff cap of ₹{matched_cap:.2f} (saved ₹{savings_high:.2f})")
+            corrected.append(schemas.AutoCorrectionItem(
+                service_name=item.service_name,
+                amount=matched_cap,
+                correction_reason="Aligned with NHA statutory tariff cap"
+            ))
+            continue
+        elif item.amount > 5000 and not any(w in name_lower for w in ["mri", "icu", "room rent"]):
+            actions.append(f"Verified high-value tariff for '{item.service_name}' (₹{item.amount:.2f})")
 
         if any(w in name_lower for w in ["consultation", "opd fee", "doctor fee", "physician", "specialist"]):
             has_consultation = True
@@ -2746,7 +2839,7 @@ def generate_auto_corrections(
             correction_reason=None
         ))
 
-    # 8. Missing consultation fix
+    # 9. Missing consultation fix
     if has_lab and not has_consultation and not has_icu:
         corrected.insert(0, schemas.AutoCorrectionItem(
             service_name="OPD General Physician Consultation",
@@ -2777,7 +2870,7 @@ def generate_auto_corrections(
 async def check_bill_anomaly(
     req: schemas.AnomalyCheckRequest,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist"]))
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant"]))
 ):
     # Run deterministic local rules engine first
     local_issues = run_local_anomaly_checks(
@@ -2794,10 +2887,10 @@ async def check_bill_anomaly(
     
     if not api_key:
         # Fall back completely to local checks if Groq is not configured
-        has_critical = any("duplicate" in iss.lower() or "safety" in iss.lower() for iss in local_issues)
+        has_critical = any("duplicate" in iss.lower() or "safety" in iss.lower() or "gender" in iss.lower() for iss in local_issues)
         status = "critical" if has_critical else ("warning" if local_issues else "clear")
         summary = "Billing audit executed via Local Rule engine (AI model offline)."
-        auto_corr = generate_auto_corrections(req.items, req.patient_age, local_issues, diagnosis=req.diagnosis)
+        auto_corr = generate_auto_corrections(req.items, req.patient_age, local_issues, diagnosis=req.diagnosis, patient_gender=req.patient_gender)
         return schemas.AnomalyCheckResponse(
             status=status,
             issues=local_issues,
@@ -2825,6 +2918,7 @@ Check for:
 3. EXCESSIVE AMOUNTS (single items that seem abnormally high for an OPD context)
 4. MISSING essential service (e.g., Lab tests billed without a consultation)
 5. AGE-INAPPROPRIATE services (e.g., pediatric items for adult age)
+6. GENDER-INAPPROPRIATE services (e.g., prostate test for female patient)
 
 Respond ONLY with a JSON object, no preamble:
 {{
@@ -2850,9 +2944,9 @@ If no issues, return status "clear", empty issues list, and safe_to_proceed: tru
             if not any(dup_check in issue.lower() for dup_check in ["duplicate", "same item"]) or not any("duplicate" in x.lower() for x in local_issues):
                 combined_issues.append(issue)
 
-        has_critical = any("duplicate" in iss.lower() or "safety" in iss.lower() for iss in combined_issues)
+        has_critical = any("duplicate" in iss.lower() or "safety" in iss.lower() or "gender" in iss.lower() for iss in combined_issues)
         status = "critical" if has_critical else ("warning" if combined_issues else "clear")
-        auto_corr = generate_auto_corrections(req.items, req.patient_age, combined_issues, diagnosis=req.diagnosis)
+        auto_corr = generate_auto_corrections(req.items, req.patient_age, combined_issues, diagnosis=req.diagnosis, patient_gender=req.patient_gender)
 
         return schemas.AnomalyCheckResponse(
             status=status,
@@ -2863,9 +2957,9 @@ If no issues, return status "clear", empty issues list, and safe_to_proceed: tru
         )
     else:
         # Fall back to local issues in case of api request failure
-        has_critical = any("duplicate" in iss.lower() or "safety" in iss.lower() for iss in local_issues)
+        has_critical = any("duplicate" in iss.lower() or "safety" in iss.lower() or "gender" in iss.lower() for iss in local_issues)
         status = "critical" if has_critical else ("warning" if local_issues else "clear")
-        auto_corr = generate_auto_corrections(req.items, req.patient_age, local_issues, diagnosis=req.diagnosis)
+        auto_corr = generate_auto_corrections(req.items, req.patient_age, local_issues, diagnosis=req.diagnosis, patient_gender=req.patient_gender)
         return schemas.AnomalyCheckResponse(
             status=status,
             issues=local_issues,
@@ -2878,7 +2972,7 @@ If no issues, return status "clear", empty issues list, and safe_to_proceed: tru
 @app.post("/api/bills/verify-external-rates", response_model=schemas.RateVerificationResponse)
 async def verify_external_rates(
     req: schemas.RateVerificationRequest,
-    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist"]))
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant"]))
 ):
     results = []
     total_billed = 0.0
@@ -2890,9 +2984,14 @@ async def verify_external_rates(
         name_lower = item.service_name.lower()
         matched = None
         
+        # Initialize safe defaults to prevent any UnboundLocalError
+        category = "General Medical & OPD"
+        authority = "Hospital Standard OPD Rate"
+        source = "Standard Catalog Baseline"
+        
         # 1. Match local NHA/CGHS benchmark JSON
         for bm in NHA_BENCHMARKS:
-            if any(kw in name_lower for kw in bm["keywords"]):
+            if any(kw in name_lower for kw in bm.get("keywords", [])):
                 matched = bm
                 break
                 
@@ -2900,8 +2999,8 @@ async def verify_external_rates(
             nha_rate = matched["nha_cghs_rate"]
             mrp_cap = matched["mrp_cap"]
             official_name = matched["official_name"]
-            category = matched["category"]
-            authority = matched["authority"]
+            category = matched.get("category", "General Medical & OPD")
+            authority = matched.get("authority", "Local NHA Benchmark Master")
             source = "Local NHA Benchmark Master"
         else:
             # 2. Live Anakin MCP or standard hospital rate
@@ -2912,6 +3011,7 @@ async def verify_external_rates(
                 official_name = f"{item.service_name} (NHA/CGHS Online)"
                 authority = "NHA Live Web Verification (Anakin MCP)"
                 source = "Anakin MCP Web Search"
+                category = "Pharmacy & Drugs"
             else:
                 # Standard OPD catalog rate baseline
                 nha_rate = item.billed_amount
@@ -2919,6 +3019,7 @@ async def verify_external_rates(
                 official_name = f"{item.service_name} (Standard OPD Rate)"
                 authority = "Hospital Standard OPD Rate"
                 source = "Standard Catalog Baseline"
+                category = "General Medical & OPD"
 
         total_benchmark += nha_rate
         variance = item.billed_amount - nha_rate
@@ -3310,15 +3411,19 @@ def delete_bill(
     bill.is_active = False
     bill.deleted_at = datetime.datetime.utcnow()
     
-    # Soft-delete all payments linked to this bill
+    # Handle payments linked to this bill:
+    # Unlink Advance payments so the credit returns to the patient; soft-delete direct bill payments
     payments = db.query(models.Payment).filter(models.Payment.bill_id == id).all()
     for pay in payments:
-        pay.is_active = False
-        pay.deleted_at = datetime.datetime.utcnow()
+        if pay.payment_type == "Advance":
+            pay.bill_id = None
+        else:
+            pay.is_active = False
+            pay.deleted_at = datetime.datetime.utcnow()
         
     db.commit()
     
-    log_action(db, current_user.id, "DELETE_BILL", "bills", str(id), f"Soft-deleted bill {bill.bill_id} and all its linked payments")
+    log_action(db, current_user.id, "DELETE_BILL", "bills", str(id), f"Soft-deleted bill {bill.bill_id} and unlinked advance/soft-deleted payments")
     return {"message": "Bill soft deleted successfully"}
 
 
@@ -3410,9 +3515,10 @@ def record_payment(
         )
         db.add(db_payment)
         
-        # Update Bill status and balance
-        bill.balance_amount -= amount_to_pay
-        if bill.balance_amount == 0:
+        # Update Bill status and balance with floating point rounding
+        bill.balance_amount = round(float(bill.balance_amount) - float(amount_to_pay), 2)
+        if bill.balance_amount <= 0.01:
+            bill.balance_amount = 0.0
             bill.payment_status = "Paid"
         else:
             bill.payment_status = "Partial Paid"
@@ -3448,7 +3554,7 @@ def get_payments(
     bill_id: Optional[int] = None,
     visit_id: Optional[int] = None,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Accountant"]))
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Accountant", "Receptionist"]))
 ):
     q = db.query(models.Payment).filter(models.Payment.is_active == True)
     if bill_id:
@@ -3461,7 +3567,7 @@ def get_payments(
 def get_payment_receipts(
     id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Accountant"]))
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Accountant", "Receptionist"]))
 ):
     return db.query(models.Receipt).filter(models.Receipt.payment_id == id).all()
 
@@ -3582,8 +3688,29 @@ def create_doctor(
     db.add(db_doctor)
     db.commit()
     db.refresh(db_doctor)
+
+    # Ensure corresponding User account exists with role="Doctor" for clinical console access
+    doc_slug = re.sub(r'[^a-zA-Z0-9]', '', doctor_in.name.lower()).replace('dr', '', 1)
+    doc_username = f"dr_{doc_slug}" if doc_slug else f"doctor_{db_doctor.id}"
     
-    log_action(db, current_user.id, "CREATE_DOCTOR", "doctors", str(db_doctor.id), f"Added doctor {db_doctor.name}")
+    existing_user = db.query(models.User).filter(
+        or_(
+            func.lower(models.User.username) == doc_username.lower(),
+            func.lower(models.User.name) == doctor_in.name.lower()
+        )
+    ).first()
+    if not existing_user:
+        temp_pwd = auth.get_password_hash("Doctor@123")
+        db_user = models.User(
+            username=doc_username,
+            password_hash=temp_pwd,
+            role="Doctor",
+            name=doctor_in.name
+        )
+        db.add(db_user)
+        db.commit()
+    
+    log_action(db, current_user.id, "CREATE_DOCTOR", "doctors", str(db_doctor.id), f"Added doctor {db_doctor.name} (login: {doc_username})")
     return db_doctor
 
 @app.put("/api/doctors/{id}", response_model=schemas.DoctorResponse)
@@ -3931,7 +4058,10 @@ def export_excel(
 # SIPS DEMO QUICK-SEER
 # ----------------------------------------------------
 @app.post("/api/demo/seed")
-def seed_demo_data(db: Session = Depends(get_db)):
+def seed_demo_data(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.RoleChecker(["Admin"]))
+):
     # 1. Clean up existing demo patients (so seeding is repeatable)
     demo_mobiles = ["9876543210", "9988776655", "9566338291", "9456782341", "9900011122", "9900011133", "9900011144", "9900011155", "9900011166"]
     demo_patients = db.query(models.Patient).filter(models.Patient.mobile_number.in_(demo_mobiles)).all()

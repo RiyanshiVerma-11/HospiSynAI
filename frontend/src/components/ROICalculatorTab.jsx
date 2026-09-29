@@ -43,8 +43,9 @@ export default function ROICalculatorTab() {
     // 3. ROI Metrics
     const selectedSaaSPrice = dailyPatients > 60 ? growthPrice : starterPrice;
     const netMonthlySavings = monthlyLeakagePrevented - selectedSaaSPrice;
-    const roiPercentage = Math.round((netMonthlySavings / selectedSaaSPrice) * 100);
-    const paybackPeriodDays = Math.round((selectedSaaSPrice / (monthlyLeakagePrevented / 30)));
+    const roiPercentage = selectedSaaSPrice > 0 ? Math.round((netMonthlySavings / selectedSaaSPrice) * 100) : 0;
+    const dailyLeakagePrevented = monthlyLeakagePrevented / 30;
+    const paybackPeriodDays = dailyLeakagePrevented > 0 ? Math.max(1, Math.round(selectedSaaSPrice / dailyLeakagePrevented)) : 0;
 
     return {
       monthlyHoursSaved,
@@ -54,7 +55,7 @@ export default function ROICalculatorTab() {
       selectedSaaSPrice,
       netMonthlySavings,
       roiPercentage,
-      paybackPeriodDays: Math.max(1, paybackPeriodDays)
+      paybackPeriodDays
     };
   }, [dailyPatients, manPrescriptionTime, manBillingTime, billingErrorRate, avgLeakageCost]);
 
@@ -224,7 +225,7 @@ export default function ROICalculatorTab() {
               </div>
               <div>
                 <span className="text-[9px] font-extrabold uppercase text-slate-400 tracking-wider block">Payback Period</span>
-                <p className="text-2xl font-black text-slate-800">{metrics.paybackPeriodDays} Days</p>
+                <p className="text-2xl font-black text-slate-800">{metrics.paybackPeriodDays > 0 ? `${metrics.paybackPeriodDays} Days` : 'N/A'}</p>
                 <span className="text-[10px] font-bold text-slate-500">(Time to offset subscription)</span>
               </div>
             </div>

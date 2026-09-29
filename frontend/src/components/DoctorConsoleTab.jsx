@@ -697,8 +697,10 @@ export default function DoctorConsoleTab({
     const matched = visits.filter(v => {
       // Doctor queue scope filter
       if (doctorQueueScope === 'Mine' && currentUser?.name) {
+        if (!v.doctor?.name) return false;
         const lowerName = currentUser.name.toLowerCase();
-        const matchesDoc = v.doctor?.name?.toLowerCase().includes(lowerName) || lowerName.includes(v.doctor?.name?.toLowerCase() || '');
+        const docName = v.doctor.name.toLowerCase();
+        const matchesDoc = docName.includes(lowerName) || lowerName.includes(docName);
         if (!matchesDoc) return false;
       }
 

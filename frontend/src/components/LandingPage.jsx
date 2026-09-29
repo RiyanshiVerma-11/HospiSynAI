@@ -46,7 +46,8 @@ import {
   Send,
   AlertCircle,
   Loader2,
-  Check
+  Check,
+  XCircle
 } from 'lucide-react';
 import AppointmentBookingModal from './AppointmentBookingModal';
 
@@ -211,6 +212,7 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
   const [showInstallBtn, setShowInstallBtn] = useState(true);
   const [showInstructionModal, setShowInstructionModal] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [probCategory, setProbCategory] = useState('all');
 
   // OPD Self-Booking & Live Queue State
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -409,6 +411,7 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
 
   // Section reveal hooks
   const [heroRef, heroInView] = useInView(0.1);
+  const [probRef, probInView] = useInView(0.12);
   const [demoRef, demoInView] = useInView(0.15);
   const [techRef, techInView] = useInView(0.15);
   const [faqRef, faqInView] = useInView(0.15);
@@ -458,6 +461,110 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
       question: "Is patient data safe, secure, and compliant with health data standards?",
       answer: "HospiSynAI strictly adheres to DISHA and healthcare data security protocols. The system features role-based access control (Admin, Doctor, Receptionist, Auditor), cryptographic audit trails for all invoice modifications, and localized processing ensuring sensitive medical records are protected from unauthorized access or external data harvesting.",
       highlight: "Full role isolation and immutable audit logs ensure complete clinical and financial compliance."
+    }
+  ];
+
+
+  const problemSolutions = [
+    {
+      id: 'opd-queue',
+      category: 'opd',
+      pillar: '1. OPD Flow & Token Management',
+      tag: 'OPD Friction',
+      icon: Ticket,
+      problemTitle: 'Manual Registers, Token Collisions & Chaotic Waiting Rooms',
+      problemPoints: [
+        'Patients stand in long chaotic lines; manual slip registers get misplaced or bypassed, sparking angry arguments at reception.',
+        'Walk-in emergency cases collide with pre-booked appointments with zero systematic queue coordination.',
+        'Patients constantly crowd doctor consulting room doors because neither patient nor staff has visibility into live wait times.'
+      ],
+      problemMetric: '45–60 Mins',
+      problemMetricLabel: 'Avg. Anxiety & Wait Time',
+      solutionTitle: 'Sequential Conflict-Free Tokens + Live Gate QR Check-in',
+      solutionPoints: [
+        'Deterministic sequential token generator (Token #1, #2, #3...) ensures zero collisions between online bookings and walk-ins.',
+        'Contactless Hospital Gate QR Code: Arriving patients scan the poster with any smartphone to confirm arrival, switching status to "Arrived" in OPD.',
+        'Live OPD Queue Tracker broadcasts real-time token counts, active doctor room status, and estimated wait minutes to waiting screens and mobile phones.'
+      ],
+      solutionMetric: '12 Mins',
+      solutionMetricLabel: 'Smooth Streamlined Flow',
+      simulatorTab: null,
+      simulatorLabel: 'Book Appointment & Live Check-in'
+    },
+    {
+      id: 'voice-burnout',
+      category: 'clinical',
+      pillar: '2. Doctor Desk & Clinical Notes',
+      tag: 'Documentation Burnout',
+      icon: Mic,
+      problemTitle: 'Doctor Typing Fatigue & Vernacular Language Barrier',
+      problemPoints: [
+        'Patients describe complex symptoms in colloquial Hindi/Hinglish ("2 din se tez bukhar hai aur badan tootta hai"), but EHR software demands English typing.',
+        'Doctors spend 40%+ of patient consultation time staring at a keyboard rather than examining the patient.',
+        'Rushed typing leads to truncated medical records, missing drug interactions, and severe clinician burnout.'
+      ],
+      problemMetric: '6+ Minutes',
+      problemMetricLabel: 'Per Patient EHR Typing',
+      solutionTitle: 'Ambient Voice Scribe (मरीज़ की आवाज़) + Instant Clinical AI',
+      solutionPoints: [
+        'Ambient Audio Intake: Doctor/patient speaks naturally in Hindi, Hinglish, or English while visualizer captures live voice.',
+        'Groq Ultra-Low Latency Clinical AI converts spoken vernacular into standard medical English diagnoses, differential assessments, and lab tests in <800ms.',
+        'Automated OPD Prescription: Generates precise BD/OD/TID schedules, food instructions, and pediatric/geriatric safety warnings with zero doctor typing.'
+      ],
+      solutionMetric: '45 Seconds',
+      solutionMetricLabel: 'Zero-Typing Rx Generation',
+      simulatorTab: 'voice',
+      simulatorLabel: 'Try Ambient Voice Simulator'
+    },
+    {
+      id: 'billing-auditor',
+      category: 'billing',
+      pillar: '3. Billing Integrity & Compliance',
+      tag: 'Revenue Leakage',
+      icon: ShieldAlert,
+      problemTitle: 'Duplicate Tests, Dangerous Mismatches & Missing GST',
+      problemPoints: [
+        'Redundant bill items (e.g. charging both ICU Bed and General AC Room, or duplicate Complete Blood Counts) slip past cashiers.',
+        'Clinical incompatibilities: Adult 625mg tablets billed to toddlers without pediatric suspension adjustments, creating safety hazards.',
+        'GST Non-Compliance: Missing statutory 5% GST on luxury room rent (>₹5,000/day), missing 18% GST on elective cosmetic procedures, and wide divergence from CGHS/NHA tariff rates.'
+      ],
+      problemMetric: '15–20%',
+      problemMetricLabel: 'Hospital Revenue Leakage & Audit Risk',
+      solutionTitle: 'Pre-Invoice AI Auditor + 1-Click Auto-Corrections',
+      solutionPoints: [
+        'Hybrid Rule Engine + LLM pre-scans every draft bill before invoice generation against clinical and statutory tax criteria.',
+        '1-Click Auto-Resolve: Eliminates duplicate room charges, swaps adult tablets to pediatric suspensions, and automatically attaches statutory 5% & 18% GST items.',
+        'NHA & CGHS Live Price Benchmark Intelligence: Flags overpriced or undercharged procedures against government benchmarks in real time.'
+      ],
+      solutionMetric: '100% Audited',
+      solutionMetricLabel: 'Zero GST Leaks & Full Safety',
+      simulatorTab: 'auditor',
+      simulatorLabel: 'Test Pre-Invoice AI Auditor'
+    },
+    {
+      id: 'patient-adherence',
+      category: 'patient',
+      pillar: '4. Patient Discharge & Adherence',
+      tag: 'Communication Gap',
+      icon: Languages,
+      problemTitle: 'Illegible Handwriting, Latin Jargon & Missed Doses',
+      problemPoints: [
+        'Patients cannot decipher handwritten prescriptions or cryptic Latin codes like "TID PC 5D", leading to dangerous medication errors.',
+        'Non-English speaking patients receive English-only discharge slips they cannot understand or follow at home.',
+        'Zero post-consultation reminder system: Patients forget dosage timings, stop antibiotic courses halfway, and suffer preventable relapse.'
+      ],
+      problemMetric: '52%',
+      problemMetricLabel: 'Patient Non-Adherence Rate',
+      solutionTitle: '11 Regional Language Handouts + Google/Apple Calendar Alarms',
+      solutionPoints: [
+        'Instant Vernacular Translation: Auto-translates prescriptions into 11 Indian native languages (Hindi, Bengali, Tamil, Telugu, Marathi, Gujarati, etc.) with Morning/Afternoon/Night timeline summaries.',
+        '1-Click Calendar Sync: Generates Google Calendar reminder links and downloadable .ics calendar files that set daily alarm schedules on patient smartphones.',
+        'Self-Service Patient Portal: Patients access digitized bilingual A5 PDF receipts, clinical notes, and digital health cards via phone number or UHID without visiting reception.'
+      ],
+      solutionMetric: '94%',
+      solutionMetricLabel: 'Observed Medication Adherence',
+      simulatorTab: 'vernacular',
+      simulatorLabel: 'View 11-Language Translator'
     }
   ];
 
@@ -519,6 +626,9 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
         {/* Center Nav */}
         <div className="hidden md:flex items-center gap-6">
           <nav className="flex items-center gap-1 text-xs font-semibold text-slate-300">
+            <a href="#problem-solution" className="px-3.5 py-1.5 rounded-lg hover:bg-white/5 hover:text-teal-300 transition-colors">
+              Problem & Solution
+            </a>
             <a href="#features" className="px-3.5 py-1.5 rounded-lg hover:bg-white/5 hover:text-teal-300 transition-colors">
               Key Capabilities
             </a>
@@ -890,6 +1000,190 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
             ))}
           </div>
         </div>
+
+        
+        {/* =========================================================================
+            PROBLEM VS SOLUTION SECTION (Problem Kya Thi & Humne Kaise Solve Ki)
+        ========================================================================= */}
+        <section id="problem-solution" ref={probRef} className="max-w-7xl mx-auto px-6 py-16 scroll-mt-28 relative">
+          {/* Ambient Glow */}
+          <div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] rounded-full blur-[130px] pointer-events-none opacity-20 -z-10"
+            style={{ background: 'radial-gradient(circle, rgba(244,63,94,0.3) 0%, rgba(20,184,166,0.35) 60%, transparent 100%)' }}
+          />
+
+          <div
+            className="text-center mb-12"
+            style={{
+              opacity: probInView ? 1 : 0,
+              transform: probInView ? 'translateY(0)' : 'translateY(30px)',
+              transition: 'opacity 0.7s ease, transform 0.7s ease'
+            }}
+          >
+            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-rose-400 bg-rose-500/10 px-4 py-1.5 rounded-full border border-rose-500/20 mb-3 shadow-sm shadow-rose-500/10">
+              <Scale className="w-3.5 h-3.5 text-rose-400" />
+              Problem vs Solution • असल समस्या और समाधान
+            </div>
+            <h2 className="text-2xl md:text-5xl font-black text-white tracking-tight mb-3">
+              Problem Kya Thi — <span className="bg-gradient-to-r from-teal-300 via-emerald-400 to-cyan-300 bg-clip-text text-transparent">Aur Humne Kaise Solve Ki?</span>
+            </h2>
+            <p className="text-slate-400 text-sm md:text-base max-w-3xl mx-auto leading-relaxed">
+              पारंपरिक अस्पतालों में घंटों का इंतज़ार, डॉक्टरों का कंप्यूटर पर टाइपिंग बर्नआउट, बिना ऑडिट के बिलिंग लीकेज और दवाओं की गलत खुराक आम बात थी। देखिए <span className="text-teal-300 font-semibold">HospiSynAI</span> ने इन चारों जटिल समस्याओं को कैसे जड़ से खत्म किया।
+            </p>
+
+            {/* Quick Category Filters */}
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-6">
+              {[
+                { id: 'all', label: 'All 4 Pillars • सभी 4 स्तंभ' },
+                { id: 'opd', label: '1. OPD Queue & Gate' },
+                { id: 'clinical', label: '2. Doctor Desk & Voice' },
+                { id: 'billing', label: '3. Pre-Invoice & GST' },
+                { id: 'patient', label: '4. Patient & Handouts' }
+              ].map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setProbCategory(cat.id)}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${probCategory === cat.id
+                    ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-md shadow-teal-500/25 scale-[1.03]'
+                    : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 border border-white/5'
+                    }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Cards Grid */}
+          <div className="space-y-8">
+            {problemSolutions
+              .filter(item => probCategory === 'all' || item.category === probCategory)
+              .map((item, idx) => {
+                const IconComponent = item.icon;
+                return (
+                  <div
+                    key={item.id}
+                    className="relative rounded-3xl border border-white/10 bg-[#070e1c]/80 backdrop-blur-xl overflow-hidden shadow-2xl transition-all duration-300 hover:border-white/20"
+                    style={{
+                      opacity: probInView ? 1 : 0,
+                      transform: probInView ? 'translateY(0)' : 'translateY(40px)',
+                      transition: `opacity 0.6s ease ${idx * 0.1}s, transform 0.6s ease ${idx * 0.1}s`
+                    }}
+                  >
+                    {/* Top Header Strip */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3.5 border-b border-white/10 bg-white/[0.02]">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400">
+                          <IconComponent className="w-4 h-4" />
+                        </div>
+                        <span className="text-sm font-extrabold text-white tracking-wide">
+                          {item.pillar}
+                        </span>
+                      </div>
+                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300">
+                        {item.tag}
+                      </span>
+                    </div>
+
+                    {/* Side-by-Side Comparison Container */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-white/10">
+                      {/* Left Side: The Problem */}
+                      <div className="p-6 md:p-8 bg-gradient-to-br from-rose-950/20 via-transparent to-transparent flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider text-rose-400 bg-rose-500/15 border border-rose-500/30">
+                              <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                              Problem Kya Thi • The Friction Point
+                            </span>
+                          </div>
+                          <h3 className="text-lg md:text-xl font-bold text-white mb-4 leading-snug">
+                            {item.problemTitle}
+                          </h3>
+                          <ul className="space-y-3 mb-6">
+                            {item.problemPoints.map((point, pIdx) => (
+                              <li key={pIdx} className="flex items-start gap-2.5 text-xs md:text-sm text-slate-300/90 leading-relaxed">
+                                <XCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                                <span>{point}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        {/* Metric Callout */}
+                        <div className="pt-4 border-t border-rose-500/15 flex items-center justify-between bg-rose-950/30 px-4 py-3 rounded-2xl border border-rose-500/20">
+                          <span className="text-xs text-rose-300/80 font-medium">
+                            {item.problemMetricLabel}
+                          </span>
+                          <span className="text-base md:text-lg font-black text-rose-400">
+                            {item.problemMetric}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Right Side: How We Solved It */}
+                      <div className="p-6 md:p-8 bg-gradient-to-br from-teal-950/25 via-emerald-950/10 to-transparent flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider text-teal-300 bg-teal-500/15 border border-teal-500/30">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
+                              Humne Kaise Solve Ki • HospiSynAI Fix
+                            </span>
+                          </div>
+                          <h3 className="text-lg md:text-xl font-bold text-white mb-4 leading-snug">
+                            {item.solutionTitle}
+                          </h3>
+                          <ul className="space-y-3 mb-6">
+                            {item.solutionPoints.map((point, sIdx) => (
+                              <li key={sIdx} className="flex items-start gap-2.5 text-xs md:text-sm text-slate-200 leading-relaxed">
+                                <CheckCircle2 className="w-4 h-4 text-teal-400 flex-shrink-0 mt-0.5" />
+                                <span>{point}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        {/* Metric & Interactive Link */}
+                        <div className="pt-4 border-t border-teal-500/20 flex flex-wrap items-center justify-between gap-3 bg-teal-950/35 px-4 py-3 rounded-2xl border border-teal-500/25">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-teal-200/80 font-medium">
+                              {item.solutionMetricLabel}:
+                            </span>
+                            <span className="text-base md:text-lg font-black text-teal-300">
+                              {item.solutionMetric}
+                            </span>
+                          </div>
+
+                          {item.simulatorTab ? (
+                            <button
+                              onClick={() => {
+                                setActiveSimTab(item.simulatorTab);
+                                if (demoRef?.current) {
+                                  demoRef.current.scrollIntoView({ behavior: 'smooth' });
+                                }
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-teal-300 hover:text-white bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/30 transition-all cursor-pointer"
+                            >
+                              <span>{item.simulatorLabel}</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setShowBookingModal(true)}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-teal-300 hover:text-white bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/30 transition-all cursor-pointer"
+                            >
+                              <span>{item.simulatorLabel}</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </section>
+
 
         {/* =========================================================================
             INTERACTIVE SIMULATOR SECTION

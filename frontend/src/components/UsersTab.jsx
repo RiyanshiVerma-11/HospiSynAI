@@ -29,6 +29,7 @@ export default function UsersTab({
                   <td className="py-2 px-3">
                     <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
                       u.role === 'Admin' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
+                      u.role === 'Doctor' ? 'bg-purple-50 text-purple-700 border border-purple-100' :
                       u.role === 'Accountant' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
                       'bg-sky-50 text-sky-700 border border-sky-100'
                     }`}>{u.role}</span>
@@ -82,6 +83,7 @@ export default function UsersTab({
               >
                 <option value="Receptionist">Receptionist (Front-Desk Desk)</option>
                 <option value="Accountant">Accountant (Payments & Receipts)</option>
+                <option value="Doctor">Doctor (Clinical Console)</option>
                 <option value="Admin">System Administrator</option>
               </select>
             </div>

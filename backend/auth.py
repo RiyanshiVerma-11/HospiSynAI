@@ -10,7 +10,10 @@ from database import get_db
 import models
 
 # Security configurations
-SECRET_KEY = os.getenv("JWT_SECRET", "supersecretgooglesde3hospitalbillingsystemkey12345")
+raw_secret = os.getenv("JWT_SECRET")
+if not raw_secret:
+    print("[SECURITY WARNING] JWT_SECRET environment variable is missing. Using local fallback secret.")
+SECRET_KEY = raw_secret or "supersecretgooglesde3hospitalbillingsystemkey12345"
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))
 
