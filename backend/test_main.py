@@ -452,50 +452,64 @@ def test_ai_symptom_triage_emergency_and_routine(client):
 def test_sequential_opd_tokens_across_bookings_and_visits(client):
     """Verify OPD tokens strictly increment sequentially without collision across online and receptionist walk-ins."""
     receptionist_token = auth.create_access_token({"sub": "receptionist", "role": "Receptionist"})
+    created_patient_id = None
 
-    # 1. Book first appointment online
-    res1 = client.post("/api/appointments/book", json={
-        "name": "Token Test Patient 1",
-        "age": 30,
-        "gender": "Male",
-        "mobile": "9811002233",
-        "chief_complaints": "Routine checkup"
-    })
-    assert res1.status_code == 200
-    token1 = res1.json()["token_number"]
-    assert token1 >= 1
+    try:
+        # 1. Book first appointment online
+        res1 = client.post("/api/appointments/book", json={
+            "name": "Token Test Patient 1",
+            "age": 30,
+            "gender": "Male",
+            "mobile": "9811002233",
+            "chief_complaints": "Routine checkup"
+        })
+        assert res1.status_code == 200
+        token1 = res1.json()["token_number"]
+        assert token1 >= 1
 
-    # 2. Book second appointment online
-    res2 = client.post("/api/appointments/book", json={
-        "name": "Token Test Patient 2",
-        "age": 35,
-        "gender": "Female",
-        "mobile": "9811002244",
-        "chief_complaints": "Joint pain"
-    })
-    assert res2.status_code == 200
-    token2 = res2.json()["token_number"]
-    assert token2 == token1 + 1
+        # 2. Book second appointment online
+        res2 = client.post("/api/appointments/book", json={
+            "name": "Token Test Patient 2",
+            "age": 35,
+            "gender": "Female",
+            "mobile": "9811002244",
+            "chief_complaints": "Joint pain"
+        })
+        assert res2.status_code == 200
+        token2 = res2.json()["token_number"]
+        assert token2 == token1 + 1
 
-    # 3. Book walk-in visit via Receptionist
-    # Create patient first
-    p_res = client.post("/api/patients", json={
-        "name": "Walk-In Token Patient",
-        "age": 40,
-        "gender": "Male",
-        "mobile_number": "9811002255"
-    }, headers={"Authorization": f"Bearer {receptionist_token}"})
-    assert p_res.status_code == 200
-    patient_id = p_res.json()["id"]
+        # 3. Book walk-in visit via Receptionist
+        p_res = client.post("/api/patients", json={
+            "name": "Walk-In Token Patient",
+            "age": 40,
+            "gender": "Male",
+            "mobile_number": "9811002255"
+        }, headers={"Authorization": f"Bearer {receptionist_token}"})
+        assert p_res.status_code == 200
+        created_patient_id = p_res.json()["id"]
 
-    v_res = client.post("/api/visits", json={
-        "patient_id": patient_id,
-        "reason": "Walk-in consultation",
-        "status": "Waiting"
-    }, headers={"Authorization": f"Bearer {receptionist_token}"})
-    assert v_res.status_code == 200
-    token3 = v_res.json()["token_number"]
-    assert token3 == token2 + 1
+        v_res = client.post("/api/visits", json={
+            "patient_id": created_patient_id,
+            "reason": "Walk-in consultation",
+            "status": "Waiting"
+        }, headers={"Authorization": f"Bearer {receptionist_token}"})
+        assert v_res.status_code == 200
+        token3 = v_res.json()["token_number"]
+        assert token3 == token2 + 1
+    finally:
+        # Strictly clean up any test records so the live DB remains clean
+        from database import SessionLocal
+        import models
+        db = SessionLocal()
+        try:
+            db.query(models.Appointment).filter(models.Appointment.name.ilike('%Token Test%')).delete(synchronize_session=False)
+            if created_patient_id:
+                db.query(models.Visit).filter(models.Visit.patient_id == created_patient_id).delete(synchronize_session=False)
+                db.query(models.Patient).filter(models.Patient.id == created_patient_id).delete(synchronize_session=False)
+            db.commit()
+        except Exception:
+            db.rollback()
 
 
 def test_anomaly_check_gender_mismatch():
