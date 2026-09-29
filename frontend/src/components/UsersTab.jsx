@@ -14,7 +14,8 @@ import {
   Calendar,
   Filter,
   CheckCircle2,
-  Briefcase
+  Briefcase,
+  Mail
 } from 'lucide-react';
 
 export default function UsersTab({
@@ -321,7 +322,7 @@ export default function UsersTab({
                 <th className="py-2.5 px-3">Username / Login</th>
                 <th className="py-2.5 px-3">Full Name</th>
                 {activeCategory === 'doctor' && <th className="py-2.5 px-3">Degree / Specialty</th>}
-                {activeCategory === 'patient' && <th className="py-2.5 px-3">Patient Contact</th>}
+                {activeCategory === 'patient' && <th className="py-2.5 px-3">Contact & Email</th>}
                 <th className="py-2.5 px-3">Role Access</th>
                 <th className="py-2.5 px-3">Created Date</th>
                 {activeCategory === 'patient' && <th className="py-2.5 px-3 text-right">Action</th>}
@@ -381,9 +382,19 @@ export default function UsersTab({
                       {activeCategory === 'patient' && (
                         <td className="py-2 px-3 text-slate-600 text-[11px]">
                           {patInfo ? (
-                            <span className="font-medium">
-                              📱 {patInfo.mobile_number || 'No phone'} {patInfo.age ? `• ${patInfo.age}y` : ''}
-                            </span>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-semibold text-slate-800">
+                                📱 {patInfo.mobile_number || 'No phone'} {patInfo.age ? `• ${patInfo.age}y` : ''}
+                              </span>
+                              {patInfo.email ? (
+                                <span className="text-[10.5px] text-teal-700 flex items-center gap-1 font-mono font-medium">
+                                  <Mail className="w-3 h-3 text-teal-600 flex-shrink-0" />
+                                  <span className="truncate max-w-[180px]">{patInfo.email}</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-slate-400 italic">No email linked</span>
+                              )}
+                            </div>
                           ) : (
                             <span className="text-slate-400 font-mono text-[10px]">UHID Registered</span>
                           )}

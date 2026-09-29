@@ -2604,21 +2604,28 @@ export default function PatientSearchTab({
                   </div>
 
                   <div>
-                    <label htmlFor="patient_email" className="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <label htmlFor="patient_email" className="block text-slate-700 text-xs font-bold uppercase tracking-wider mb-1 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
-                        <span>Email Address (For Digital Receipts & PDF Handouts)</span>
+                        <Mail className="w-3.5 h-3.5 text-teal-600" />
+                        <span>Email Address (For Digital Bills & Prescriptions)</span>
+                      </span>
+                      <span className="text-[9.5px] text-teal-700 font-semibold bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                        📧 Auto-Email Bills & Rx
                       </span>
                     </label>
-                    <input
-                      id="patient_email"
-                      name="email"
-                      type="email"
-                      autoComplete="email"
-                      className="w-full rounded-xl px-3.5 py-2.5 text-xs placeholder-slate-400 focus:outline-none transition-all font-medium bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500"
-                      placeholder="patient@example.com (Optional)"
-                      value={newPatient.email || ''}
-                      onChange={(e) => setNewPatient({ ...newPatient, email: e.target.value })}
-                    />
+                    <div className="relative">
+                      <input
+                        id="patient_email"
+                        name="email"
+                        type="email"
+                        autoComplete="email"
+                        className="w-full rounded-xl pl-9 pr-3.5 py-2.5 text-xs placeholder-slate-400 focus:outline-none transition-all font-medium bg-slate-50 border border-slate-300 focus:bg-white focus:border-teal-500 shadow-2xs"
+                        placeholder="patient.email@example.com (To receive digital bills & prescriptions)"
+                        value={newPatient.email || ''}
+                        onChange={(e) => setNewPatient({ ...newPatient, email: e.target.value })}
+                      />
+                      <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
                   </div>
                 </div>
 

@@ -188,36 +188,7 @@ def run():
                 patient.is_active = True
                 db.commit()
 
-            # Create User login for patient by username, email, and uhid
-            # 1. username login: rp["username"]
-            u1 = db.query(models.User).filter(models.User.username == rp["username"]).first()
-            if not u1:
-                u1 = models.User(
-                    username=rp["username"],
-                    password_hash=auth.get_password_hash(rp["password"]),
-                    role="Patient",
-                    name=rp["name"]
-                )
-                db.add(u1)
-            else:
-                u1.password_hash = auth.get_password_hash(rp["password"])
-                u1.role = "Patient"
-                u1.name = rp["name"]
-
-            # 2. email login: rp["email"]
-            u2 = db.query(models.User).filter(models.User.username == rp["email"]).first()
-            if not u2:
-                u2 = models.User(
-                    username=rp["email"],
-                    password_hash=auth.get_password_hash(rp["password"]),
-                    role="Patient",
-                    name=rp["name"]
-                )
-                db.add(u2)
-            else:
-                u2.password_hash = auth.get_password_hash(rp["password"])
-
-            # 3. UHID login: rp["uhid"]
+            # Create single canonical User login for patient by standardized Patient ID (UHID)
             u3 = db.query(models.User).filter(models.User.username == rp["uhid"]).first()
             if not u3:
                 u3 = models.User(
@@ -229,7 +200,8 @@ def run():
                 db.add(u3)
             else:
                 u3.password_hash = auth.get_password_hash(rp["password"])
-
+                u3.role = "Patient"
+                u3.name = rp["name"]
             db.commit()
 
             # Create / refresh a clean active Visit

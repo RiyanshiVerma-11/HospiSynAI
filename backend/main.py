@@ -617,21 +617,35 @@ def register_patient(
     current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist"]))
 ):
     patient_id = generate_unique_id(db, "PAT", models.Patient, models.Patient.patient_id)
+    clean_email = patient_in.email.strip().lower() if patient_in.email and patient_in.email.strip() else None
     db_patient = models.Patient(
         patient_id=patient_id,
         abha_id=patient_in.abha_id,
-        name=patient_in.name,
+        name=patient_in.name.strip(),
         age=patient_in.age,
         gender=patient_in.gender,
-        mobile_number=patient_in.mobile_number,
-        email=patient_in.email,
+        mobile_number=patient_in.mobile_number.strip(),
+        email=clean_email,
         address=patient_in.address
     )
     db.add(db_patient)
     db.commit()
     db.refresh(db_patient)
+
+    # Automatically generate standardized Patient Portal User Account using Patient ID (PAT-...)
+    existing_user = db.query(models.User).filter(models.User.username == patient_id).first()
+    if not existing_user:
+        temp_pwd = auth.get_password_hash("pat123")
+        db_user = models.User(
+            username=patient_id,
+            password_hash=temp_pwd,
+            role="Patient",
+            name=db_patient.name
+        )
+        db.add(db_user)
+        db.commit()
     
-    log_action(db, current_user.id, "REGISTER_PATIENT", "patients", str(db_patient.id), f"Registered patient {db_patient.name} with ID {db_patient.patient_id}")
+    log_action(db, current_user.id, "REGISTER_PATIENT", "patients", str(db_patient.id), f"Registered patient {db_patient.name} with ID {db_patient.patient_id} (email: {clean_email or 'N/A'})")
     return db_patient
 
 @app.get("/api/patients", response_model=List[schemas.PatientResponse])
