@@ -30,7 +30,13 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   GripVertical,
-  ExternalLink
+  ExternalLink,
+  Filter,
+  SlidersHorizontal,
+  RotateCcw,
+  ChevronDown,
+  ChevronUp,
+  Clock
 } from 'lucide-react';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { buildMasterGoogleCalendarUrl, buildFollowUpGoogleCalendarUrl, downloadClientIcsFile } from '../utils/calendarService';
@@ -305,6 +311,134 @@ export default function PatientSearchTab({
   });
   const [finderCollapsed, setFinderCollapsed] = React.useState(false);
   const [isDraggingFinder, setIsDraggingFinder] = React.useState(false);
+
+  // Patient Finder Comprehensive Filters State (Age, Gender, Date Range, Status)
+  const [filterGender, setFilterGender] = React.useState('ALL'); // 'ALL' | 'Male' | 'Female' | 'Other'
+  const [filterAgeGroup, setFilterAgeGroup] = React.useState('ALL'); // 'ALL' | 'CHILD' | 'ADULT' | 'SENIOR' | 'CUSTOM'
+  const [filterMinAge, setFilterMinAge] = React.useState('');
+  const [filterMaxAge, setFilterMaxAge] = React.useState('');
+  const [filterDateFrom, setFilterDateFrom] = React.useState(''); // YYYY-MM-DD
+  const [filterDateTill, setFilterDateTill] = React.useState(''); // YYYY-MM-DD
+  const [filterStatus, setFilterStatus] = React.useState('ALL'); // 'ALL' | 'BILL_PENDING' | 'BILL_CLEARED' | 'HAS_VISIT' | 'HAS_RX'
+  const [showAdvancedFilters, setShowAdvancedFilters] = React.useState(false);
+
+  const activeFiltersCount = React.useMemo(() => {
+    let count = 0;
+    if (filterGender !== 'ALL') count++;
+    if (filterAgeGroup !== 'ALL') count++;
+    if (filterDateFrom) count++;
+    if (filterDateTill) count++;
+    if (filterStatus !== 'ALL') count++;
+    return count;
+  }, [filterGender, filterAgeGroup, filterDateFrom, filterDateTill, filterStatus]);
+
+  const resetAllFilters = () => {
+    setFilterGender('ALL');
+    setFilterAgeGroup('ALL');
+    setFilterMinAge('');
+    setFilterMaxAge('');
+    setFilterDateFrom('');
+    setFilterDateTill('');
+    setFilterStatus('ALL');
+  };
+
+  const setDatePreset = (preset) => {
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    if (preset === 'TODAY') {
+      setFilterDateFrom(todayStr);
+      setFilterDateTill(todayStr);
+    } else if (preset === '7DAYS') {
+      const d = new Date();
+      d.setDate(d.getDate() - 7);
+      setFilterDateFrom(d.toISOString().slice(0, 10));
+      setFilterDateTill(todayStr);
+    } else if (preset === 'MONTH') {
+      const start = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+      setFilterDateFrom(start);
+      setFilterDateTill(todayStr);
+    } else if (preset === 'CLEAR') {
+      setFilterDateFrom('');
+      setFilterDateTill('');
+    }
+  };
+
+  // Filtered patients list based on all active filter parameters
+  const filteredPatients = React.useMemo(() => {
+    if (!Array.isArray(patients)) return [];
+
+    return patients.filter((pat) => {
+      // 1. Gender filter
+      if (filterGender !== 'ALL') {
+        const pGen = (pat.gender || '').toLowerCase();
+        if (filterGender.toLowerCase() !== pGen) return false;
+      }
+
+      // 2. Age group filter
+      const pAge = typeof pat.age === 'number' ? pat.age : parseInt(pat.age || 0, 10);
+      if (filterAgeGroup === 'CHILD' && pAge >= 18) return false;
+      if (filterAgeGroup === 'ADULT' && (pAge < 18 || pAge > 50)) return false;
+      if (filterAgeGroup === 'SENIOR' && pAge <= 50) return false;
+      if (filterAgeGroup === 'CUSTOM') {
+        if (filterMinAge !== '' && pAge < parseInt(filterMinAge, 10)) return false;
+        if (filterMaxAge !== '' && pAge > parseInt(filterMaxAge, 10)) return false;
+      }
+
+      // 3. Date Range (Registration Date or Latest Visit Date)
+      if (filterDateFrom || filterDateTill) {
+        let patDate = null;
+        if (pat.created_at) {
+          const d = new Date(pat.created_at);
+          if (!isNaN(d.getTime())) patDate = d.toISOString().slice(0, 10);
+        }
+        if (!patDate && pat.visits && pat.visits.length > 0 && pat.visits[0].created_at) {
+          const d = new Date(pat.visits[0].created_at);
+          if (!isNaN(d.getTime())) patDate = d.toISOString().slice(0, 10);
+        }
+
+        if (patDate) {
+          if (filterDateFrom && patDate < filterDateFrom) return false;
+          if (filterDateTill && patDate > filterDateTill) return false;
+        }
+      }
+
+      // 4. Clinical & Billing Status Filter
+      if (filterStatus !== 'ALL') {
+        const isSelected = selectedPatient?.id === pat.id;
+        const visitsList = (isSelected && selectedPatient?.visits?.length > 0) ? selectedPatient.visits : (pat.visits || []);
+        const allBills = isSelected ? (patientHistory || []) : visitsList.flatMap(v => (v && v.bills) || []);
+        const safeUnpaidBills = Array.isArray(unpaidBills) ? unpaidBills : [];
+        const unpaidFromVisits = allBills.find(b => b && (b.balance_amount > 0 || b.payment_status === 'Pending' || b.payment_status === 'Partial Paid'));
+        const unpaidFromGlobal = safeUnpaidBills.find(b => b && (
+          (b.patient_id_str && b.patient_id_str === pat.patient_id) ||
+          (b.patient_id && b.patient_id === pat.id) ||
+          visitsList.some(v => v && v.id === b.visit_id)
+        ));
+        const isPending = !!(unpaidFromVisits || unpaidFromGlobal);
+        const hasVisits = visitsList.length > 0;
+        const hasRx = visitsList.some(v => v.medicines_list || v.tests_list || v.diagnosis || v.patient_summary);
+
+        if (filterStatus === 'BILL_PENDING' && !isPending) return false;
+        if (filterStatus === 'BILL_CLEARED' && isPending) return false;
+        if (filterStatus === 'HAS_VISIT' && !hasVisits) return false;
+        if (filterStatus === 'HAS_RX' && !hasRx) return false;
+      }
+
+      return true;
+    });
+  }, [
+    patients,
+    filterGender,
+    filterAgeGroup,
+    filterMinAge,
+    filterMaxAge,
+    filterDateFrom,
+    filterDateTill,
+    filterStatus,
+    selectedPatient,
+    patientHistory,
+    unpaidBills
+  ]);
 
   const containerRef = React.useRef(null);
 
@@ -1345,15 +1479,341 @@ export default function PatientSearchTab({
             </div>
             <button
               onClick={() => fetchPatients(searchQuery)}
-              className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm transition-all"
+              className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm transition-all cursor-pointer shrink-0"
             >
               Search
             </button>
           </div>
 
+          {/* Patient Finder Advanced Filters & Controls */}
+          <div className="mt-2.5 space-y-2 flex-shrink-0">
+            {/* Quick Filter Header & Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+              <button
+                type="button"
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                  showAdvancedFilters || activeFiltersCount > 0
+                    ? 'bg-teal-500 text-white border-teal-600 shadow-xs'
+                    : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                }`}
+                title="Toggle detailed Age, Gender, Date & Status filters"
+              >
+                <SlidersHorizontal className="w-3 h-3" />
+                <span>Filters</span>
+                {activeFiltersCount > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-white text-teal-800 text-[9px] font-black flex items-center justify-center">
+                    {activeFiltersCount}
+                  </span>
+                )}
+                {showAdvancedFilters ? <ChevronUp className="w-3 h-3 ml-0.5" /> : <ChevronDown className="w-3 h-3 ml-0.5" />}
+              </button>
+
+              {/* Quick Preset Pills */}
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterStatus(filterStatus === 'BILL_PENDING' ? 'ALL' : 'BILL_PENDING');
+                }}
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                  filterStatus === 'BILL_PENDING'
+                    ? 'bg-rose-50 text-rose-700 border-rose-300 ring-1 ring-rose-400'
+                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                ⚠️ Due Bills
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterGender(filterGender === 'Male' ? 'ALL' : 'Male');
+                }}
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                  filterGender === 'Male'
+                    ? 'bg-sky-50 text-sky-700 border-sky-300 ring-1 ring-sky-400'
+                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                ♂ Male
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterGender(filterGender === 'Female' ? 'ALL' : 'Female');
+                }}
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                  filterGender === 'Female'
+                    ? 'bg-pink-50 text-pink-700 border-pink-300 ring-1 ring-pink-400'
+                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                ♀ Female
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterAgeGroup(filterAgeGroup === 'SENIOR' ? 'ALL' : 'SENIOR');
+                }}
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                  filterAgeGroup === 'SENIOR'
+                    ? 'bg-amber-50 text-amber-700 border-amber-300 ring-1 ring-amber-400'
+                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                🧓 50+ Yrs
+              </button>
+
+              {activeFiltersCount > 0 && (
+                <button
+                  type="button"
+                  onClick={resetAllFilters}
+                  className="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-200 hover:bg-slate-300 text-slate-700 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 shrink-0"
+                  title="Clear all filters"
+                >
+                  <RotateCcw className="w-2.5 h-2.5" />
+                  Reset
+                </button>
+              )}
+            </div>
+
+            {/* Expandable Advanced Filter Panel */}
+            {showAdvancedFilters && (
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-xs animate-in fade-in slide-in-from-top-2 duration-150 shadow-inner">
+                {/* 1. GENDER FILTER */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    Gender
+                  </label>
+                  <div className="grid grid-cols-4 gap-1">
+                    {[
+                      { id: 'ALL', label: 'All' },
+                      { id: 'Male', label: 'Male ♂' },
+                      { id: 'Female', label: 'Female ♀' },
+                      { id: 'Other', label: 'Other' }
+                    ].map(g => (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() => setFilterGender(g.id)}
+                        className={`py-1 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                          filterGender === g.id
+                            ? 'bg-teal-600 text-white border-teal-600 shadow-2xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {g.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. AGE GROUP FILTER */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Age Bracket
+                    </label>
+                    {filterAgeGroup !== 'ALL' && (
+                      <span className="text-[9.5px] font-bold text-teal-700">
+                        {filterAgeGroup === 'CHILD' && 'Under 18'}
+                        {filterAgeGroup === 'ADULT' && '18 - 50 Yrs'}
+                        {filterAgeGroup === 'SENIOR' && '50+ Yrs'}
+                        {filterAgeGroup === 'CUSTOM' && `${filterMinAge || '0'} - ${filterMaxAge || '120'} Yrs`}
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-5 gap-1 mb-1.5">
+                    {[
+                      { id: 'ALL', label: 'All' },
+                      { id: 'CHILD', label: '< 18' },
+                      { id: 'ADULT', label: '18-50' },
+                      { id: 'SENIOR', label: '50+' },
+                      { id: 'CUSTOM', label: 'Custom' }
+                    ].map(a => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => setFilterAgeGroup(a.id)}
+                        className={`py-1 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                          filterAgeGroup === a.id
+                            ? 'bg-teal-600 text-white border-teal-600 shadow-2xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {a.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {filterAgeGroup === 'CUSTOM' && (
+                    <div className="flex items-center gap-2 mt-1.5 bg-white p-1.5 rounded-lg border border-slate-200">
+                      <div className="flex-1">
+                        <span className="text-[9px] text-slate-400 block font-semibold">Min Age</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="120"
+                          placeholder="e.g. 20"
+                          value={filterMinAge}
+                          onChange={(e) => setFilterMinAge(e.target.value)}
+                          className="w-full text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 focus:outline-none focus:border-teal-500"
+                        />
+                      </div>
+                      <span className="text-slate-300 text-xs font-bold mt-3">to</span>
+                      <div className="flex-1">
+                        <span className="text-[9px] text-slate-400 block font-semibold">Max Age</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="120"
+                          placeholder="e.g. 60"
+                          value={filterMaxAge}
+                          onChange={(e) => setFilterMaxAge(e.target.value)}
+                          className="w-full text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 focus:outline-none focus:border-teal-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. DATE RANGE FILTER (FROM - TILL) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Registration / Visit Date
+                    </label>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setDatePreset('TODAY')}
+                        className="text-[9px] font-bold text-teal-700 hover:underline cursor-pointer"
+                      >
+                        Today
+                      </button>
+                      <span className="text-slate-300">•</span>
+                      <button
+                        type="button"
+                        onClick={() => setDatePreset('7DAYS')}
+                        className="text-[9px] font-bold text-teal-700 hover:underline cursor-pointer"
+                      >
+                        7 Days
+                      </button>
+                      <span className="text-slate-300">•</span>
+                      <button
+                        type="button"
+                        onClick={() => setDatePreset('MONTH')}
+                        className="text-[9px] font-bold text-teal-700 hover:underline cursor-pointer"
+                      >
+                        Month
+                      </button>
+                      {(filterDateFrom || filterDateTill) && (
+                        <>
+                          <span className="text-slate-300">•</span>
+                          <button
+                            type="button"
+                            onClick={() => setDatePreset('CLEAR')}
+                            className="text-[9px] font-bold text-rose-600 hover:underline cursor-pointer"
+                          >
+                            Clear
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div>
+                      <span className="text-[9px] text-slate-400 block font-semibold mb-0.5">From Date</span>
+                      <input
+                        type="date"
+                        value={filterDateFrom}
+                        onChange={(e) => setFilterDateFrom(e.target.value)}
+                        className="w-full text-[11px] font-medium text-slate-800 bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:border-teal-500"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-slate-400 block font-semibold mb-0.5">Till Date</span>
+                      <input
+                        type="date"
+                        value={filterDateTill}
+                        onChange={(e) => setFilterDateTill(e.target.value)}
+                        className="w-full text-[11px] font-medium text-slate-800 bg-white border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:border-teal-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. CLINICAL & BILLING STATUS */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    Status / Records
+                  </label>
+                  <div className="grid grid-cols-2 gap-1">
+                    {[
+                      { id: 'ALL', label: 'All Status' },
+                      { id: 'BILL_PENDING', label: '⚠️ Bill Due / Unpaid' },
+                      { id: 'BILL_CLEARED', label: '✅ Bill Cleared' },
+                      { id: 'HAS_RX', label: '💊 Has Prescription' }
+                    ].map(s => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setFilterStatus(s.id)}
+                        className={`py-1 px-1.5 text-left rounded text-[10px] font-bold border transition-all cursor-pointer truncate ${
+                          filterStatus === s.id
+                            ? 'bg-teal-600 text-white border-teal-600 shadow-2xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Filter Footer Controls */}
+                <div className="flex items-center justify-between pt-1 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={resetAllFilters}
+                    className="text-[10.5px] font-bold text-slate-600 hover:text-rose-600 flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    Reset All Filters
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvancedFilters(false)}
+                    className="text-[10.5px] font-bold text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 px-2.5 py-0.5 rounded-lg border border-teal-200 transition-colors cursor-pointer"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Filter Result Count & Active Indicators */}
+            <div className="flex items-center justify-between text-[10.5px] text-slate-500 font-semibold px-0.5">
+              <span>
+                Showing <strong className="text-slate-900">{filteredPatients.length}</strong> of {patients.length} patients
+              </span>
+              {activeFiltersCount > 0 && (
+                <button
+                  type="button"
+                  onClick={resetAllFilters}
+                  className="text-teal-600 hover:text-teal-800 text-[10px] font-bold underline cursor-pointer"
+                >
+                  Clear ({activeFiltersCount})
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Patients Search Results list */}
-          <div className="mt-3 space-y-2 md:flex-1 md:overflow-y-auto pr-1 min-h-0 compact-scroll">
-            {patients.map((pat) => {
+          <div className="mt-2 space-y-2 md:flex-1 md:overflow-y-auto pr-1 min-h-0 compact-scroll">
+            {filteredPatients.map((pat) => {
               const isSelected = selectedPatient?.id === pat.id;
               const visitsList = (isSelected && selectedPatient?.visits?.length > 0) ? selectedPatient.visits : (pat.visits || []);
               const hasVisits = visitsList.length > 0;
@@ -1493,8 +1953,24 @@ export default function PatientSearchTab({
                 </div>
               );
             })}
-            {patients.length === 0 && (
-              <p className="text-center text-slate-400 text-xs py-4">No matching patient profiles found.</p>
+            {filteredPatients.length === 0 && (
+              <div className="py-8 px-3 text-center">
+                <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center mx-auto mb-2 text-slate-400">
+                  <Filter className="w-4 h-4 text-slate-400" />
+                </div>
+                <p className="text-xs font-bold text-slate-700 mb-0.5">No patients match filters</p>
+                <p className="text-[11px] text-slate-400 mb-2">Try widening age, gender, date or status filters.</p>
+                {activeFiltersCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={resetAllFilters}
+                    className="px-3 py-1 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-[10.5px] rounded-lg border border-teal-200 transition-all cursor-pointer inline-flex items-center gap-1"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    Reset All Filters
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
