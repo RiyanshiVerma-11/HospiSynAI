@@ -523,9 +523,9 @@ export default function PatientSearchTab({
   const renderAiBadge = () => null;
 
   // Custom Speech Recognition Hooks
-  const intakeVoice = useSpeechRecognition({ defaultLang: 'en-IN' });
-  const searchVoice = useSpeechRecognition({ defaultLang: 'en-IN' });
-  const clinicalVoice = useSpeechRecognition({ defaultLang: 'en-IN' });
+  const intakeVoice = useSpeechRecognition({ defaultLang: 'en-US' });
+  const searchVoice = useSpeechRecognition({ defaultLang: 'en-US' });
+  const clinicalVoice = useSpeechRecognition({ defaultLang: 'en-US' });
 
   // Guided Step-by-Step Voice Intake State (Enter ↵ on keyboard advances to next detail)
   const [guidedVoiceStep, setGuidedVoiceStep] = React.useState(null); 
@@ -563,7 +563,7 @@ export default function PatientSearchTab({
     if (!guidedVoiceStep) return;
     
     // Read real-time text (both interim and final speech for instantaneous response)
-    const spoken = (intakeVoice.fullText || intakeVoice.transcript || '').trim();
+    const spoken = (intakeVoice.fullText || intakeVoice.transcript || intakeVoice.interimTranscript || '').trim();
     if (!spoken) return;
 
     if (guidedVoiceStep === 'name') {
@@ -573,6 +573,7 @@ export default function PatientSearchTab({
         .trim();
       if (cleanName) {
         setNewPatient(prev => ({ ...prev, name: cleanName }));
+        setVoicePopulatedFields(prev => prev.includes('name') ? prev : [...prev, 'name']);
       }
     } else if (guidedVoiceStep === 'age_gender') {
       const ageMatch = spoken.match(/\b(\d{1,3})\b/);
@@ -589,21 +590,25 @@ export default function PatientSearchTab({
         }
         return next;
       });
+      setVoicePopulatedFields(prev => prev.includes('age_gender') ? prev : [...prev, 'age_gender']);
     } else if (guidedVoiceStep === 'mobile_number') {
       const digits = spoken.replace(/\D/g, '').slice(0, 10);
       if (digits) {
         setNewPatient(prev => ({ ...prev, mobile_number: digits }));
+        setVoicePopulatedFields(prev => prev.includes('mobile_number') ? prev : [...prev, 'mobile_number']);
       }
     } else if (guidedVoiceStep === 'address') {
       const cleanAddress = spoken.replace(/\.+$/, '').trim();
       if (!/^(male|mail|female)$/i.test(cleanAddress)) {
         setNewPatient(prev => ({ ...prev, address: cleanAddress }));
+        setVoicePopulatedFields(prev => prev.includes('address') ? prev : [...prev, 'address']);
       }
     } else if (guidedVoiceStep === 'chief_complaints') {
       const cleanComplaints = spoken.replace(/\.+$/, '').trim();
       setNewPatient(prev => ({ ...prev, chief_complaints: cleanComplaints }));
+      setVoicePopulatedFields(prev => prev.includes('chief_complaints') ? prev : [...prev, 'chief_complaints']);
     }
-  }, [intakeVoice.fullText, intakeVoice.transcript, guidedVoiceStep]);
+  }, [intakeVoice.fullText, intakeVoice.transcript, intakeVoice.interimTranscript, guidedVoiceStep]);
 
   // Alert user with a toast whenever speech recognition encounters an error or network block
   React.useEffect(() => {
@@ -617,12 +622,6 @@ export default function PatientSearchTab({
       showToast(searchVoice.error, 'error');
     }
   }, [searchVoice.error, showToast]);
-
-  React.useEffect(() => {
-    if (clinicalVoice.error && typeof showToast === 'function') {
-      showToast(clinicalVoice.error, 'error');
-    }
-  }, [clinicalVoice.error, showToast]);
 
   const startGuidedVoiceIntake = () => {
     if (searchVoice.isListening) searchVoice.stopListening();
@@ -1992,7 +1991,7 @@ export default function PatientSearchTab({
       )}
 
       {/* Workspace / Register Pane (FLEX-1: Expands across 100% of remaining screen width!) */}
-      <div className="flex-1 w-full min-w-0 flex flex-col gap-3 md:h-full md:min-h-0 overflow-y-auto compact-scroll pr-1">
+      <div className="flex-1 w-full min-w-0 flex flex-col gap-3 h-full min-h-0 overflow-y-auto pr-2 pb-24">
         {selectedPatient ? (
           <>
             {/* Top Patient Workspace Switcher Banner: Receptionist can register a new patient in 1 click at any time */}
@@ -2660,7 +2659,7 @@ export default function PatientSearchTab({
         </div>
       ) : (
           /* Register Patient Profile form (displayed in right panel when no patient is selected) - FULL SCREEN WIDTH & 2-COLUMN RESPONSIVE LAYOUT */
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm w-full space-y-4 animate-in fade-in duration-150 overflow-hidden">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm w-full space-y-4 animate-in fade-in duration-150">
             <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pb-3 border-b border-slate-100">
               <div className="min-w-0">
                 <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
@@ -2759,7 +2758,48 @@ export default function PatientSearchTab({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  <div className="flex items-center flex-wrap gap-2 shrink-0 self-end sm:self-center">
+                    {/* Language Switcher (Hindi <-> English) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextLang = intakeVoice.lang === 'hi-IN' ? 'en-US' : 'hi-IN';
+                        intakeVoice.setLang(nextLang);
+                        intakeVoice.stopListening();
+                        setTimeout(() => intakeVoice.startListening({ customLang: nextLang }), 120);
+                        showToast(`Switched voice language to ${nextLang === 'hi-IN' ? 'हिन्दी (Hindi)' : 'English (Global)'}`);
+                      }}
+                      className="bg-white/10 hover:bg-white/20 text-teal-300 text-[11px] font-bold px-2.5 py-1.5 rounded-xl border border-teal-500/30 transition-all flex items-center gap-1 cursor-pointer"
+                      title="Switch voice recognition between Hindi and English"
+                    >
+                      <Languages className="w-3.5 h-3.5 text-teal-300" />
+                      <span>{intakeVoice.lang === 'hi-IN' ? '🇮🇳 हिन्दी' : '🌐 English'}</span>
+                    </button>
+
+                    {/* 1-Click Demo Fill Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewPatient({
+                          name: 'Rahul Sharma',
+                          age: 36,
+                          gender: 'Male',
+                          mobile_number: '9358267891',
+                          email: 'rahul.sharma@example.com',
+                          address: '1704 Indiranagar, Meerut',
+                          chief_complaints: 'High fever and dry cough for 3 days with headache'
+                        });
+                        setVoicePopulatedFields(['name', 'age_gender', 'mobile_number', 'address', 'chief_complaints']);
+                        stopGuidedVoiceIntake(true);
+                        showToast('⚡ Demo patient details auto-filled instantly!', 'success');
+                      }}
+                      className="bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 text-slate-950 font-black text-xs px-3 py-1.5 rounded-xl shadow-md transition-all flex items-center gap-1 cursor-pointer"
+                      title="Instant 1-Click Fill Demo Patient Profile"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-slate-950" />
+                      <span>⚡ 1-Click Demo Fill</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => handleNextGuidedStep(guidedVoiceStep)}
@@ -3095,6 +3135,12 @@ export default function PatientSearchTab({
                         name="email"
                         type="email"
                         autoComplete="email"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addressInputRef.current?.focus();
+                          }
+                        }}
                         className="w-full rounded-xl pl-9 pr-3.5 py-2.5 text-xs placeholder-slate-400 focus:outline-none transition-all font-medium bg-slate-50 border border-slate-300 focus:bg-white focus:border-teal-500 shadow-2xs"
                         placeholder="patient.email@example.com (To receive digital bills & prescriptions)"
                         value={newPatient.email || ''}
@@ -3198,6 +3244,29 @@ export default function PatientSearchTab({
                       value={newPatient.chief_complaints || ''}
                       onChange={(e) => setNewPatient({ ...newPatient, chief_complaints: e.target.value })}
                     />
+
+                    {/* Quick 1-Click Clinical Scenario Chips for Instant Testing */}
+                    <div className="flex flex-wrap gap-1.5 pt-1.5 items-center">
+                      <span className="text-[9.5px] font-bold text-slate-400">Quick Test:</span>
+                      {[
+                        { label: '🤒 High fever & cough', text: 'High fever and dry cough for 3 days with headache' },
+                        { label: '🫁 Chest discomfort', text: 'Chest heaviness and breathlessness on walking' },
+                        { label: '🤢 Stomach pain & vomiting', text: 'Severe abdominal cramps, vomiting and loose motions' },
+                        { label: '🩺 Routine checkup', text: 'General body weakness and routine health checkup' }
+                      ].map((chip, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setNewPatient(prev => ({ ...prev, chief_complaints: chip.text }));
+                            setVoicePopulatedFields(prev => prev.includes('chief_complaints') ? prev : [...prev, 'chief_complaints']);
+                          }}
+                          className="text-[10px] font-semibold bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-600 px-2 py-0.5 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                        >
+                          {chip.label}
+                        </button>
+                      ))}
+                    </div>
 
                     {/* AI Triage & Suggested Specialty Strip */}
                     {(() => {

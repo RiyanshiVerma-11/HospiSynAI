@@ -13,7 +13,7 @@ if os.path.exists(dotenv_path):
 else:
     load_dotenv()
 
-from fastapi import FastAPI, Depends, HTTPException, status, Query, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException, status, Query, BackgroundTasks, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse, FileResponse, Response
@@ -379,7 +379,53 @@ async def call_groq_api(
         except Exception as err:
             continue
 
-    return None
+
+@app.post("/api/transcribe-audio")
+async def transcribe_audio_endpoint(
+    file: UploadFile = File(...),
+    language: Optional[str] = Query(None)
+):
+    """
+    High-performance audio transcription using Groq Whisper (whisper-large-v3-turbo).
+    Takes an audio file (e.g. webm/wav from browser MediaRecorder) and returns high-accuracy transcription
+    in real time without relying on flaky browser-specific speech services.
+    """
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="GROQ_API_KEY is not configured in backend")
+
+    audio_content = await file.read()
+    if not audio_content or len(audio_content) < 100:
+        return {"transcript": "", "text": ""}
+
+    headers = {"Authorization": f"Bearer {api_key}"}
+    files = {
+        "file": (file.filename or "audio.webm", audio_content, file.content_type or "audio/webm"),
+        "model": (None, "whisper-large-v3-turbo"),
+        "response_format": (None, "json")
+    }
+    if language:
+        lang_code = language.split("-")[0].lower()
+        if lang_code in ["en", "hi"]:
+            files["language"] = (None, lang_code)
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            res = await client.post(
+                "https://api.groq.com/openai/v1/audio/transcriptions",
+                headers=headers,
+                files=files
+            )
+            if res.status_code == 200:
+                data = res.json()
+                transcript_text = data.get("text", "").strip()
+                return {"transcript": transcript_text, "text": transcript_text}
+            else:
+                print(f"Groq Whisper error {res.status_code}: {res.text}")
+                raise HTTPException(status_code=res.status_code, detail=f"Groq transcription error: {res.text}")
+    except httpx.HTTPError as e:
+        print(f"HTTP error calling Groq transcription: {e}")
+        raise HTTPException(status_code=502, detail=f"Failed to connect to Groq transcription service: {str(e)}")
 
 
 # ----------------------------------------------------

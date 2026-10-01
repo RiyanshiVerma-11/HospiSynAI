@@ -125,20 +125,20 @@ function StatCard({ num, suffix = '', title, desc, delay = 0 }) {
   return (
     <div
       ref={ref}
-      className="stat-card-new relative overflow-hidden p-5 rounded-2xl border border-white/10 bg-gradient-to-br from-[#0b1329]/80 to-[#060c18]/90 backdrop-blur-xl group hover:border-teal-500/40 transition-all duration-300 hover:scale-[1.02]"
+      className="stat-card-new relative overflow-hidden p-5 rounded-2xl border border-slate-200/80 bg-white shadow-sm hover:shadow-md hover:border-teal-400 group transition-all duration-300 hover:scale-[1.02]"
       style={{
         opacity: inView ? 1 : 0,
         transform: inView ? 'translateY(0)' : 'translateY(20px)',
         transition: `opacity 0.6s ease ${delay}ms, transform 0.6s ease ${delay}ms, border-color 0.3s, transform 0.3s`
       }}
     >
-      <div className="absolute top-0 right-0 w-24 h-24 bg-teal-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-teal-500/10 transition-colors" />
-      <div className="text-2xl md:text-3xl font-black text-teal-400 mb-1 font-mono tracking-tight flex items-baseline">
+      <div className="absolute top-0 right-0 w-24 h-24 bg-teal-50 rounded-full blur-xl pointer-events-none group-hover:bg-teal-100 transition-colors" />
+      <div className="text-2xl md:text-3xl font-black text-teal-600 mb-1 font-mono tracking-tight flex items-baseline">
         <span>{isNumeric ? count : num}</span>
-        <span className="text-emerald-400 ml-0.5">{suffix}</span>
+        <span className="text-emerald-600 ml-0.5">{suffix}</span>
       </div>
-      <div className="text-xs font-bold text-white mb-0.5 tracking-wide">{title}</div>
-      <div className="text-[11px] text-slate-400 font-medium leading-tight">{desc}</div>
+      <div className="text-xs font-bold text-slate-900 mb-0.5 tracking-wide">{title}</div>
+      <div className="text-[11px] text-slate-500 font-medium leading-tight">{desc}</div>
     </div>
   );
 }
@@ -149,7 +149,7 @@ function FeatureCard({ icon: Icon, title, desc, color, gradientFrom, delay = 0 }
   return (
     <div
       ref={ref}
-      className="feature-card-new group relative p-6 rounded-3xl border border-white/5 bg-[#0b1329]/40 hover:bg-[#0f1b38]/60 backdrop-blur-xl transition-all duration-300 hover:translate-y-[-4px] hover:border-white/15 cursor-default flex flex-col justify-between"
+      className="feature-card-new group relative p-6 rounded-3xl border border-slate-200 bg-white hover:border-teal-400 shadow-sm hover:shadow-xl transition-all duration-300 hover:translate-y-[-4px] cursor-default flex flex-col justify-between"
       style={{
         opacity: inView ? 1 : 0,
         transform: inView ? 'translateY(0)' : 'translateY(30px)',
@@ -158,17 +158,16 @@ function FeatureCard({ icon: Icon, title, desc, color, gradientFrom, delay = 0 }
     >
       <div>
         <div
-          className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-5 ${color} transition-transform duration-300 group-hover:scale-110`}
-          style={{ boxShadow: `0 0 20px ${gradientFrom}25` }}
+          className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-5 ${color} transition-transform duration-300 group-hover:scale-110 shadow-sm`}
         >
           <Icon className="w-6 h-6" />
         </div>
-        <h3 className="text-base font-extrabold text-white mb-2 group-hover:text-teal-300 transition-colors duration-300 tracking-tight">{title}</h3>
-        <p className="text-slate-400 text-xs leading-relaxed font-medium">{desc}</p>
+        <h3 className="text-base font-extrabold text-slate-900 mb-2 group-hover:text-teal-600 transition-colors duration-300 tracking-tight">{title}</h3>
+        <p className="text-slate-600 text-xs leading-relaxed font-medium">{desc}</p>
       </div>
-      <div className="mt-4 pt-3 border-t border-white/5 flex items-center gap-1 text-[11px] font-semibold text-slate-400 group-hover:text-teal-400 transition-colors">
+      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-1 text-[11px] font-semibold text-slate-500 group-hover:text-teal-600 transition-colors">
         <span>Production verified</span>
-        <CheckCircle2 className="w-3.5 h-3.5 ml-auto text-emerald-400 opacity-70 group-hover:opacity-100" />
+        <CheckCircle2 className="w-3.5 h-3.5 ml-auto text-emerald-600 opacity-80 group-hover:opacity-100" />
       </div>
     </div>
   );
@@ -464,7 +463,6 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
     }
   ];
 
-
   const problemSolutions = [
     {
       id: 'opd-queue',
@@ -569,17 +567,17 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
   ];
 
   return (
-    <div className="min-h-screen bg-[#040814] text-slate-100 relative overflow-x-clip font-sans selection:bg-teal-500 selection:text-white">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 text-slate-800 relative overflow-x-clip font-sans selection:bg-teal-500 selection:text-white">
 
       {/* --- Animated Ambient Background Glows --- */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {/* Layered luminous mesh orbs */}
-        <div className="absolute w-[800px] h-[800px] rounded-full orb-float-1" style={{ background: 'radial-gradient(circle, rgba(20,184,166,0.22) 0%, rgba(13,148,136,0.08) 45%, transparent 70%)', top: '-22%', left: '-10%' }} />
-        <div className="absolute w-[700px] h-[700px] rounded-full orb-float-2" style={{ background: 'radial-gradient(circle, rgba(129,140,248,0.18) 0%, rgba(99,102,241,0.06) 45%, transparent 70%)', top: '10%', right: '-12%' }} />
-        <div className="absolute w-[550px] h-[550px] rounded-full orb-float-3" style={{ background: 'radial-gradient(circle, rgba(52,211,153,0.14) 0%, transparent 65%)', top: '42%', left: '15%' }} />
+        <div className="absolute w-[800px] h-[800px] rounded-full orb-float-1 opacity-70" style={{ background: 'radial-gradient(circle, rgba(20,184,166,0.14) 0%, rgba(13,148,136,0.03) 45%, transparent 70%)', top: '-22%', left: '-10%' }} />
+        <div className="absolute w-[700px] h-[700px] rounded-full orb-float-2 opacity-60" style={{ background: 'radial-gradient(circle, rgba(129,140,248,0.10) 0%, rgba(99,102,241,0.03) 45%, transparent 70%)', top: '10%', right: '-12%' }} />
+        <div className="absolute w-[550px] h-[550px] rounded-full orb-float-3 opacity-60" style={{ background: 'radial-gradient(circle, rgba(52,211,153,0.10) 0%, transparent 65%)', top: '42%', left: '15%' }} />
         
         {/* Animated ECG Heartbeat Line running across hero background */}
-        <svg className="absolute top-28 left-0 w-full h-40 opacity-30 pointer-events-none" viewBox="0 0 1200 120" fill="none" preserveAspectRatio="none">
+        <svg className="absolute top-28 left-0 w-full h-40 opacity-40 pointer-events-none" viewBox="0 0 1200 120" fill="none" preserveAspectRatio="none">
           <path
             d="M0,60 L280,60 L300,60 L315,18 L330,105 L345,12 L360,88 L375,60 L400,60 L680,60 L700,60 L715,15 L730,110 L745,10 L760,90 L775,60 L800,60 L1200,60"
             stroke="url(#ecgGlowGradient)"
@@ -590,22 +588,22 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
           />
           <defs>
             <linearGradient id="ecgGlowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#14b8a6" stopOpacity="0" />
-              <stop offset="25%" stopColor="#2dd4bf" stopOpacity="0.8" />
-              <stop offset="65%" stopColor="#34d399" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="#818cf8" stopOpacity="0" />
+              <stop offset="0%" stopColor="#0d9488" stopOpacity="0" />
+              <stop offset="25%" stopColor="#0d9488" stopOpacity="0.7" />
+              <stop offset="65%" stopColor="#059669" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#6366f1" stopOpacity="0.7" />
             </linearGradient>
           </defs>
         </svg>
 
         {/* Subtle high-tech radial grid */}
         <div className="absolute inset-0" style={{
-          backgroundImage: 'radial-gradient(rgba(45,212,191,0.06) 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(rgba(13,148,136,0.08) 1px, transparent 1px)',
           backgroundSize: '36px 36px'
         }} />
       </div>
 
-      {/* --- Permanent Top Navigation Header --- */}
+      {/* --- Permanent Top Navigation Header (PRESERVED DARK BACKGROUND AS REQUESTED) --- */}
       <header className="sticky top-0 z-50 w-full backdrop-blur-2xl border-b border-white/10 bg-[#040814]/85 shadow-2xl px-6 py-3.5 flex items-center justify-between transition-all">
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -671,16 +669,16 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
       <main className="relative z-10">
 
         {/* =========================================================================
-            HERO SECTION
+            HERO SECTION (LIGHT THEME)
         ========================================================================= */}
-        <section ref={heroRef} className="max-w-7xl mx-auto px-6 pt-4 lg:pt-6 pb-12 flex flex-col lg:flex-row items-center gap-10 lg:gap-10">
+        <section ref={heroRef} className="max-w-7xl mx-auto px-6 pt-6 lg:pt-10 pb-14 flex flex-col lg:flex-row items-center gap-10 lg:gap-10">
 
           {/* Hero Left: Pitch */}
           <div className="flex-1 text-center lg:text-left">
 
             {/* Showstopping Headline */}
             <h1
-              className="text-4xl sm:text-5xl lg:text-[3.6rem] font-black tracking-tight text-white leading-[1.08] mb-4"
+              className="text-4xl sm:text-5xl lg:text-[3.6rem] font-black tracking-tight text-slate-900 leading-[1.08] mb-4"
               style={{
                 opacity: heroInView ? 1 : 0,
                 transform: heroInView ? 'translateY(0)' : 'translateY(20px)',
@@ -688,7 +686,7 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
               }}
             >
               Ambient Voice AI & <br />
-              <span className="bg-gradient-to-r from-teal-300 via-emerald-300 to-cyan-300 bg-clip-text text-transparent drop-shadow-[0_0_35px_rgba(20,184,166,0.35)]">
+              <span className="bg-gradient-to-r from-teal-600 via-emerald-600 to-cyan-600 bg-clip-text text-transparent drop-shadow-sm">
                 Clinical Intelligence
               </span> <br />
               Operating System
@@ -696,7 +694,7 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
 
             {/* Dynamic Auto-Execution Tag */}
             <div
-              className="inline-flex items-center gap-2.5 bg-slate-900/90 border border-teal-500/25 px-4 py-2 rounded-xl mb-5 shadow-md mx-auto lg:mx-0 flex"
+              className="inline-flex items-center gap-2.5 bg-white border border-teal-200/80 px-4 py-2 rounded-xl mb-5 shadow-sm mx-auto lg:mx-0 flex"
               style={{
                 width: 'fit-content',
                 opacity: heroInView ? 1 : 0,
@@ -704,29 +702,29 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                 transition: 'opacity 0.7s ease 0.15s, transform 0.7s ease 0.15s'
               }}
             >
-              <Sparkles className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-              <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Autonomous Engine:</span>
-              <span className="text-xs font-black text-teal-300 font-mono tracking-wide typewriter-cursor min-w-[220px] text-left">
+              <Sparkles className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+              <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Autonomous Engine:</span>
+              <span className="text-xs font-black text-teal-700 font-mono tracking-wide typewriter-cursor min-w-[220px] text-left">
                 {typedWord}
               </span>
             </div>
 
             {/* Subtitle */}
             <p
-              className="text-slate-300 text-base md:text-lg max-w-xl leading-relaxed mb-7 mx-auto lg:mx-0 font-normal"
+              className="text-slate-600 text-base md:text-lg max-w-xl leading-relaxed mb-7 mx-auto lg:mx-0 font-normal"
               style={{
                 opacity: heroInView ? 1 : 0,
                 transform: heroInView ? 'translateY(0)' : 'translateY(20px)',
                 transition: 'opacity 0.7s ease 0.2s, transform 0.7s ease 0.2s'
               }}
             >
-              Doctors speak colloquially in <strong className="text-white font-bold">Hindi or Hinglish</strong> — HospiSynAI autonomously transcribes clinical notes, creates structured prescription plans, audits pre-invoice compliance against <strong className="text-teal-300 font-semibold">NHA CGHS benchmarks</strong>, and issues vernacular patient checklists in <strong className="text-emerald-300 font-semibold">11 native languages</strong>.
+              Doctors speak colloquially in <strong className="text-slate-900 font-bold">Hindi or Hinglish</strong> — HospiSynAI autonomously transcribes clinical notes, creates structured prescription plans, audits pre-invoice compliance against <strong className="text-teal-700 font-semibold">NHA CGHS benchmarks</strong>, and issues vernacular patient checklists in <strong className="text-emerald-700 font-semibold">11 native languages</strong>.
             </p>
 
             {/* Live OPD Queue Status Banner */}
             {liveQueue && (
               <div
-                className="inline-flex flex-wrap items-center gap-2.5 px-4 py-2 rounded-2xl bg-teal-950/60 border border-teal-500/30 text-xs font-semibold text-teal-200 mb-5 backdrop-blur-md shadow-md mx-auto lg:mx-0"
+                className="inline-flex flex-wrap items-center gap-2.5 px-4 py-2 rounded-2xl bg-teal-50/90 border border-teal-200 text-xs font-semibold text-teal-900 mb-5 shadow-sm mx-auto lg:mx-0"
                 style={{
                   opacity: heroInView ? 1 : 0,
                   transform: heroInView ? 'translateY(0)' : 'translateY(15px)',
@@ -735,20 +733,20 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
               >
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
                 </span>
-                <span className="text-white font-bold">Live OPD Queue:</span>
-                <span className="bg-teal-900/90 text-teal-300 px-2 py-0.5 rounded-md font-mono font-bold">
+                <span className="text-slate-900 font-bold">Live OPD Queue:</span>
+                <span className="bg-teal-700 text-white px-2 py-0.5 rounded-md font-mono font-bold">
                   Serving #{liveQueue.currently_serving_token || '1'}
                 </span>
-                <span className="text-teal-500">•</span>
+                <span className="text-teal-400">•</span>
                 <span>{liveQueue.total_waiting} in Waiting Area</span>
-                <span className="text-teal-500">•</span>
-                <span className="text-slate-300">Avg Wait: ~{liveQueue.estimated_wait_minutes} mins</span>
+                <span className="text-teal-400">•</span>
+                <span className="text-slate-600">Avg Wait: ~{liveQueue.estimated_wait_minutes} mins</span>
                 <button
                   type="button"
                   onClick={() => setShowBookingModal(true)}
-                  className="ml-1 text-teal-300 hover:text-white underline font-bold text-[11px] cursor-pointer"
+                  className="ml-1 text-teal-700 hover:text-teal-900 underline font-bold text-[11px] cursor-pointer"
                 >
                   Join Queue ➔
                 </button>
@@ -766,33 +764,32 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
             >
               <button
                 onClick={() => setShowBookingModal(true)}
-                className="group relative px-7 py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-slate-950 flex items-center justify-center gap-2.5 transition-all active:scale-[0.98] overflow-hidden shadow-2xl cursor-pointer"
+                className="group relative px-7 py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-white flex items-center justify-center gap-2.5 transition-all active:scale-[0.98] overflow-hidden shadow-xl shadow-teal-500/25 cursor-pointer"
                 style={{
-                  background: 'linear-gradient(135deg, #2dd4bf 0%, #14b8a6 50%, #10b981 100%)',
-                  boxShadow: '0 0 35px rgba(45,212,191,0.5), 0 4px 20px rgba(20,184,166,0.3)'
+                  background: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)'
                 }}
               >
-                <Ticket className="w-4 h-4 text-slate-950" />
+                <Ticket className="w-4 h-4 text-white" />
                 <span className="relative z-10">Book OPD Token</span>
                 <ArrowRight className="w-4 h-4 relative z-10 transition-transform group-hover:translate-x-1.5" />
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
               </button>
 
               <button
                 onClick={onEnterWorkspace}
-                className="group relative px-7 py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-white flex items-center justify-center gap-2.5 transition-all active:scale-[0.98] overflow-hidden border border-white/20 bg-white/[0.06] hover:bg-white/[0.12] backdrop-blur-md shadow-xl cursor-pointer"
+                className="group relative px-7 py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-slate-800 flex items-center justify-center gap-2.5 transition-all active:scale-[0.98] overflow-hidden border border-slate-200 bg-white hover:bg-slate-50 shadow-md cursor-pointer"
               >
                 <span className="relative z-10 flex items-center gap-2">
                   <span>Launch Hospital Console</span>
                 </span>
-                <ArrowRight className="w-4 h-4 relative z-10 transition-transform group-hover:translate-x-1.5" />
+                <ArrowRight className="w-4 h-4 relative z-10 transition-transform group-hover:translate-x-1.5 text-teal-600" />
               </button>
 
               <a
                 href="#demo"
-                className="px-6 py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-teal-300 hover:text-white border border-teal-500/30 hover:border-teal-400 bg-teal-950/30 hover:bg-teal-900/40 backdrop-blur-md transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-teal-950/40"
+                className="px-6 py-4 rounded-2xl text-sm font-black uppercase tracking-wider text-teal-700 hover:text-teal-900 border border-teal-200 hover:border-teal-300 bg-teal-50/80 hover:bg-teal-100 transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-sm"
               >
-                <Mic className="w-4 h-4 text-teal-400 animate-pulse" />
+                <Mic className="w-4 h-4 text-teal-600 animate-pulse" />
                 <span>Voice Scribe Demo</span>
               </a>
             </div>
@@ -806,17 +803,17 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                 transition: 'opacity 0.7s ease 0.3s, transform 0.7s ease 0.3s'
               }}
             >
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Direct Desks:</span>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mr-1">Direct Desks:</span>
               {[
-                { role: 'Doctor OPD', icon: '🧑‍⚕️', color: 'hover:border-teal-500/50 hover:text-teal-300' },
-                { role: 'Receptionist', icon: '📋', color: 'hover:border-blue-500/50 hover:text-blue-300' },
-                { role: 'Accountant', icon: '🧾', color: 'hover:border-amber-500/50 hover:text-amber-300' },
-                { role: 'Administrator', icon: '🛡️', color: 'hover:border-violet-500/50 hover:text-violet-300' },
+                { role: 'Doctor OPD', icon: '🧑‍⚕️', color: 'hover:border-teal-500 hover:text-teal-700 hover:bg-teal-50/60' },
+                { role: 'Receptionist', icon: '📋', color: 'hover:border-blue-500 hover:text-blue-700 hover:bg-blue-50/60' },
+                { role: 'Accountant', icon: '🧾', color: 'hover:border-amber-500 hover:text-amber-700 hover:bg-amber-50/60' },
+                { role: 'Administrator', icon: '🛡️', color: 'hover:border-violet-500 hover:text-violet-700 hover:bg-violet-50/60' },
               ].map((r, i) => (
                 <button
                   key={i}
                   onClick={() => onEnterWorkspace && onEnterWorkspace(r.role)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 bg-white/[0.04] border border-white/10 backdrop-blur-sm transition-all duration-200 flex items-center gap-1.5 ${r.color} hover:scale-105 active:scale-95`}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 shadow-sm transition-all duration-200 flex items-center gap-1.5 ${r.color} hover:scale-105 active:scale-95`}
                 >
                   <span>{r.icon}</span>
                   <span>{r.role}</span>
@@ -825,7 +822,7 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
             </div>
           </div>
 
-          {/* Hero Right: The Living Clinical AI Terminal */}
+          {/* Hero Right: The Living Clinical AI Terminal (LIGHT THEME MOCKUP) */}
           <div
             className="flex-1 flex justify-center lg:justify-end w-full relative"
             style={{
@@ -836,132 +833,132 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
           >
             <div className="relative w-full max-w-lg float-card">
               {/* Ambient Radial Glow */}
-              <div className="absolute -inset-4 rounded-3xl blur-3xl opacity-50 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(20,184,166,0.35), rgba(99,102,241,0.25), transparent 70%)' }} />
+              <div className="absolute -inset-4 rounded-3xl blur-3xl opacity-40 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(20,184,166,0.22), rgba(99,102,241,0.12), transparent 70%)' }} />
 
-              {/* Floating Glass Badges */}
-              <div className="absolute -top-3.5 -left-3.5 z-20 hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-[#0b1329]/95 border border-teal-500/40 backdrop-blur-xl shadow-xl shadow-teal-950/50 float-badge-1">
+              {/* Floating Badges */}
+              <div className="absolute -top-3.5 -left-3.5 z-20 hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-white/95 border border-rose-200 backdrop-blur-xl shadow-xl float-badge-1">
                 <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                <Mic className="w-3.5 h-3.5 text-rose-400" />
-                <span className="text-[11px] font-extrabold text-white">Live Hindi Scribe</span>
+                <Mic className="w-3.5 h-3.5 text-rose-500" />
+                <span className="text-[11px] font-extrabold text-slate-800">Live Hindi Scribe</span>
               </div>
 
-              <div className="absolute -top-4 -right-2 z-20 hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-[#0b1329]/95 border border-emerald-500/40 backdrop-blur-xl shadow-xl float-badge-2">
-                <Zap className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-[11px] font-black text-emerald-300 font-mono">0.76s Groq OSS-120B</span>
+              <div className="absolute -top-4 -right-2 z-20 hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white/95 border border-emerald-200 backdrop-blur-xl shadow-xl float-badge-2">
+                <Zap className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-[11px] font-black text-emerald-700 font-mono">0.76s Groq OSS-120B</span>
               </div>
 
-              <div className="absolute -bottom-3.5 -left-3 z-20 hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-[#0b1329]/95 border border-amber-500/40 backdrop-blur-xl shadow-xl float-badge-2">
-                <Scale className="w-3.5 h-3.5 text-amber-400" />
-                <span className="text-[11px] font-extrabold text-amber-300">₹450 NHA CGHS Verified</span>
+              <div className="absolute -bottom-3.5 -left-3 z-20 hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-white/95 border border-amber-200 backdrop-blur-xl shadow-xl float-badge-2">
+                <Scale className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-[11px] font-extrabold text-amber-800">₹450 NHA CGHS Verified</span>
               </div>
 
-              <div className="absolute -bottom-3.5 -right-2 z-20 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-[#0b1329]/95 border border-violet-500/40 backdrop-blur-xl shadow-xl float-badge-1">
-                <Languages className="w-3.5 h-3.5 text-violet-400" />
-                <span className="text-[11px] font-extrabold text-violet-300">11 Native Languages</span>
+              <div className="absolute -bottom-3.5 -right-2 z-20 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-white/95 border border-violet-200 backdrop-blur-xl shadow-xl float-badge-1">
+                <Languages className="w-3.5 h-3.5 text-violet-600" />
+                <span className="text-[11px] font-extrabold text-violet-800">11 Native Languages</span>
               </div>
 
               {/* Glass Mockup Window */}
-              <div className="relative glass-card rounded-3xl border border-white/15 overflow-hidden shadow-2xl bg-[#091124]/95 backdrop-blur-2xl">
+              <div className="relative rounded-3xl border border-slate-200 overflow-hidden shadow-2xl bg-white/95 backdrop-blur-2xl">
                 {/* Top Window Bar */}
-                <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-[#050b18]/90">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-slate-50/90">
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1.5 mr-2">
-                      <div className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-rose-400" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
                     </div>
-                    <span className="text-white font-black text-xs">HospiSyn<span className="text-teal-400">AI</span> Clinical Desk</span>
+                    <span className="text-slate-800 font-black text-xs">HospiSyn<span className="text-teal-600">AI</span> Clinical Desk</span>
                   </div>
-                  <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 rounded-full">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-[10px] text-emerald-300 font-bold font-mono">OPD ACTIVE</span>
+                  <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[10px] text-emerald-700 font-bold font-mono">OPD ACTIVE</span>
                   </div>
                 </div>
 
                 <div className="p-5 space-y-3.5">
                   {/* Live Ambient Speech Capture */}
-                  <div className="bg-slate-950/70 rounded-2xl p-3.5 border border-teal-500/20 relative overflow-hidden">
+                  <div className="bg-slate-50 rounded-2xl p-3.5 border border-teal-100 relative overflow-hidden">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center">
+                        <div className="w-6 h-6 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center">
                           <Mic className="w-3.5 h-3.5 animate-pulse" />
                         </div>
-                        <span className="text-[11px] font-extrabold text-white">मरीज़ की आवाज़ (Ambient Speech Stream)</span>
+                        <span className="text-[11px] font-extrabold text-slate-900">मरीज़ की आवाज़ (Ambient Speech Stream)</span>
                       </div>
                       {/* Dancing Audio Bars */}
-                      <div className="flex items-end gap-1 h-5 px-2 bg-slate-900/90 rounded-lg border border-teal-500/20">
+                      <div className="flex items-end gap-1 h-5 px-2 bg-white rounded-lg border border-teal-200/80">
                         {[10, 18, 8, 22, 14, 20, 12, 24, 16, 8, 19, 11].map((h, i) => (
                           <div
                             key={i}
-                            className="w-1 bg-gradient-to-t from-teal-500 to-emerald-300 rounded-full audio-bar-anim"
+                            className="w-1 bg-gradient-to-t from-teal-500 to-emerald-400 rounded-full audio-bar-anim"
                             style={{ height: `${h}px`, animationDelay: `${i * 90}ms` }}
                           />
                         ))}
                       </div>
                     </div>
-                    <p className="text-xs text-slate-200 italic font-medium leading-relaxed bg-white/[0.02] p-2.5 rounded-xl border border-white/5">
+                    <p className="text-xs text-slate-700 italic font-medium leading-relaxed bg-white p-2.5 rounded-xl border border-slate-200">
                       "डॉक्टर साहब, 4 दिन से बहुत तेज़ बुखार (102°F) है, सूखी खांसी है और छाती में जकड़न है..."
                     </p>
-                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5 text-[10px] text-slate-400 font-medium">
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200 text-[10px] text-slate-500 font-medium">
                       <span>🇮🇳 Hindi/Hinglish Detected</span>
-                      <span className="text-teal-400 font-bold">Confidence: 99.4%</span>
+                      <span className="text-teal-700 font-bold">Confidence: 99.4%</span>
                     </div>
                   </div>
 
                   {/* AI Diagnosis & Prescription */}
-                  <div className="bg-slate-900/90 border border-white/10 rounded-2xl p-3.5 space-y-2.5">
+                  <div className="bg-slate-50/80 border border-slate-200 rounded-2xl p-3.5 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
-                        <Brain className="w-3.5 h-3.5 text-teal-400" />
-                        <span className="text-[11px] font-extrabold text-white uppercase tracking-wider">AI Clinical Prescription</span>
+                        <Brain className="w-3.5 h-3.5 text-teal-600" />
+                        <span className="text-[11px] font-extrabold text-slate-900 uppercase tracking-wider">AI Clinical Prescription</span>
                       </div>
-                      <span className="text-[10px] font-mono font-bold text-teal-300 bg-teal-500/10 border border-teal-500/20 px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-mono font-bold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full">
                         Groq OSS-120B
                       </span>
                     </div>
 
                     {/* Diagnosis */}
-                    <div className="bg-slate-950/60 px-3 py-2 rounded-xl border border-white/5 flex items-center justify-between">
+                    <div className="bg-white px-3 py-2 rounded-xl border border-slate-200 flex items-center justify-between shadow-sm">
                       <div>
-                        <span className="text-[9px] font-extrabold text-teal-400 uppercase tracking-wider block">Working Diagnosis</span>
-                        <span className="text-xs font-bold text-white">Acute Bronchitis with High Pyrexia (102.4°F)</span>
+                        <span className="text-[9px] font-extrabold text-teal-700 uppercase tracking-wider block">Working Diagnosis</span>
+                        <span className="text-xs font-bold text-slate-900">Acute Bronchitis with High Pyrexia (102.4°F)</span>
                       </div>
-                      <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">ICD-10 J20.9</span>
+                      <span className="text-[9px] font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">ICD-10 J20.9</span>
                     </div>
 
                     {/* Meds List */}
                     <div className="space-y-1.5">
                       {[
-                        { name: 'Tab Paracetamol 650mg', dose: 'BD · Post Meals · 5 Days', tag: 'Antipyretic', color: 'text-teal-400' },
-                        { name: 'Tab Amoxicillin-Clav 625mg', dose: 'TID · 5 Days · Dosing Safe', tag: 'Antibiotic', color: 'text-violet-400' },
-                        { name: 'Levosalbutamol Inhaler', dose: 'PRN · SOS for Bronchial Relief', tag: 'Inhaler', color: 'text-emerald-400' }
+                        { name: 'Tab Paracetamol 650mg', dose: 'BD · Post Meals · 5 Days', tag: 'Antipyretic', color: 'bg-teal-500' },
+                        { name: 'Tab Amoxicillin-Clav 625mg', dose: 'TID · 5 Days · Dosing Safe', tag: 'Antibiotic', color: 'bg-violet-500' },
+                        { name: 'Levosalbutamol Inhaler', dose: 'PRN · SOS for Bronchial Relief', tag: 'Inhaler', color: 'bg-emerald-500' }
                       ].map((med, i) => (
-                        <div key={i} className="flex items-center gap-2.5 bg-slate-950/60 rounded-xl px-3 py-1.5 border border-white/5 text-xs">
-                          <div className={`w-2 h-2 rounded-full ${med.color}`} style={{ backgroundColor: 'currentColor' }} />
+                        <div key={i} className="flex items-center gap-2.5 bg-white rounded-xl px-3 py-1.5 border border-slate-200 text-xs shadow-sm">
+                          <div className={`w-2 h-2 rounded-full ${med.color}`} />
                           <div className="flex-1 min-w-0">
-                            <span className="text-white font-bold text-[11px] mr-1.5">{med.name}</span>
-                            <span className="text-[10px] text-slate-400">{med.dose}</span>
+                            <span className="text-slate-900 font-bold text-[11px] mr-1.5">{med.name}</span>
+                            <span className="text-[10px] text-slate-500">{med.dose}</span>
                           </div>
-                          <span className="text-[9px] font-mono font-bold uppercase text-slate-400 bg-white/5 px-2 py-0.5 rounded">{med.tag}</span>
+                          <span className="text-[9px] font-mono font-bold uppercase text-slate-600 bg-slate-100 px-2 py-0.5 rounded">{med.tag}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   {/* Pre-Invoice Compliance Check */}
-                  <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/25 rounded-2xl px-3.5 py-2.5">
+                  <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-2xl px-3.5 py-2.5 shadow-sm">
                     <div className="flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <Shield className="w-4 h-4 text-emerald-600 shrink-0" />
                       <div>
-                        <div className="text-[11px] text-emerald-300 font-extrabold leading-tight">
+                        <div className="text-[11px] text-emerald-900 font-extrabold leading-tight">
                           Pre-Invoice Audit Cleared: 0 Collisions
                         </div>
-                        <div className="text-[10px] text-emerald-400/80 font-medium">
+                        <div className="text-[10px] text-emerald-700 font-medium">
                           ₹450 NHA Standard Consultation Rate Verified
                         </div>
                       </div>
                     </div>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                   </div>
                 </div>
               </div>
@@ -969,8 +966,8 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
           </div>
         </section>
 
-        {/* --- Metric Counters Strip --- */}
-        <section className="max-w-7xl mx-auto px-6 py-8">
+        {/* --- Metric Counters Strip (LIGHT THEME) --- */}
+        <section className="max-w-7xl mx-auto px-6 py-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard num={0.76} suffix="s" title="Avg AI Latency" desc="Groq OSS-120B Clinical Engine" delay={0} />
             <StatCard num="100" suffix="%" title="Pre-Invoice Audit" desc="Zero duplicate charges or GST leaks" delay={100} />
@@ -981,18 +978,18 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
 
 
         {/* =========================================================================
-            TRUST STRIP / INFINITE TICKER
+            TRUST STRIP / INFINITE TICKER (LIGHT THEME)
         ========================================================================= */}
-        <div className="relative overflow-hidden py-4 border-y border-white/10 bg-[#060c18]/60 backdrop-blur-md my-6">
-          <div className="absolute left-0 top-0 w-32 h-full z-10 pointer-events-none" style={{ background: 'linear-gradient(to right, #060c18, transparent)' }} />
-          <div className="absolute right-0 top-0 w-32 h-full z-10 pointer-events-none" style={{ background: 'linear-gradient(to left, #060c18, transparent)' }} />
+        <div className="relative overflow-hidden py-4 border-y border-slate-200 bg-white/70 backdrop-blur-md my-6">
+          <div className="absolute left-0 top-0 w-32 h-full z-10 pointer-events-none" style={{ background: 'linear-gradient(to right, #f8fafc, transparent)' }} />
+          <div className="absolute right-0 top-0 w-32 h-full z-10 pointer-events-none" style={{ background: 'linear-gradient(to left, #f8fafc, transparent)' }} />
           <div className="flex trust-ticker">
             {trustItems.map((item, i) => (
               <div
                 key={i}
                 className={`flex-shrink-0 flex items-center gap-2 mx-4 px-4 py-1.5 rounded-full text-xs font-bold border transition-colors ${item.highlight
-                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-300 shadow-sm shadow-amber-500/20'
-                  : 'border-white/10 bg-white/5 text-slate-300'
+                  ? 'border-amber-300 bg-amber-50 text-amber-900 shadow-sm'
+                  : 'border-slate-200 bg-white text-slate-700 shadow-sm'
                   }`}
               >
                 {item.label}
@@ -1003,13 +1000,13 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
 
         
         {/* =========================================================================
-            PROBLEM VS SOLUTION SECTION (Problem Kya Thi & Humne Kaise Solve Ki)
+            PROBLEM VS SOLUTION SECTION (LIGHT THEME)
         ========================================================================= */}
         <section id="problem-solution" ref={probRef} className="max-w-7xl mx-auto px-6 py-16 scroll-mt-28 relative">
           {/* Ambient Glow */}
           <div
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] rounded-full blur-[130px] pointer-events-none opacity-20 -z-10"
-            style={{ background: 'radial-gradient(circle, rgba(244,63,94,0.3) 0%, rgba(20,184,166,0.35) 60%, transparent 100%)' }}
+            style={{ background: 'radial-gradient(circle, rgba(244,63,94,0.18) 0%, rgba(20,184,166,0.2) 60%, transparent 100%)' }}
           />
 
           <div
@@ -1020,15 +1017,15 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
               transition: 'opacity 0.7s ease, transform 0.7s ease'
             }}
           >
-            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-rose-400 bg-rose-500/10 px-4 py-1.5 rounded-full border border-rose-500/20 mb-3 shadow-sm shadow-rose-500/10">
-              <Scale className="w-3.5 h-3.5 text-rose-400" />
+            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-rose-700 bg-rose-50 px-4 py-1.5 rounded-full border border-rose-200 mb-3 shadow-sm">
+              <Scale className="w-3.5 h-3.5 text-rose-600" />
               Problem vs Solution • असल समस्या और समाधान
             </div>
-            <h2 className="text-2xl md:text-5xl font-black text-white tracking-tight mb-3">
-              Problem Kya Thi — <span className="bg-gradient-to-r from-teal-300 via-emerald-400 to-cyan-300 bg-clip-text text-transparent">Aur Humne Kaise Solve Ki?</span>
+            <h2 className="text-2xl md:text-5xl font-black text-slate-900 tracking-tight mb-3">
+              Problem Kya Thi — <span className="bg-gradient-to-r from-teal-600 via-emerald-600 to-cyan-600 bg-clip-text text-transparent">Aur Humne Kaise Solve Ki?</span>
             </h2>
-            <p className="text-slate-400 text-sm md:text-base max-w-3xl mx-auto leading-relaxed">
-              पारंपरिक अस्पतालों में घंटों का इंतज़ार, डॉक्टरों का कंप्यूटर पर टाइपिंग बर्नआउट, बिना ऑडिट के बिलिंग लीकेज और दवाओं की गलत खुराक आम बात थी। देखिए <span className="text-teal-300 font-semibold">HospiSynAI</span> ने इन चारों जटिल समस्याओं को कैसे जड़ से खत्म किया।
+            <p className="text-slate-600 text-sm md:text-base max-w-3xl mx-auto leading-relaxed">
+              पारंपरिक अस्पतालों में घंटों का इंतज़ार, डॉक्टरों का कंप्यूटर पर टाइपिंग बर्नआउट, बिना ऑडिट के बिलिंग लीकेज और दवाओं की गलत खुराक आम बात थी। देखिए <span className="text-teal-700 font-semibold">HospiSynAI</span> ने इन चारों जटिल समस्याओं को कैसे जड़ से खत्म किया।
             </p>
 
             {/* Quick Category Filters */}
@@ -1044,8 +1041,8 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                   key={cat.id}
                   onClick={() => setProbCategory(cat.id)}
                   className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${probCategory === cat.id
-                    ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-md shadow-teal-500/25 scale-[1.03]'
-                    : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 border border-white/5'
+                    ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md shadow-teal-500/20 scale-[1.03]'
+                    : 'bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 shadow-sm'
                     }`}
                 >
                   {cat.label}
@@ -1063,7 +1060,7 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                 return (
                   <div
                     key={item.id}
-                    className="relative rounded-3xl border border-white/10 bg-[#070e1c]/80 backdrop-blur-xl overflow-hidden shadow-2xl transition-all duration-300 hover:border-white/20"
+                    className="relative rounded-3xl border border-slate-200 bg-white backdrop-blur-xl overflow-hidden shadow-xl transition-all duration-300 hover:border-teal-400/50 hover:shadow-2xl"
                     style={{
                       opacity: probInView ? 1 : 0,
                       transform: probInView ? 'translateY(0)' : 'translateY(40px)',
@@ -1071,38 +1068,38 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                     }}
                   >
                     {/* Top Header Strip */}
-                    <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3.5 border-b border-white/10 bg-white/[0.02]">
+                    <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3.5 border-b border-slate-200 bg-slate-50/80">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400">
+                        <div className="w-8 h-8 rounded-xl bg-teal-100 border border-teal-200 flex items-center justify-center text-teal-700">
                           <IconComponent className="w-4 h-4" />
                         </div>
-                        <span className="text-sm font-extrabold text-white tracking-wide">
+                        <span className="text-sm font-extrabold text-slate-900 tracking-wide">
                           {item.pillar}
                         </span>
                       </div>
-                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300">
+                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-white border border-slate-200 text-slate-700 shadow-sm">
                         {item.tag}
                       </span>
                     </div>
 
                     {/* Side-by-Side Comparison Container */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-white/10">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
                       {/* Left Side: The Problem */}
-                      <div className="p-6 md:p-8 bg-gradient-to-br from-rose-950/20 via-transparent to-transparent flex flex-col justify-between">
+                      <div className="p-6 md:p-8 bg-gradient-to-br from-rose-50/60 via-slate-50/20 to-white flex flex-col justify-between">
                         <div>
                           <div className="flex items-center gap-2 mb-3">
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider text-rose-400 bg-rose-500/15 border border-rose-500/30">
-                              <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider text-rose-700 bg-rose-100/70 border border-rose-200">
+                              <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
                               Problem Kya Thi • The Friction Point
                             </span>
                           </div>
-                          <h3 className="text-lg md:text-xl font-bold text-white mb-4 leading-snug">
+                          <h3 className="text-lg md:text-xl font-bold text-slate-900 mb-4 leading-snug">
                             {item.problemTitle}
                           </h3>
                           <ul className="space-y-3 mb-6">
                             {item.problemPoints.map((point, pIdx) => (
-                              <li key={pIdx} className="flex items-start gap-2.5 text-xs md:text-sm text-slate-300/90 leading-relaxed">
-                                <XCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                              <li key={pIdx} className="flex items-start gap-2.5 text-xs md:text-sm text-slate-600 leading-relaxed">
+                                <XCircle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
                                 <span>{point}</span>
                               </li>
                             ))}
@@ -1110,32 +1107,32 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                         </div>
 
                         {/* Metric Callout */}
-                        <div className="pt-4 border-t border-rose-500/15 flex items-center justify-between bg-rose-950/30 px-4 py-3 rounded-2xl border border-rose-500/20">
-                          <span className="text-xs text-rose-300/80 font-medium">
+                        <div className="pt-4 border-t border-rose-200 flex items-center justify-between bg-rose-50 px-4 py-3 rounded-2xl border border-rose-200">
+                          <span className="text-xs text-rose-800 font-medium">
                             {item.problemMetricLabel}
                           </span>
-                          <span className="text-base md:text-lg font-black text-rose-400">
+                          <span className="text-base md:text-lg font-black text-rose-600">
                             {item.problemMetric}
                           </span>
                         </div>
                       </div>
 
                       {/* Right Side: How We Solved It */}
-                      <div className="p-6 md:p-8 bg-gradient-to-br from-teal-950/25 via-emerald-950/10 to-transparent flex flex-col justify-between">
+                      <div className="p-6 md:p-8 bg-gradient-to-br from-teal-50/50 via-emerald-50/20 to-white flex flex-col justify-between">
                         <div>
                           <div className="flex items-center gap-2 mb-3">
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider text-teal-300 bg-teal-500/15 border border-teal-500/30">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider text-teal-800 bg-teal-100/80 border border-teal-200">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
                               Humne Kaise Solve Ki • HospiSynAI Fix
                             </span>
                           </div>
-                          <h3 className="text-lg md:text-xl font-bold text-white mb-4 leading-snug">
+                          <h3 className="text-lg md:text-xl font-bold text-slate-900 mb-4 leading-snug">
                             {item.solutionTitle}
                           </h3>
                           <ul className="space-y-3 mb-6">
                             {item.solutionPoints.map((point, sIdx) => (
-                              <li key={sIdx} className="flex items-start gap-2.5 text-xs md:text-sm text-slate-200 leading-relaxed">
-                                <CheckCircle2 className="w-4 h-4 text-teal-400 flex-shrink-0 mt-0.5" />
+                              <li key={sIdx} className="flex items-start gap-2.5 text-xs md:text-sm text-slate-700 leading-relaxed">
+                                <CheckCircle2 className="w-4 h-4 text-teal-600 flex-shrink-0 mt-0.5" />
                                 <span>{point}</span>
                               </li>
                             ))}
@@ -1143,12 +1140,12 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                         </div>
 
                         {/* Metric & Interactive Link */}
-                        <div className="pt-4 border-t border-teal-500/20 flex flex-wrap items-center justify-between gap-3 bg-teal-950/35 px-4 py-3 rounded-2xl border border-teal-500/25">
+                        <div className="pt-4 border-t border-teal-200 flex flex-wrap items-center justify-between gap-3 bg-teal-50/80 px-4 py-3 rounded-2xl border border-teal-200">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-teal-200/80 font-medium">
+                            <span className="text-xs text-teal-900 font-medium">
                               {item.solutionMetricLabel}:
                             </span>
-                            <span className="text-base md:text-lg font-black text-teal-300">
+                            <span className="text-base md:text-lg font-black text-teal-700">
                               {item.solutionMetric}
                             </span>
                           </div>
@@ -1161,7 +1158,7 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                                   demoRef.current.scrollIntoView({ behavior: 'smooth' });
                                 }
                               }}
-                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-teal-300 hover:text-white bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/30 transition-all cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 shadow-sm transition-all cursor-pointer"
                             >
                               <span>{item.simulatorLabel}</span>
                               <ArrowRight className="w-3.5 h-3.5" />
@@ -1169,7 +1166,7 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                           ) : (
                             <button
                               onClick={() => setShowBookingModal(true)}
-                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-teal-300 hover:text-white bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/30 transition-all cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 shadow-sm transition-all cursor-pointer"
                             >
                               <span>{item.simulatorLabel}</span>
                               <ArrowRight className="w-3.5 h-3.5" />
@@ -1186,7 +1183,7 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
 
 
         {/* =========================================================================
-            INTERACTIVE SIMULATOR SECTION
+            INTERACTIVE SIMULATOR SECTION (LIGHT THEME)
         ========================================================================= */}
         <section id="demo" ref={demoRef} className="max-w-7xl mx-auto px-6 py-12 scroll-mt-28">
           <div
@@ -1197,12 +1194,12 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
               transition: 'opacity 0.7s ease, transform 0.7s ease'
             }}
           >
-            <div className="inline-flex items-center gap-2 text-xs text-teal-400 font-bold uppercase tracking-wider bg-teal-500/10 px-4 py-1.5 rounded-full border border-teal-500/20 mb-3">
-              <Zap className="w-3.5 h-3.5 text-teal-400" />
+            <div className="inline-flex items-center gap-2 text-xs text-teal-700 font-bold uppercase tracking-wider bg-teal-50 px-4 py-1.5 rounded-full border border-teal-200 mb-3 shadow-sm">
+              <Zap className="w-3.5 h-3.5 text-teal-600" />
               Live Interactive Simulator
             </div>
-            <h2 className="text-2xl md:text-4xl font-extrabold text-white mb-3">Test HospiSynAI Workflows In Real Time</h2>
-            <p className="text-slate-400 text-sm md:text-base max-w-2xl mx-auto">
+            <h2 className="text-2xl md:text-4xl font-extrabold text-slate-900 mb-3">Test HospiSynAI Workflows In Real Time</h2>
+            <p className="text-slate-600 text-sm md:text-base max-w-2xl mx-auto">
               Click the simulator tabs to see how clinical intelligence, pre-invoice compliance audits, and vernacular translation handouts operate.
             </p>
           </div>
@@ -1211,10 +1208,10 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
             {/* Tab Selectors */}
             <div className="lg:col-span-4 flex flex-col gap-3">
               {[
-                { id: 'voice', label: 'Ambient Voice Scribe (मरीज़ की आवाज़)', desc: 'Translates natural colloquial Hindi/Hinglish speech into structured OPD plans.', icon: Mic, color: 'text-teal-400 bg-teal-500/10', accentColor: 'rgba(20,184,166,0.3)' },
-                { id: 'clinical', label: 'AI Prescribing Assistant', desc: 'Auto-generates complete treatment plans with OD/BD/TID dosing & safety checks.', icon: Brain, color: 'text-emerald-400 bg-emerald-500/10', accentColor: 'rgba(52,211,153,0.3)' },
-                { id: 'auditor', label: 'Pre-Invoice AI Auditor', desc: 'Scans bills to catch duplicate diagnostics, GST errors, and location clashes.', icon: ShieldAlert, color: 'text-rose-400 bg-rose-500/10', accentColor: 'rgba(251,113,133,0.3)' },
-                { id: 'vernacular', label: 'Multilingual Summary Handout', desc: 'Translates prescription checklists to 11 Indian native languages instantly.', icon: Languages, color: 'text-violet-400 bg-violet-500/10', accentColor: 'rgba(167,139,250,0.3)' }
+                { id: 'voice', label: 'Ambient Voice Scribe (मरीज़ की आवाज़)', desc: 'Translates natural colloquial Hindi/Hinglish speech into structured OPD plans.', icon: Mic, color: 'text-teal-700 bg-teal-100', accentColor: 'rgba(20,184,166,0.2)' },
+                { id: 'clinical', label: 'AI Prescribing Assistant', desc: 'Auto-generates complete treatment plans with OD/BD/TID dosing & safety checks.', icon: Brain, color: 'text-emerald-700 bg-emerald-100', accentColor: 'rgba(52,211,153,0.2)' },
+                { id: 'auditor', label: 'Pre-Invoice AI Auditor', desc: 'Scans bills to catch duplicate diagnostics, GST errors, and location clashes.', icon: ShieldAlert, color: 'text-rose-700 bg-rose-100', accentColor: 'rgba(251,113,133,0.2)' },
+                { id: 'vernacular', label: 'Multilingual Summary Handout', desc: 'Translates prescription checklists to 11 Indian native languages instantly.', icon: Languages, color: 'text-violet-700 bg-violet-100', accentColor: 'rgba(167,139,250,0.2)' }
               ].map((tab) => {
                 const Icon = tab.icon;
                 const isSelected = activeSimTab === tab.id;
@@ -1223,18 +1220,17 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                     key={tab.id}
                     onClick={() => setActiveSimTab(tab.id)}
                     className={`group p-5 rounded-2xl text-left border transition-all duration-300 relative overflow-hidden flex gap-4 ${isSelected
-                      ? 'bg-slate-900 border-teal-500/40 shadow-xl'
-                      : 'bg-[#0b1329]/40 border-white/5 hover:border-slate-700 hover:bg-[#0b1329]/70'
+                      ? 'bg-white border-teal-500 shadow-xl ring-1 ring-teal-500/20'
+                      : 'bg-white/80 border-slate-200 hover:border-slate-300 hover:bg-white shadow-sm'
                       }`}
-                    style={isSelected ? { boxShadow: `0 8px 32px ${tab.accentColor}` } : {}}
                   >
-                    {isSelected && <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-teal-400 to-emerald-500" />}
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${tab.color} transition-transform duration-300 ${isSelected ? 'scale-110' : 'group-hover:scale-105'}`}>
+                    {isSelected && <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-teal-500 to-emerald-500" />}
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${tab.color} transition-transform duration-300 ${isSelected ? 'scale-110 shadow-sm' : 'group-hover:scale-105'}`}>
                       <Icon className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="text-xs font-extrabold text-white mb-1 uppercase tracking-wider">{tab.label}</div>
-                      <div className="text-[11px] text-slate-400 leading-normal">{tab.desc}</div>
+                      <div className="text-xs font-extrabold text-slate-900 mb-1 uppercase tracking-wider">{tab.label}</div>
+                      <div className="text-[11px] text-slate-500 leading-normal">{tab.desc}</div>
                     </div>
                   </button>
                 );
@@ -1242,13 +1238,13 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
             </div>
 
             {/* Screen Panel */}
-            <div className="lg:col-span-8 glass-card border border-white/10 rounded-3xl p-6 md:p-8 flex flex-col justify-between min-h-[420px] bg-[#091021]/80 shadow-2xl relative overflow-hidden">
-              <div className="flex justify-between items-center pb-4 border-b border-white/10 mb-6 text-xs relative z-10">
-                <div className="flex items-center gap-2 text-slate-400 font-semibold font-mono">
+            <div className="lg:col-span-8 rounded-3xl p-6 md:p-8 flex flex-col justify-between min-h-[420px] bg-white border border-slate-200 shadow-2xl relative overflow-hidden">
+              <div className="flex justify-between items-center pb-4 border-b border-slate-200 mb-6 text-xs relative z-10">
+                <div className="flex items-center gap-2 text-slate-600 font-semibold font-mono">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   SIMULATOR CONSOLE
                 </div>
-                <div className="text-[10px] text-teal-400 font-bold bg-teal-500/10 px-3 py-1 rounded-full border border-teal-500/20 font-mono uppercase tracking-wider">
+                <div className="text-[10px] text-teal-700 font-bold bg-teal-50 px-3 py-1 rounded-full border border-teal-200 font-mono uppercase tracking-wider">
                   ⚡ Live Output Simulation
                 </div>
               </div>
@@ -1256,48 +1252,48 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
               <div className="flex-1 relative z-10">
                 {activeSimTab === 'voice' && (
                   <div className="space-y-4 animate-in fade-in duration-300">
-                    <div className="flex items-center justify-between bg-teal-500/10 border border-teal-500/20 px-3.5 py-2.5 rounded-xl">
+                    <div className="flex items-center justify-between bg-teal-50 border border-teal-200 px-3.5 py-2.5 rounded-xl">
                       <div className="flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-                        <span className="text-xs font-black text-rose-400">मरीज़ बोल रहे हैं... (Live Ambient Voice Intake)</span>
+                        <span className="text-xs font-black text-rose-600">मरीज़ बोल रहे हैं... (Live Ambient Voice Intake)</span>
                       </div>
-                      <div className="flex items-center gap-1 h-5 px-2 bg-slate-900/80 rounded-lg border border-slate-800">
+                      <div className="flex items-center gap-1 h-5 px-2 bg-white rounded-lg border border-slate-200">
                         {[12, 18, 8, 22, 14, 26, 19, 10, 24, 16, 8, 20].map((h, i) => (
-                          <div key={i} className="w-1 bg-gradient-to-t from-teal-400 to-emerald-300 rounded-full animate-pulse" style={{ height: `${h}px`, animationDelay: `${i * 70}ms` }} />
+                          <div key={i} className="w-1 bg-gradient-to-t from-teal-500 to-emerald-400 rounded-full animate-pulse" style={{ height: `${h}px`, animationDelay: `${i * 70}ms` }} />
                         ))}
                       </div>
                     </div>
 
-                    <div className="bg-slate-950/70 rounded-xl p-3 border border-white/5 text-xs font-medium">
-                      <span className="text-teal-400 font-bold block text-[10px] uppercase tracking-wider mb-1">Colloquial Spoken Hindi/Hinglish Input:</span>
-                      <p className="text-slate-100 italic">"Mere ball bahut toot rahe Hain aur saath he mere ko dandruff bhee bahut jyaada hai. So what should I do?"</p>
+                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 text-xs font-medium">
+                      <span className="text-teal-700 font-bold block text-[10px] uppercase tracking-wider mb-1">Colloquial Spoken Hindi/Hinglish Input:</span>
+                      <p className="text-slate-800 italic">"Mere ball bahut toot rahe Hain aur saath he mere ko dandruff bhee bahut jyaada hai. So what should I do?"</p>
                     </div>
 
-                    <div className="bg-slate-900/80 border border-white/10 rounded-2xl p-4 mt-2 space-y-3">
+                    <div className="bg-slate-50/80 border border-slate-200 rounded-2xl p-4 mt-2 space-y-3">
                       <div className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-teal-400" />
-                        <span className="text-xs font-black text-white">Groq AI Extraction Result</span>
-                        <span className="ml-auto text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full font-mono">⚡ 0.76s Latency</span>
+                        <Sparkles className="w-4 h-4 text-teal-600" />
+                        <span className="text-xs font-black text-slate-900">Groq AI Extraction Result</span>
+                        <span className="ml-auto text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-mono">⚡ 0.76s Latency</span>
                       </div>
                       
-                      <div className="bg-slate-950/60 p-2.5 rounded-xl border border-white/5">
-                        <span className="text-[10px] font-extrabold text-teal-400 uppercase tracking-wider block">Clinical Working Diagnosis</span>
-                        <span className="text-xs font-bold text-white">Telogen Effluvium with Seborrheic Dermatitis of Scalp</span>
+                      <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm">
+                        <span className="text-[10px] font-extrabold text-teal-700 uppercase tracking-wider block">Clinical Working Diagnosis</span>
+                        <span className="text-xs font-bold text-slate-900">Telogen Effluvium with Seborrheic Dermatitis of Scalp</span>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                        <div className="bg-slate-950/60 p-3 rounded-xl border border-white/5">
-                          <span className="text-[10px] font-extrabold text-teal-400 uppercase block tracking-wider mb-1.5">Prescribed Medicines</span>
-                          <ul className="space-y-1.5 text-slate-300 font-medium text-[11px]">
-                            <li className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />Scalpe+ (Ketoconazole 2% + ZPTO) – 2-3x/week</li>
-                            <li className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-violet-400 shrink-0" />Tab Keraglo-Eva (Biotin 10mg + Zinc) – 1 Tab OD</li>
+                        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                          <span className="text-[10px] font-extrabold text-teal-700 uppercase block tracking-wider mb-1.5">Prescribed Medicines</span>
+                          <ul className="space-y-1.5 text-slate-700 font-medium text-[11px]">
+                            <li className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0" />Scalpe+ (Ketoconazole 2% + ZPTO) – 2-3x/week</li>
+                            <li className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-violet-500 shrink-0" />Tab Keraglo-Eva (Biotin 10mg + Zinc) – 1 Tab OD</li>
                           </ul>
                         </div>
-                        <div className="bg-slate-950/60 p-3 rounded-xl border border-white/5">
-                          <span className="text-[10px] font-extrabold text-teal-400 uppercase block tracking-wider mb-1.5">Indicated Lab Tests</span>
-                          <ul className="space-y-1.5 text-slate-300 font-medium text-[11px]">
-                            <li className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />Serum Ferritin & Iron Profile (TIBC)</li>
-                            <li className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0" />Thyroid Profile (TSH, Free T4) + Vit D3</li>
+                        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                          <span className="text-[10px] font-extrabold text-teal-700 uppercase block tracking-wider mb-1.5">Indicated Lab Tests</span>
+                          <ul className="space-y-1.5 text-slate-700 font-medium text-[11px]">
+                            <li className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />Serum Ferritin & Iron Profile (TIBC)</li>
+                            <li className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />Thyroid Profile (TSH, Free T4) + Vit D3</li>
                           </ul>
                         </div>
                       </div>
@@ -1308,34 +1304,34 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                 {activeSimTab === 'clinical' && (
                   <div className="space-y-4 animate-in fade-in duration-300">
                     <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Demographics:</span>
-                      <span className="text-xs bg-slate-800 px-3 py-1 rounded-full font-bold border border-white/10">Female, 45 Yrs (OPD)</span>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Demographics:</span>
+                      <span className="text-xs bg-slate-100 text-slate-800 px-3 py-1 rounded-full font-bold border border-slate-200">Female, 45 Yrs (OPD)</span>
                     </div>
                     <div className="flex gap-2.5 items-center flex-wrap">
-                      <span className="text-xs text-slate-400 font-semibold">Chief Complaints:</span>
-                      <span className="text-xs text-teal-300 font-bold bg-teal-500/10 border border-teal-500/20 px-3 py-1.5 rounded-lg">High fever (102°F), dry cough, shortness of breath</span>
+                      <span className="text-xs text-slate-600 font-semibold">Chief Complaints:</span>
+                      <span className="text-xs text-teal-800 font-bold bg-teal-50 border border-teal-200 px-3 py-1.5 rounded-lg">High fever (102°F), dry cough, shortness of breath</span>
                     </div>
-                    <div className="bg-slate-900/80 border border-white/10 rounded-2xl p-4 mt-2">
+                    <div className="bg-slate-50/80 border border-slate-200 rounded-2xl p-4 mt-2">
                       <div className="flex items-center gap-2 mb-3">
-                        <Brain className="w-4 h-4 text-teal-400 animate-pulse" />
-                        <span className="text-xs font-black text-white">AI Assistant Suggestions</span>
-                        <span className="ml-auto text-[10px] text-teal-400 font-bold bg-teal-500/10 px-2 py-0.5 rounded-full font-mono">⚡ 0.84s Latency</span>
+                        <Brain className="w-4 h-4 text-teal-600 animate-pulse" />
+                        <span className="text-xs font-black text-slate-900">AI Assistant Suggestions</span>
+                        <span className="ml-auto text-[10px] text-teal-700 font-bold bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full font-mono">⚡ 0.84s Latency</span>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs leading-normal">
-                        <div className="bg-slate-950/60 p-3 rounded-xl border border-white/5">
-                          <span className="text-[10px] font-extrabold text-teal-400 uppercase block tracking-wider mb-2">Prescription & Dosing</span>
-                          <ul className="space-y-1.5 text-slate-300 font-medium">
-                            <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-teal-400 flex-shrink-0" />Paracetamol 650mg (BD - Post Meals)</li>
-                            <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-violet-400 flex-shrink-0" />Amoxicillin 500mg (TID - 5 Days)</li>
-                            <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />Levosalbutamol Inhaler (PRN - SOS)</li>
+                        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                          <span className="text-[10px] font-extrabold text-teal-700 uppercase block tracking-wider mb-2">Prescription & Dosing</span>
+                          <ul className="space-y-1.5 text-slate-700 font-medium">
+                            <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-teal-500 flex-shrink-0" />Paracetamol 650mg (BD - Post Meals)</li>
+                            <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-violet-500 flex-shrink-0" />Amoxicillin 500mg (TID - 5 Days)</li>
+                            <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />Levosalbutamol Inhaler (PRN - SOS)</li>
                           </ul>
                         </div>
-                        <div className="bg-slate-950/60 p-3 rounded-xl border border-white/5">
-                          <span className="text-[10px] font-extrabold text-teal-400 uppercase block tracking-wider mb-2">Tests & Safety Advisories</span>
-                          <ul className="space-y-1.5 text-slate-300 font-medium">
-                            <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />Complete Blood Count (CBC)</li>
-                            <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-rose-400 flex-shrink-0" />Chest X-Ray (PA View)</li>
-                            <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />Dosing safety check: CLEARED</li>
+                        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                          <span className="text-[10px] font-extrabold text-teal-700 uppercase block tracking-wider mb-2">Tests & Safety Advisories</span>
+                          <ul className="space-y-1.5 text-slate-700 font-medium">
+                            <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />Complete Blood Count (CBC)</li>
+                            <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0" />Chest X-Ray (PA View)</li>
+                            <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />Dosing safety check: CLEARED</li>
                           </ul>
                         </div>
                       </div>
@@ -1345,28 +1341,28 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
 
                 {activeSimTab === 'auditor' && (
                   <div className="space-y-4 animate-in fade-in duration-300">
-                    <div className="flex justify-between items-center bg-rose-500/10 border border-rose-500/30 text-rose-300 p-4 rounded-2xl">
+                    <div className="flex justify-between items-center bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-2xl">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-rose-500/20 flex items-center justify-center text-rose-400 flex-shrink-0">
+                        <div className="w-9 h-9 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 flex-shrink-0">
                           <AlertTriangle className="w-5 h-5" />
                         </div>
                         <div>
-                          <p className="text-xs font-black uppercase tracking-wider">AI Audit Result: Critical Anomaly Blocked</p>
-                          <p className="text-[11px] text-rose-200 mt-0.5 font-medium">Invoice checkout halted to protect billing compliance & patient safety</p>
+                          <p className="text-xs font-black uppercase tracking-wider text-rose-900">AI Audit Result: Critical Anomaly Blocked</p>
+                          <p className="text-[11px] text-rose-700 mt-0.5 font-medium">Invoice checkout halted to protect billing compliance & patient safety</p>
                         </div>
                       </div>
-                      <span className="text-[9px] bg-rose-500/20 text-rose-300 px-2 py-1 rounded-lg font-mono font-bold uppercase shrink-0">⚠️ Blocked</span>
+                      <span className="text-[9px] bg-rose-100 text-rose-800 px-2.5 py-1 rounded-lg font-mono font-bold uppercase shrink-0 border border-rose-200">⚠️ Blocked</span>
                     </div>
-                    <div className="bg-slate-900/80 border border-white/10 rounded-2xl p-4">
-                      <p className="text-xs font-bold text-white mb-3 uppercase tracking-wide">Deterministic & LLM Violations Detected:</p>
+                    <div className="bg-slate-50/80 border border-slate-200 rounded-2xl p-4">
+                      <p className="text-xs font-bold text-slate-900 mb-3 uppercase tracking-wide">Deterministic & LLM Violations Detected:</p>
                       <ul className="space-y-3 text-xs">
                         {[
                           { n: '1', title: 'Duplicate Diagnostics', desc: 'CBC Hematology and Automated Blood Count were both added. Removed duplicate charge saving ₹450.' },
                           { n: '2', title: 'Location Clash', desc: 'Active ICU bed assignment logged, but an Outpatient (OPD) consultation fee was attached. Flagged incompatible billing tags.' }
                         ].map(v => (
-                          <li key={v.n} className="flex items-start gap-3 bg-rose-500/5 border border-rose-500/10 rounded-xl p-3">
-                            <span className="text-rose-400 font-black font-mono text-[11px] mt-0.5">{v.n}.</span>
-                            <span className="text-slate-300 font-medium"><strong className="text-rose-300">{v.title}:</strong> {v.desc}</span>
+                          <li key={v.n} className="flex items-start gap-3 bg-white border border-rose-200 rounded-xl p-3 shadow-sm">
+                            <span className="text-rose-600 font-black font-mono text-[11px] mt-0.5">{v.n}.</span>
+                            <span className="text-slate-700 font-medium"><strong className="text-rose-900">{v.title}:</strong> {v.desc}</span>
                           </li>
                         ))}
                       </ul>
@@ -1377,37 +1373,37 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                 {activeSimTab === 'vernacular' && (
                   <div className="space-y-4 animate-in fade-in duration-300">
                     <div className="flex items-center gap-3 flex-wrap">
-                      <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Choose Handout Language:</span>
+                      <span className="text-xs text-slate-600 font-semibold uppercase tracking-wider">Choose Handout Language:</span>
                       <div className="flex gap-2 flex-wrap">
                         {[{ id: 'en', label: 'English' }, { id: 'hi', label: 'हिंदी (Hindi)' }, { id: 'ta', label: 'தமிழ் (Tamil)' }].map(lang => (
                           <button
                             key={lang.id}
                             onClick={() => setActiveLang(lang.id)}
-                            className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${activeLang === lang.id ? 'bg-violet-500 text-white shadow-lg shadow-violet-900/40' : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-white/5'}`}
+                            className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${activeLang === lang.id ? 'bg-violet-600 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'}`}
                           >
                             {lang.label}
                           </button>
                         ))}
                       </div>
                     </div>
-                    <div className="bg-[#0b1731] border border-violet-500/30 rounded-2xl p-5 shadow-xl relative">
-                      <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-violet-500/10 flex items-center justify-center text-violet-400">
+                    <div className="bg-violet-50/60 border border-violet-200 rounded-2xl p-5 shadow-sm relative">
+                      <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-600">
                         <Languages className="w-4 h-4 animate-pulse" />
                       </div>
-                      <h4 className="text-sm font-black text-white mb-3 tracking-wide">{translationData[activeLang].title}</h4>
-                      <div className="space-y-2 text-xs text-slate-200 leading-relaxed font-semibold">
-                        <p className="flex items-center gap-2 bg-slate-900/60 p-3 rounded-xl border border-white/5">{translationData[activeLang].med1}</p>
-                        <p className="flex items-center gap-2 bg-slate-900/60 p-3 rounded-xl border border-white/5">{translationData[activeLang].med2}</p>
-                        <p className="text-amber-400 mt-4 leading-normal bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl">{translationData[activeLang].advice}</p>
+                      <h4 className="text-sm font-black text-slate-900 mb-3 tracking-wide">{translationData[activeLang].title}</h4>
+                      <div className="space-y-2 text-xs text-slate-800 leading-relaxed font-semibold">
+                        <p className="flex items-center gap-2 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">{translationData[activeLang].med1}</p>
+                        <p className="flex items-center gap-2 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">{translationData[activeLang].med2}</p>
+                        <p className="text-amber-900 mt-4 leading-normal bg-amber-50 border border-amber-200 p-3 rounded-xl">{translationData[activeLang].advice}</p>
                       </div>
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="pt-4 border-t border-white/10 mt-6 flex justify-between items-center text-xs relative z-10">
+              <div className="pt-4 border-t border-slate-200 mt-6 flex justify-between items-center text-xs relative z-10">
                 <span className="text-slate-500 font-semibold">Interactive Sandbox Mode</span>
-                <button onClick={onEnterWorkspace} className="text-teal-400 hover:text-teal-300 font-bold flex items-center gap-1.5 group transition-colors">
+                <button onClick={onEnterWorkspace} className="text-teal-700 hover:text-teal-900 font-bold flex items-center gap-1.5 group transition-colors">
                   Enter Live Hospital Desk
                   <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
                 </button>
@@ -1417,31 +1413,31 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
         </section>
 
         {/* =========================================================================
-            STANDOUT CAPABILITIES SECTION (3x3 Grid)
+            STANDOUT CAPABILITIES SECTION (3x3 Grid, LIGHT THEME)
         ========================================================================= */}
         <section id="features" className="max-w-7xl mx-auto px-6 py-12 scroll-mt-28">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 text-xs text-violet-400 font-bold uppercase tracking-wider bg-violet-500/10 px-4 py-1.5 rounded-full border border-violet-500/20 mb-3">
+            <div className="inline-flex items-center gap-2 text-xs text-violet-700 font-bold uppercase tracking-wider bg-violet-50 px-4 py-1.5 rounded-full border border-violet-200 mb-3 shadow-sm">
               <Star className="w-3.5 h-3.5" />
               Comprehensive Capabilities
             </div>
-            <h2 className="text-2xl md:text-4xl font-extrabold text-white mb-3">Engineered for Reliability & Scale</h2>
-            <p className="text-slate-400 text-sm md:text-base max-w-2xl mx-auto">
+            <h2 className="text-2xl md:text-4xl font-extrabold text-slate-900 mb-3">Engineered for Reliability & Scale</h2>
+            <p className="text-slate-600 text-sm md:text-base max-w-2xl mx-auto">
               Connecting clinical ambient intake, pre-invoice compliance, government tariffs, and multi-role operations in a decoupled high-performance stack.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { icon: Mic, title: "Ambient Voice Scribe (मरीज़ की आवाज़)", desc: "Translates colloquial Hindi/Hinglish speech into structured OPD plans with diagnoses, medicines, and tests in real time without doctor re-typing.", color: "text-teal-400 bg-teal-500/10", gradientFrom: 'rgba(20,184,166,0.5)' },
-              { icon: Brain, title: "AI Prescribing & Safety Engine", desc: "Transforms patient symptoms into structured medication plans with precise OD/BD/TID dosing, pediatric safety caps, and non-overlapping classes.", color: "text-emerald-400 bg-emerald-500/10", gradientFrom: 'rgba(52,211,153,0.5)' },
-              { icon: ShieldAlert, title: "Hybrid Pre-Invoice AI Auditor", desc: "Combines deterministic rule validation with LLM reasoning to catch 6 critical billing inconsistencies before invoice checkout.", color: "text-rose-400 bg-rose-500/10", gradientFrom: 'rgba(251,113,133,0.5)' },
-              { icon: Languages, title: "11 Indian Language Handouts", desc: "Translates complex clinical notes into 11 Indian native languages with visual emoji daily-routine checklists for patient adherence.", color: "text-violet-400 bg-violet-500/10", gradientFrom: 'rgba(167,139,250,0.5)' },
-              { icon: Users, title: "4 Role-Tailored Workspaces", desc: "Dedicated consoles for Doctor (Clinical Queue), Receptionist (Speed Registration & Advance Deposits), Accountant (Reconciliation), and Admin.", color: "text-blue-400 bg-blue-500/10", gradientFrom: 'rgba(96,165,250,0.5)' },
-              { icon: Scale, title: "NHA & CGHS Price Benchmarks", desc: "Real-time tariff auditing against National Health Authority (NHA) & CGHS standards to detect overbilling, undercharging, and margin leakage.", color: "text-amber-400 bg-amber-500/10", gradientFrom: 'rgba(251,191,36,0.5)' },
-              { icon: BarChart3, title: "AI Revenue & Audit Insights", desc: "Generates natural language summaries of outstanding ledger balances, digital vs cash splits, and actionable management alerts.", color: "text-cyan-400 bg-cyan-500/10", gradientFrom: 'rgba(34,211,238,0.5)' },
-              { icon: FileText, title: "ReportLab PDF Receipts & Rx", desc: "Server-side dynamic PDF generation reproducing official diagnostic slips & prescriptions with Devanagari font support and custom branding.", color: "text-orange-400 bg-orange-500/10", gradientFrom: 'rgba(251,146,60,0.5)' },
-              { icon: TrendingUp, title: "Hospital ROI & Savings Calculator", desc: "Interactive financial model simulating annual hospital cost recovery from eliminated billing leakage, reduced consultation delays, and automated audits.", color: "text-indigo-400 bg-indigo-500/10", gradientFrom: 'rgba(129,140,248,0.5)' }
+              { icon: Mic, title: "Ambient Voice Scribe (मरीज़ की आवाज़)", desc: "Translates colloquial Hindi/Hinglish speech into structured OPD plans with diagnoses, medicines, and tests in real time without doctor re-typing.", color: "text-teal-700 bg-teal-50", gradientFrom: 'rgba(20,184,166,0.5)' },
+              { icon: Brain, title: "AI Prescribing & Safety Engine", desc: "Transforms patient symptoms into structured medication plans with precise OD/BD/TID dosing, pediatric safety caps, and non-overlapping classes.", color: "text-emerald-700 bg-emerald-50", gradientFrom: 'rgba(52,211,153,0.5)' },
+              { icon: ShieldAlert, title: "Hybrid Pre-Invoice AI Auditor", desc: "Combines deterministic rule validation with LLM reasoning to catch 6 critical billing inconsistencies before invoice checkout.", color: "text-rose-700 bg-rose-50", gradientFrom: 'rgba(251,113,133,0.5)' },
+              { icon: Languages, title: "11 Indian Language Handouts", desc: "Translates complex clinical notes into 11 Indian native languages with visual emoji daily-routine checklists for patient adherence.", color: "text-violet-700 bg-violet-50", gradientFrom: 'rgba(167,139,250,0.5)' },
+              { icon: Users, title: "4 Role-Tailored Workspaces", desc: "Dedicated consoles for Doctor (Clinical Queue), Receptionist (Speed Registration & Advance Deposits), Accountant (Reconciliation), and Admin.", color: "text-blue-700 bg-blue-50", gradientFrom: 'rgba(96,165,250,0.5)' },
+              { icon: Scale, title: "NHA & CGHS Price Benchmarks", desc: "Real-time tariff auditing against National Health Authority (NHA) & CGHS standards to detect overbilling, undercharging, and margin leakage.", color: "text-amber-700 bg-amber-50", gradientFrom: 'rgba(251,191,36,0.5)' },
+              { icon: BarChart3, title: "AI Revenue & Audit Insights", desc: "Generates natural language summaries of outstanding ledger balances, digital vs cash splits, and actionable management alerts.", color: "text-cyan-700 bg-cyan-50", gradientFrom: 'rgba(34,211,238,0.5)' },
+              { icon: FileText, title: "ReportLab PDF Receipts & Rx", desc: "Server-side dynamic PDF generation reproducing official diagnostic slips & prescriptions with Devanagari font support and custom branding.", color: "text-orange-700 bg-orange-50", gradientFrom: 'rgba(251,146,60,0.5)' },
+              { icon: TrendingUp, title: "Hospital ROI & Savings Calculator", desc: "Interactive financial model simulating annual hospital cost recovery from eliminated billing leakage, reduced consultation delays, and automated audits.", color: "text-indigo-700 bg-indigo-50", gradientFrom: 'rgba(129,140,248,0.5)' }
             ].map((feat, i) => (
               <FeatureCard key={i} {...feat} delay={i * 70} />
             ))}
@@ -1449,7 +1445,7 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
         </section>
 
         {/* =========================================================================
-            TECH ARCHITECTURE SECTION
+            TECH ARCHITECTURE SECTION (LIGHT THEME)
         ========================================================================= */}
         <section id="tech" ref={techRef} className="max-w-7xl mx-auto px-6 py-12 scroll-mt-28 pb-16">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
@@ -1461,12 +1457,12 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                 transition: 'opacity 0.8s ease, transform 0.8s ease'
               }}
             >
-              <div className="inline-flex items-center gap-1.5 text-xs text-teal-400 font-bold uppercase tracking-wider bg-teal-500/10 px-3.5 py-1.5 rounded-full border border-teal-500/20">
-                <Cpu className="w-3.5 h-3.5 animate-spin-slow" />
+              <div className="inline-flex items-center gap-1.5 text-xs text-teal-700 font-bold uppercase tracking-wider bg-teal-50 px-3.5 py-1.5 rounded-full border border-teal-200 shadow-sm">
+                <Cpu className="w-3.5 h-3.5 animate-spin-slow text-teal-600" />
                 Under the Hood
               </div>
-              <h2 className="text-2xl md:text-4xl font-extrabold text-white leading-tight">Production-Ready Decoupled Architecture</h2>
-              <p className="text-slate-400 text-sm md:text-base leading-relaxed">
+              <h2 className="text-2xl md:text-4xl font-extrabold text-slate-900 leading-tight">Production-Ready Decoupled Architecture</h2>
+              <p className="text-slate-600 text-sm md:text-base leading-relaxed">
                 HospiSynAI separates presentation, business logic, and persistence layers for horizontal scalability and compliance verification.
               </p>
               <div className="space-y-3">
@@ -1478,11 +1474,11 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                   "Role-based access control (RBAC) enforced at all API endpoints",
                   "Installable PWA with offline fallback and service worker caching"
                 ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 text-xs font-semibold text-slate-300 group">
-                    <div className="w-5 h-5 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-500/20 transition-colors">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <div key={i} className="flex items-center gap-3 text-xs font-semibold text-slate-700 group">
+                    <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-200 transition-colors">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
                     </div>
-                    <span className="group-hover:text-white transition-colors">{item}</span>
+                    <span className="group-hover:text-slate-900 transition-colors">{item}</span>
                   </div>
                 ))}
               </div>
@@ -1498,41 +1494,41 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
             >
               {[
                 {
-                  icon: Layers, title: 'Client Stack', color: 'bg-teal-500/10 text-teal-400', items: [
-                    { label: 'React (JSX + Hooks)', color: 'text-teal-300' },
-                    { label: 'Tailwind CSS', color: 'text-teal-300' },
-                    { label: 'Lucide + Recharts', color: 'text-slate-300' },
-                    { label: 'PWA + Service Worker', color: 'text-slate-300' },
+                  icon: Layers, title: 'Client Stack', color: 'bg-teal-100 text-teal-700', items: [
+                    { label: 'React (JSX + Hooks)', color: 'text-teal-800' },
+                    { label: 'Tailwind CSS', color: 'text-teal-800' },
+                    { label: 'Lucide + Recharts', color: 'text-slate-700' },
+                    { label: 'PWA + Service Worker', color: 'text-slate-700' },
                   ]
                 },
                 {
-                  icon: Terminal, title: 'Backend Core', color: 'bg-violet-500/10 text-violet-400', items: [
-                    { label: 'Python FastAPI', color: 'text-violet-300' },
-                    { label: 'Groq OSS-120B Clinical Engine', color: 'text-violet-300' },
-                    { label: 'ReportLab PDF Engine', color: 'text-slate-300' },
-                    { label: 'SQLAlchemy ORM', color: 'text-slate-300' },
+                  icon: Terminal, title: 'Backend Core', color: 'bg-violet-100 text-violet-700', items: [
+                    { label: 'Python FastAPI', color: 'text-violet-800' },
+                    { label: 'Groq OSS-120B Clinical Engine', color: 'text-violet-800' },
+                    { label: 'ReportLab PDF Engine', color: 'text-slate-700' },
+                    { label: 'SQLAlchemy ORM', color: 'text-slate-700' },
                   ]
                 },
                 {
-                  icon: Database, title: 'DevOps & Infra', color: 'bg-rose-500/10 text-rose-400', items: [
-                    { label: 'Neon PostgreSQL', color: 'text-rose-300' },
-                    { label: 'Docker + Compose', color: 'text-rose-300' },
-                    { label: 'Vercel + Render', color: 'text-slate-300' },
-                    { label: 'Fine-grained RBAC', color: 'text-slate-300' },
+                  icon: Database, title: 'DevOps & Infra', color: 'bg-rose-100 text-rose-700', items: [
+                    { label: 'Neon PostgreSQL', color: 'text-rose-800' },
+                    { label: 'Docker + Compose', color: 'text-rose-800' },
+                    { label: 'Vercel + Render', color: 'text-slate-700' },
+                    { label: 'Fine-grained RBAC', color: 'text-slate-700' },
                   ]
                 }
               ].map((card, i) => {
                 const Icon = card.icon;
                 return (
-                  <div key={i} className="glass-card p-6 rounded-3xl border border-white/10 bg-[#0b1329]/50 hover:border-white/20 transition-all duration-300 hover:translate-y-[-3px] group">
-                    <div className={`w-10 h-10 rounded-xl ${card.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                  <div key={i} className="p-6 rounded-3xl border border-slate-200 bg-white hover:border-teal-400 shadow-md hover:shadow-xl transition-all duration-300 hover:translate-y-[-3px] group">
+                    <div className={`w-10 h-10 rounded-xl ${card.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm`}>
                       <Icon className="w-5 h-5" />
                     </div>
-                    <h4 className="text-sm font-extrabold text-white mb-3 uppercase tracking-wide">{card.title}</h4>
+                    <h4 className="text-sm font-extrabold text-slate-900 mb-3 uppercase tracking-wide">{card.title}</h4>
                     <div className="space-y-1.5">
                       {card.items.map((item, j) => (
                         <div key={j} className="flex items-center gap-2 text-[11px] font-semibold">
-                          <span className="w-1.5 h-1.5 rounded-full bg-slate-600 flex-shrink-0" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-teal-500 flex-shrink-0" />
                           <span className={item.color}>{item.label}</span>
                         </div>
                       ))}
@@ -1545,9 +1541,9 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
         </section>
 
         {/* =========================================================================
-            FREQUENTLY ASKED QUESTIONS (FAQ) ACCORDION SECTION
+            FREQUENTLY ASKED QUESTIONS (FAQ) ACCORDION SECTION (LIGHT THEME)
         ========================================================================= */}
-        <section id="faqs" ref={faqRef} className="max-w-5xl mx-auto px-6 py-20 relative z-10">
+        <section id="faqs" ref={faqRef} className="max-w-5xl mx-auto px-6 py-16 relative z-10">
           {/* Ambient section header */}
           <div
             className="text-center mb-14"
@@ -1557,14 +1553,14 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
               transition: 'opacity 0.7s ease, transform 0.7s ease'
             }}
           >
-            <div className="inline-flex items-center gap-2 text-xs text-teal-400 font-bold uppercase tracking-wider bg-teal-500/10 px-4 py-1.5 rounded-full border border-teal-500/30 mb-4">
-              <HelpCircle className="w-3.5 h-3.5 text-teal-400" />
+            <div className="inline-flex items-center gap-2 text-xs text-teal-700 font-bold uppercase tracking-wider bg-teal-50 px-4 py-1.5 rounded-full border border-teal-200 mb-4 shadow-sm">
+              <HelpCircle className="w-3.5 h-3.5 text-teal-600" />
               Frequently Asked Questions
             </div>
-            <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight mb-4">
+            <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-4">
               Everything You Need to Know About <span className="gradient-text-teal">HospiSynAI</span>
             </h2>
-            <p className="text-slate-400 text-sm md:text-base max-w-2xl mx-auto font-medium leading-relaxed">
+            <p className="text-slate-600 text-sm md:text-base max-w-2xl mx-auto font-medium leading-relaxed">
               Explore how our autonomous clinical dictation, guided voice intake, real-time AI triage, and pre-invoice audit engine transform modern hospital operations.
             </p>
           </div>
@@ -1585,8 +1581,8 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                   key={index}
                   className={`rounded-2xl border transition-all duration-300 overflow-hidden ${
                     isOpen
-                      ? 'bg-gradient-to-r from-slate-900/95 via-[#0a1628]/95 to-slate-900/95 border-teal-500/50 shadow-xl shadow-teal-950/30'
-                      : 'bg-[#080f1e]/60 hover:bg-[#0d172e]/70 border-white/10 hover:border-white/20'
+                      ? 'bg-white border-teal-500/60 shadow-lg shadow-teal-500/10'
+                      : 'bg-white hover:bg-slate-50/80 border-slate-200 hover:border-slate-300 shadow-sm'
                   }`}
                 >
                   <button
@@ -1597,36 +1593,36 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
                       <span className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 transition-colors ${
-                        isOpen ? 'bg-teal-500 text-slate-950 shadow-md shadow-teal-500/30' : 'bg-white/5 text-slate-400'
+                        isOpen ? 'bg-teal-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600'
                       }`}>
                         {index + 1}
                       </span>
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-300 border border-teal-500/20">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 border border-teal-200">
                             {faq.category}
                           </span>
                         </div>
-                        <h3 className="text-sm md:text-base font-extrabold text-white tracking-tight">
+                        <h3 className="text-sm md:text-base font-extrabold text-slate-900 tracking-tight">
                           {faq.question}
                         </h3>
                       </div>
                     </div>
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-transform duration-300 ${
-                      isOpen ? 'rotate-180 bg-teal-500/20 text-teal-300' : 'bg-white/5 text-slate-400'
+                      isOpen ? 'rotate-180 bg-teal-50 text-teal-700' : 'bg-slate-100 text-slate-500'
                     }`}>
                       <ChevronDown className="w-4 h-4" />
                     </div>
                   </button>
 
                   {isOpen && (
-                    <div className="px-5 md:px-6 pb-6 pt-1 border-t border-teal-500/15 text-xs md:text-sm text-slate-300 leading-relaxed font-normal animate-in slide-in-from-top-2 duration-200">
-                      <p className="text-slate-300 font-medium">
+                    <div className="px-5 md:px-6 pb-6 pt-1 border-t border-slate-100 text-xs md:text-sm text-slate-600 leading-relaxed font-normal animate-in slide-in-from-top-2 duration-200">
+                      <p className="text-slate-600 font-medium">
                         {faq.answer}
                       </p>
                       {faq.highlight && (
-                        <div className="mt-3 inline-flex items-center gap-2 bg-teal-500/10 border border-teal-500/30 px-3 py-1.5 rounded-xl text-[11.5px] font-semibold text-teal-300">
-                          <Sparkles className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                        <div className="mt-3 inline-flex items-center gap-2 bg-teal-50 border border-teal-200 px-3 py-1.5 rounded-xl text-[11.5px] font-semibold text-teal-800">
+                          <Sparkles className="w-3.5 h-3.5 text-teal-600 shrink-0" />
                           <span>{faq.highlight}</span>
                         </div>
                       )}
@@ -1638,19 +1634,19 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
           </div>
 
           {/* Quick Support / Contact Callout Banner */}
-          <div className="mt-10 p-5 rounded-2xl bg-gradient-to-r from-teal-950/40 via-slate-900 to-teal-950/40 border border-teal-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left shadow-lg">
+          <div className="mt-10 p-5 rounded-2xl bg-gradient-to-r from-teal-50 via-white to-emerald-50 border border-teal-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left shadow-md">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-teal-500/20 flex items-center justify-center text-teal-400 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-teal-100 flex items-center justify-center text-teal-700 shrink-0">
                 <Sparkles className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-white">Have more questions or need custom hospital integration?</h4>
-                <p className="text-xs text-slate-400 font-medium">Our clinical engineering team provides tailored deployment support for NABH & Ayushman Bharat hospitals.</p>
+                <h4 className="text-sm font-bold text-slate-900">Have more questions or need custom hospital integration?</h4>
+                <p className="text-xs text-slate-600 font-medium">Our clinical engineering team provides tailored deployment support for NABH & Ayushman Bharat hospitals.</p>
               </div>
             </div>
             <button
               onClick={onEnterWorkspace}
-              className="px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-teal-500/20 transition-all active:scale-95 shrink-0 cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-teal-600/20 transition-all active:scale-95 shrink-0 cursor-pointer"
             >
               Test Live Console →
             </button>
@@ -1660,12 +1656,12 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
         {/* =========================================================================
             FULL-BLEED SHOWSTOPPER CTA SECTION
         ========================================================================= */}
-        <section ref={ctaRef} className="relative overflow-hidden py-20 px-6 my-12">
-          {/* Deep gradient background */}
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, #091f24 0%, #0d1a36 40%, #170f38 70%, #081d22 100%)' }} />
-          <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 30% 50%, rgba(20,184,166,0.2) 0%, transparent 65%), radial-gradient(ellipse at 70% 50%, rgba(139,92,246,0.2) 0%, transparent 65%)' }} />
-          <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(20,184,166,0.5), rgba(139,92,246,0.5), transparent)' }} />
-          <div className="absolute bottom-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(20,184,166,0.5), rgba(139,92,246,0.5), transparent)' }} />
+        <section ref={ctaRef} className="relative overflow-hidden py-16 px-6 my-10 max-w-7xl mx-auto rounded-3xl shadow-2xl">
+          {/* Deep emerald & teal luxury backdrop */}
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, #042f2e 0%, #064e3b 45%, #0f172a 100%)' }} />
+          <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 30% 50%, rgba(20,184,166,0.3) 0%, transparent 65%), radial-gradient(ellipse at 70% 50%, rgba(52,211,153,0.2) 0%, transparent 65%)' }} />
+          <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(45,212,191,0.5), transparent)' }} />
+          <div className="absolute bottom-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(45,212,191,0.5), transparent)' }} />
 
           <div
             className="relative z-10 max-w-4xl mx-auto text-center"
@@ -1675,17 +1671,17 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
               transition: 'opacity 0.9s ease, transform 0.9s ease'
             }}
           >
-            <div className="inline-flex items-center gap-2 text-xs text-teal-400 font-bold uppercase tracking-wider bg-teal-500/10 px-4 py-1.5 rounded-full border border-teal-500/30 mb-6">
+            <div className="inline-flex items-center gap-2 text-xs text-teal-300 font-bold uppercase tracking-wider bg-teal-500/20 px-4 py-1.5 rounded-full border border-teal-400/30 mb-6">
               <Sparkles className="w-4 h-4 text-teal-400" />
               Enterprise HealthTech Solution
             </div>
 
             <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-6 leading-tight">
               Ready to Experience the<br />
-              <span className="gradient-text-teal">Future of Hospital AI?</span>
+              <span className="bg-gradient-to-r from-teal-300 via-emerald-300 to-cyan-300 bg-clip-text text-transparent">Future of Hospital AI?</span>
             </h2>
 
-            <p className="text-slate-300 text-base md:text-lg max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
+            <p className="text-slate-200 text-base md:text-lg max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
               Launch the live console to test doctor consultations, billing audits, deposit synchronization, and multilingual PDF generation.
             </p>
 
@@ -1695,7 +1691,7 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                 className="group relative px-10 py-5 rounded-2xl text-sm font-black uppercase tracking-wider text-white flex items-center justify-center gap-3 transition-all active:scale-[0.97] overflow-hidden shadow-2xl"
                 style={{
                   background: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 50%, #0f766e 100%)',
-                  boxShadow: '0 0 40px rgba(20,184,166,0.5), 0 8px 30px rgba(20,184,166,0.3)'
+                  boxShadow: '0 0 40px rgba(20,184,166,0.4)'
                 }}
               >
                 <span className="relative z-10">Launch HospiSynAI Now</span>
@@ -1705,9 +1701,9 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
 
               <a
                 href="#demo"
-                className="px-8 py-5 rounded-2xl text-sm font-black uppercase tracking-wider text-slate-300 hover:text-white border border-white/15 hover:border-white/30 bg-white/[0.05] hover:bg-white/[0.1] backdrop-blur-md transition-all active:scale-[0.97] flex items-center justify-center gap-2"
+                className="px-8 py-5 rounded-2xl text-sm font-black uppercase tracking-wider text-slate-100 hover:text-white border border-white/20 hover:border-white/40 bg-white/10 hover:bg-white/15 backdrop-blur-md transition-all active:scale-[0.97] flex items-center justify-center gap-2"
               >
-                <Zap className="w-4 h-4 text-teal-400" />
+                <Zap className="w-4 h-4 text-teal-300" />
                 View Interactive Demo
               </a>
             </div>
@@ -1715,7 +1711,7 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
             {/* Badges */}
             <div className="flex flex-wrap items-center justify-center gap-3 mt-10">
               {['⚡ <1.5s Groq Latency', '🛡️ Hybrid Audit Engine', '🌐 11 Indian Languages', '🔒 Tamper-Evident Audit Logs', '🐳 Dockerized PWA'].map((badge, i) => (
-                <span key={i} className="text-[11px] text-slate-300 font-bold bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-full backdrop-blur-sm">
+                <span key={i} className="text-[11px] text-slate-200 font-bold bg-white/10 border border-white/15 px-3.5 py-1.5 rounded-full backdrop-blur-sm">
                   {badge}
                 </span>
               ))}
@@ -1725,22 +1721,22 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
 
       </main>
 
-      {/* --- Footer --- */}
-      <footer className="border-t border-white/10 bg-[#030710] py-10 px-6 relative z-10">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-xs text-slate-400 font-semibold">
+      {/* --- Footer (LIGHT THEME) --- */}
+      <footer className="border-t border-slate-200 bg-white py-10 px-6 relative z-10">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-xs text-slate-600 font-semibold">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-teal-500/20 flex items-center justify-center text-teal-400">
+            <div className="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center text-teal-700">
               <Activity className="w-4 h-4" />
             </div>
-            <span className="text-slate-200 font-bold text-sm">HospiSynAI Ecosystem</span>
+            <span className="text-slate-900 font-bold text-sm">HospiSynAI Ecosystem</span>
           </div>
           <div className="text-center leading-relaxed">
             <p>Designed & Engineered with Enterprise-Grade SDE Best Practices.</p>
-            <p className="text-slate-500 mt-0.5">Autonomous Clinical & Pre-Invoice Intelligence Platform</p>
+            <p className="text-slate-400 mt-0.5">Autonomous Clinical & Pre-Invoice Intelligence Platform</p>
           </div>
           <button
             onClick={onEnterWorkspace}
-            className="px-5 py-2.5 rounded-xl border border-teal-500/40 text-teal-400 hover:bg-teal-500/15 transition-all font-bold uppercase tracking-wider active:scale-[0.97]"
+            className="px-5 py-2.5 rounded-xl border border-teal-600 text-teal-700 hover:bg-teal-50 transition-all font-bold uppercase tracking-wider active:scale-[0.97]"
           >
             Launch System →
           </button>
@@ -1749,18 +1745,18 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
 
       {/* --- Manual Installation Instructions Modal --- */}
       {showInstructionModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#020617]/85 backdrop-blur-md">
-          <div className="bg-[#091021] border border-white/15 rounded-3xl p-6 md:p-8 max-w-lg w-full relative shadow-2xl max-h-[90vh] overflow-y-auto">
-            <button onClick={() => setShowInstructionModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white p-1.5 rounded-full hover:bg-white/5 transition-colors">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 max-w-lg w-full relative shadow-2xl max-h-[90vh] overflow-y-auto">
+            <button onClick={() => setShowInstructionModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 p-1.5 rounded-full hover:bg-slate-100 transition-colors">
               <X className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-violet-500/15 text-violet-400 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center">
                 <Download className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-lg font-extrabold text-white">Install HospiSynAI PWA</h3>
-                <p className="text-xs text-slate-400 font-medium">Add to your device home screen for standalone utility.</p>
+                <h3 className="text-lg font-extrabold text-slate-900">Install HospiSynAI PWA</h3>
+                <p className="text-xs text-slate-500 font-medium">Add to your device home screen for standalone utility.</p>
               </div>
             </div>
             <div className="space-y-3">
@@ -1769,20 +1765,20 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                 { icon: <Smartphone className="w-4 h-4" />, title: 'Android Chrome / Edge', color: 'violet', steps: ['Tap Menu (⋮) in the top-right corner.', 'Tap "Install app" or "Add to Home screen".'] },
                 { icon: <Monitor className="w-4 h-4" />, title: 'Desktop Chrome / Edge / Opera', color: 'teal', steps: ['Click the Install Icon in the URL address bar.', 'Or open browser menu and choose "Install HospiSynAI".'] },
               ].map((s, i) => (
-                <div key={i} className="bg-slate-900/60 border border-white/10 p-4 rounded-2xl flex items-start gap-4">
-                  <div className="w-8 h-8 rounded-lg bg-white/5 text-teal-400 flex items-center justify-center flex-shrink-0 text-sm font-black">
+                <div key={i} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex items-start gap-4">
+                  <div className="w-8 h-8 rounded-lg bg-white shadow-sm text-teal-700 flex items-center justify-center flex-shrink-0 text-sm font-black border border-slate-200">
                     {typeof s.icon === 'string' ? s.icon : s.icon}
                   </div>
                   <div>
-                    <h4 className="text-xs font-black text-white uppercase tracking-wider mb-1.5">{s.title}</h4>
-                    <ol className="list-decimal list-inside text-[11px] text-slate-400 space-y-1 leading-relaxed font-medium">
+                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-1.5">{s.title}</h4>
+                    <ol className="list-decimal list-inside text-[11px] text-slate-600 space-y-1 leading-relaxed font-medium">
                       {s.steps.map((step, j) => <li key={j}>{step}</li>)}
                     </ol>
                   </div>
                 </div>
               ))}
             </div>
-            <button onClick={() => setShowInstructionModal(false)} className="w-full mt-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider text-white bg-slate-800 hover:bg-slate-700 transition-colors">
+            <button onClick={() => setShowInstructionModal(false)} className="w-full mt-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider text-white bg-slate-900 hover:bg-slate-800 transition-colors">
               Got It, Thanks!
             </button>
           </div>
@@ -1793,27 +1789,27 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
           PATIENT PORTAL QUICK-ACCESS & OTP VERIFICATION MODAL
       ========================================================================= */}
       {isPatientModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-teal-500/30 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative text-left">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white border border-teal-200 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative text-left">
             <button
               onClick={() => { setIsPatientModalOpen(false); setPatientOtpStep('identifier'); setOtpError(''); }}
-              className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
 
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-teal-400">
+              <div className="w-12 h-12 rounded-2xl bg-teal-100 border border-teal-200 flex items-center justify-center text-teal-700">
                 <Shield className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white tracking-tight">Patient Health Portal</h3>
-                <p className="text-xs text-slate-400">Access Prescriptions, Invoices & OPD Pass</p>
+                <h3 className="text-lg font-bold text-slate-900 tracking-tight">Patient Health Portal</h3>
+                <p className="text-xs text-slate-500">Access Prescriptions, Invoices & OPD Pass</p>
               </div>
             </div>
 
             {otpError && (
-              <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs rounded-xl flex items-center gap-2">
+              <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 <span>{otpError}</span>
               </div>
@@ -1822,7 +1818,7 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
             {patientOtpStep === 'identifier' ? (
               <form onSubmit={handleSendOtp} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
                     Mobile Number or UHID / Health ID
                   </label>
                   <input
@@ -1830,7 +1826,7 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                     value={patientIdent}
                     onChange={(e) => setPatientIdent(e.target.value)}
                     placeholder="e.g. 9876543210 or PAT-20260921-0001"
-                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:bg-white"
                     required
                   />
                   <p className="text-[11px] text-slate-500 mt-1">
@@ -1841,20 +1837,20 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                 <button
                   type="submit"
                   disabled={otpLoading}
-                  className="w-full py-3 bg-teal-600 hover:bg-teal-500 active:scale-98 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-teal-600/25 disabled:opacity-50"
+                  className="w-full py-3 bg-teal-600 hover:bg-teal-700 active:scale-98 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-teal-600/25 disabled:opacity-50"
                 >
                   {otpLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   <span>{otpLoading ? 'Sending OTP...' : 'Send Verification OTP'}</span>
                 </button>
 
-                <div className="pt-2 border-t border-slate-800">
+                <div className="pt-2 border-t border-slate-200">
                   <button
                     type="button"
                     onClick={handleDemoPatientLogin}
                     disabled={otpLoading}
-                    className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-teal-300 border border-teal-500/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                    className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 text-teal-700 border border-teal-300 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-teal-400" />
+                    <Sparkles className="w-3.5 h-3.5 text-teal-600" />
                     <span>Instant Demo Access (Nisha Patel)</span>
                   </button>
                 </div>
@@ -1862,14 +1858,14 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
             ) : (
               <form onSubmit={handleVerifyOtp} className="space-y-4">
                 {otpSentNotice && (
-                  <div className="p-3 bg-teal-500/10 border border-teal-500/20 text-teal-300 text-xs rounded-xl flex items-center gap-2">
+                  <div className="p-3 bg-teal-50 border border-teal-200 text-teal-800 text-xs rounded-xl flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
                     <span>{otpSentNotice}</span>
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
                     Enter 6-Digit Verification Code
                   </label>
                   <input
@@ -1878,10 +1874,10 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                     value={patientOtp}
                     onChange={(e) => setPatientOtp(e.target.value)}
                     placeholder="Enter 6-digit OTP"
-                    className="w-full bg-slate-800/80 border border-teal-500/40 rounded-xl px-4 py-3 text-center text-xl tracking-[6px] font-mono text-white placeholder-slate-600 focus:outline-none focus:border-teal-400"
+                    className="w-full bg-slate-50 border border-teal-400 rounded-xl px-4 py-3 text-center text-xl tracking-[6px] font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:border-teal-600 focus:bg-white"
                     required
                   />
-                  <p className="text-[11px] text-teal-400/80 mt-1.5 flex items-center justify-between">
+                  <p className="text-[11px] text-teal-700 mt-1.5 flex items-center justify-between">
                     <span>📩 Enter the 6-digit OTP sent to your email.</span>
                     <span className="text-slate-500 font-mono text-[10px]">(Demo bypass: 123456)</span>
                   </p>
@@ -1891,14 +1887,14 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
                   <button
                     type="button"
                     onClick={() => { setPatientOtpStep('identifier'); setOtpError(''); }}
-                    className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors"
+                    className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors"
                   >
                     Back
                   </button>
                   <button
                     type="submit"
                     disabled={otpLoading}
-                    className="flex-1 py-3 bg-teal-600 hover:bg-teal-500 active:scale-98 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-teal-600/25 disabled:opacity-50"
+                    className="flex-1 py-3 bg-teal-600 hover:bg-teal-700 active:scale-98 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-teal-600/25 disabled:opacity-50"
                   >
                     {otpLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                     <span>{otpLoading ? 'Verifying...' : 'Access My Records'}</span>

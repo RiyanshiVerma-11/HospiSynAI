@@ -1965,7 +1965,7 @@ function App() {
         </header>
 
         {/* Page content padding */}
-        <div className="flex-1 overflow-y-auto md:overflow-hidden p-0 min-h-0">
+        <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden p-0">
 
         {/* ----------------------------------------------------
             TAB 1: DASHBOARD (Role-Aware: Patient, Receptionist, Accountant, Doctor, Admin)

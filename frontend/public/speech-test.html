@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Microphone & Speech API Diagnostic Suite</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 760px; margin: 30px auto; background: #0f172a; color: #f1f5f9; padding: 0 20px; line-height: 1.5; }
+    h1 { color: #38bdf8; margin-bottom: 8px; }
+    .card { background: #1e293b; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #334155; }
+    .btn { padding: 10px 20px; font-size: 15px; font-weight: 600; margin-right: 10px; margin-bottom: 10px; cursor: pointer; border-radius: 8px; border: none; transition: 0.2s; }
+    .btn-primary { background: #0ea5e9; color: #fff; }
+    .btn-primary:hover { background: #0284c7; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-secondary { background: #64748b; color: #fff; }
+    select { padding: 10px 14px; background: #0f172a; color: #f1f5f9; border: 1px solid #475569; border-radius: 8px; font-size: 14px; margin-bottom: 12px; }
+    #meterContainer { width: 100%; height: 28px; background: #0f172a; border-radius: 6px; overflow: hidden; border: 1px solid #475569; margin: 12px 0; position: relative; }
+    #meterBar { height: 100%; width: 0%; background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444); transition: width 0.05s linear; }
+    #meterText { position: absolute; top: 4px; left: 12px; font-size: 12px; font-weight: bold; color: #fff; text-shadow: 0 1px 2px #000; }
+    #result { background: #0f172a; padding: 16px; border-radius: 8px; font-size: 20px; font-weight: 500; min-height: 48px; border: 1px solid #334155; }
+    #log { background: #020617; padding: 16px; border-radius: 8px; white-space: pre-wrap; font-family: monospace; font-size: 12px; max-height: 260px; overflow-y: auto; color: #94a3b8; border: 1px solid #1e293b; }
+    .badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; margin-bottom: 8px; }
+    .badge-ok { background: #065f46; color: #34d399; }
+    .badge-warn { background: #78350f; color: #fbbf24; }
+    .badge-err { background: #7f1d1d; color: #f87171; }
+    .instructions { background: #1e1b4b; border-left: 4px solid #6366f1; padding: 14px 18px; border-radius: 6px; margin: 16px 0; font-size: 14px; }
+    .instructions ol { margin: 8px 0; padding-left: 20px; }
+    .instructions li { margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <h1>🎤 Speech Recognition & Mic Diagnostics</h1>
+  <p style="color: #94a3b8;">This tool tests 2 things independently: <b>1) Can Chrome hear your mic?</b> and <b>2) Can Google/Edge Speech Recognition transcribe your voice?</b></p>
+
+  <!-- Step 1: Mic Audio Hardware Test -->
+  <div class="card">
+    <h3>Step 1: Test Microphone Input Volume (Audio VU Meter)</h3>
+    <p style="color: #94a3b8; font-size: 13px;">Click below and speak loudly. If the green/yellow bar does <b>NOT</b> move at all, your microphone is muted in Windows or Chrome is using the wrong device.</p>
+    
+    <div>
+      <label>Microphone Device: </label>
+      <select id="audioDeviceSelect" onchange="switchDevice()"><option value="">Default System Microphone</option></select>
+    </div>
+
+    <button id="meterBtn" class="btn btn-primary" onclick="toggleAudioMeter()">▶ Start Mic Audio Level Test</button>
+    
+    <div id="meterContainer">
+      <div id="meterBar"></div>
+      <div id="meterText">Mic Inactive</div>
+    </div>
+  </div>
+
+  <!-- Step 2: Speech Recognition Test -->
+  <div class="card">
+    <h3>Step 2: Test Speech-to-Text Recognition</h3>
+    <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 12px;">
+      <div>
+        <label>Recognition Language: </label><br/>
+        <select id="langSelect">
+          <option value="en-IN">English (India) - en-IN</option>
+          <option value="hi-IN">Hindi - hi-IN</option>
+          <option value="en-US">English (US) - en-US</option>
+          <option value="en-GB">English (UK) - en-GB</option>
+        </select>
+      </div>
+      <div>
+        <label>Mode: </label><br/>
+        <select id="modeSelect">
+          <option value="continuous">Continuous (Dictation)</option>
+          <option value="single">Single Utterance (stops automatically)</option>
+        </select>
+      </div>
+    </div>
+
+    <button id="startBtn" class="btn btn-primary" onclick="startSpeechTest()">▶ Start Speech Recognition</button>
+    <button id="stopBtn" class="btn btn-danger" onclick="stopSpeechTest()">⏹ Stop</button>
+
+    <h4>Live Transcript:</h4>
+    <div id="result">(Click Start and speak clearly into your microphone...)</div>
+
+    <h4 style="margin-top: 18px;">Diagnostic Event Log:</h4>
+    <div id="log"></div>
+  </div>
+
+  <!-- Step 3: Quick Troubleshooting Steps -->
+  <div class="instructions">
+    <h4 style="margin-top: 0; color: #a5b4fc;">⚡ If the Speech API is not producing text:</h4>
+    <ol>
+      <li><b>Test in Microsoft Edge:</b> Open <code>http://localhost:3001/speech-test.html</code> in <b>Microsoft Edge</b>! Edge uses Microsoft Azure Speech instead of Google, and works when Google Speech servers are blocked or failing.</li>
+      <li><b>Check Chrome Mic Settings:</b> Open <code>chrome://settings/content/microphone</code> in Chrome URL bar, and make sure the correct physical microphone (e.g. Realtek / Headset) is selected, NOT "Stereo Mix" or "Virtual Cable".</li>
+      <li><b>Windows Sound Settings:</b> Press <code>Win + I</code> &rarr; <i>System</i> &rarr; <i>Sound</i> &rarr; scroll to <i>Input</i> &rarr; check that your mic volume slider is at <b>85-100%</b> and not muted.</li>
+      <li><b>VPN / Hotspot:</b> If connected to a VPN or restricted network, Google's speech recognition servers may be blocked. Try disabling VPN or switching to mobile hotspot.</li>
+    </ol>
+  </div>
+
+  <script>
+    let recognition = null;
+    let audioContext = null;
+    let micStream = null;
+    let meterInterval = null;
+    const logEl = document.getElementById('log');
+    const resultEl = document.getElementById('result');
+    const meterBar = document.getElementById('meterBar');
+    const meterText = document.getElementById('meterText');
+    const meterBtn = document.getElementById('meterBtn');
+
+    function log(msg) {
+      const t = new Date().toLocaleTimeString();
+      logEl.textContent += `[${t}] ${msg}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log(msg);
+    }
+
+    // Populate mic devices
+    async function loadAudioDevices() {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const select = document.getElementById('audioDeviceSelect');
+        const audioInputs = devices.filter(d => d.kind === 'audioinput');
+        if (audioInputs.length > 0) {
+          select.innerHTML = '<option value="">Default System Microphone</option>';
+          audioInputs.forEach((dev, idx) => {
+            const opt = document.createElement('option');
+            opt.value = dev.deviceId;
+            opt.textContent = dev.label || `Microphone ${idx + 1}`;
+            select.appendChild(opt);
+          });
+        }
+      } catch (e) {
+        console.warn('Could not enumerate devices:', e);
+      }
+    }
+    navigator.mediaDevices.ondevicechange = loadAudioDevices;
+    loadAudioDevices();
+
+    // ── Mic Volume Meter ──────────────────────────────────────
+    async function toggleAudioMeter() {
+      if (micStream) {
+        stopAudioMeter();
+        return;
+      }
+
+      try {
+        const deviceId = document.getElementById('audioDeviceSelect').value;
+        const constraints = {
+          audio: deviceId ? { deviceId: { exact: deviceId } } : true
+        };
+        micStream = await navigator.mediaDevices.getUserMedia(constraints);
+        await loadAudioDevices(); // reload to get labels if not yet granted
+
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(micStream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        meterBtn.textContent = '⏹ Stop Mic Level Test';
+        meterBtn.className = 'btn btn-danger';
+
+        meterInterval = setInterval(() => {
+          analyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+          }
+          const avg = sum / dataArray.length;
+          const percent = Math.min(100, Math.round((avg / 128) * 100));
+          meterBar.style.width = percent + '%';
+          meterText.textContent = `Mic Level: ${percent}% ${percent > 5 ? '(Audio Receiving! 🟢)' : '(Too Quiet / Silent 🔴)'}`;
+        }, 50);
+
+        log('🎙️ Mic Level Test started. Speak to verify your microphone works!');
+      } catch (err) {
+        log('❌ Failed to access microphone: ' + err.message);
+        alert('Could not access microphone: ' + err.message);
+      }
+    }
+
+    function stopAudioMeter() {
+      if (meterInterval) clearInterval(meterInterval);
+      if (micStream) {
+        micStream.getTracks().forEach(t => t.stop());
+        micStream = null;
+      }
+      if (audioContext) {
+        try { audioContext.close(); } catch(e) {}
+        audioContext = null;
+      }
+      meterBar.style.width = '0%';
+      meterText.textContent = 'Mic Inactive';
+      meterBtn.textContent = '▶ Start Mic Audio Level Test';
+      meterBtn.className = 'btn btn-primary';
+      log('🎙️ Mic Level Test stopped.');
+    }
+
+    function switchDevice() {
+      if (micStream) {
+        stopAudioMeter();
+        toggleAudioMeter();
+      }
+    }
+
+    // ── Speech Recognition Test ──────────────────────────────
+    function startSpeechTest() {
+      // Release any meter mic stream first so it does not conflict
+      if (micStream) {
+        stopAudioMeter();
+      }
+
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRec) {
+        log('❌ SpeechRecognition API is not supported in this browser.');
+        alert('SpeechRecognition is not supported in this browser. Please use Chrome or Edge.');
+        return;
+      }
+
+      if (recognition) {
+        try { recognition.abort(); } catch(e) {}
+        recognition = null;
+      }
+
+      recognition = new SpeechRec();
+      
+      const lang = document.getElementById('langSelect').value;
+      const isContinuous = document.getElementById('modeSelect').value === 'continuous';
+
+      recognition.continuous = isContinuous;
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+      recognition.lang = lang;
+
+      log(`🚀 Initializing SpeechRecognition (lang: ${lang}, continuous: ${isContinuous})`);
+
+      recognition.onstart = () => log('✅ onstart: Recognition engine connected and listening');
+      recognition.onaudiostart = () => log('✅ onaudiostart: Audio input received by recognition engine');
+      recognition.onspeechstart = () => log('✅ onspeechstart: Voice detected in audio stream');
+      recognition.onspeechend = () => log('⏸️ onspeechend: Voice pause/stop detected');
+      recognition.onaudioend = () => log('⏸️ onaudioend: Audio stream ended');
+      
+      recognition.onresult = (event) => {
+        log('🎉 onresult received! result count: ' + event.results.length);
+        let final = '';
+        let interim = '';
+        for (let i = 0; i < event.results.length; i++) {
+          const r = event.results[i];
+          if (r.isFinal) {
+            final += r[0].transcript + ' ';
+            log(`  📝 FINAL [conf: ${(r[0].confidence * 100).toFixed(1)}%]: "${r[0].transcript}"`);
+          } else {
+            interim += r[0].transcript;
+            log(`  💬 INTERIM: "${r[0].transcript}"`);
+          }
+        }
+        resultEl.innerHTML = `<span style="color:#10b981">${final}</span><span style="color:#38bdf8">${interim}</span>`;
+      };
+
+      recognition.onnomatch = () => log('⚠️ onnomatch: Audio processed but no recognized words');
+      
+      recognition.onerror = (event) => {
+        log(`❌ onerror: ${event.error} (message: ${event.message || 'none'})`);
+        if (event.error === 'network') {
+          log('⚠️ NOTE: "network" error means Google Speech Cloud servers could not be reached. Try Microsoft Edge or disable VPN.');
+        } else if (event.error === 'no-speech') {
+          log('⚠️ NOTE: "no-speech" error means Google heard silence. Check mic input volume in Windows settings.');
+        }
+      };
+
+      recognition.onend = () => {
+        log('🔴 onend: Speech recognition session stopped');
+      };
+
+      try {
+        recognition.start();
+        log('▶ recognition.start() executed');
+      } catch (e) {
+        log('❌ start() exception: ' + e.message);
+      }
+    }
+
+    function stopSpeechTest() {
+      if (recognition) {
+        recognition.stop();
+        log('⏹ recognition.stop() requested');
+      }
+    }
+  </script>
+</body>
+</html>

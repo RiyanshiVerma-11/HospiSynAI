@@ -1900,6 +1900,8 @@ export default function DoctorConsoleTab({
                           transcript={ambientVoice.transcript}
                           interimTranscript={ambientVoice.interimTranscript}
                           error={ambientVoice.error}
+                          lang={ambientVoice.lang}
+                          setLang={ambientVoice.setLang}
                           onRequestPermission={() => ambientVoice.requestPermission()}
                           onStart={() => ambientVoice.startListening()}
                           onStop={() => {

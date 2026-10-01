@@ -672,6 +672,16 @@ def test_demo_seed_endpoint_requires_admin(client):
 
 def test_doctor_creation_provisions_user(client):
     """Verify creating a doctor also provisions a corresponding User login record."""
+    from database import SessionLocal
+    import models
+    db = SessionLocal()
+    try:
+        db.query(models.Doctor).filter(models.Doctor.name == "Dr. Rohit Deshmukh").delete()
+        db.query(models.User).filter(models.User.name == "Dr. Rohit Deshmukh").delete()
+        db.commit()
+    finally:
+        db.close()
+
     admin_token = auth.create_access_token({"sub": "admin", "role": "Admin"})
     res = client.post("/api/doctors", json={
         "name": "Dr. Rohit Deshmukh",

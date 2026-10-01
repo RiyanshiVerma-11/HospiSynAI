@@ -47,6 +47,10 @@ HospiSynAI is a production-grade, real-time hospital management ecosystem coveri
 | 🗓️ **18** | **Automated Medicine Calendar & Timetable Reminders** | Automatically parses prescription dosages into distinct daily timetables (Morning, Afternoon, Evening, Bedtime). Patients can sync recurring dosage alarms directly to **Google Calendar** with 1-click URL generation or download universal **iCalendar (`.ics`)** files for Apple Calendar, Outlook, and mobile alarms. |
 | 📲 **19** | **Interactive QR Code Ecosystem & Gate Check-In** | Public-facing QR code for hospital kiosks, reception counters, and patient handouts (`screenshots/qr-code.png`). Allows arriving patients to scan with any smartphone camera to instantly launch their digital health portal, view OPD token wait times, or verify their appointment. |
 | 📧 **20** | **Asynchronous SMTP Email Notification Engine** | Production-ready background email dispatcher powered by `aiosmtplib`. Automatically sends beautifully formatted HTML transactional emails containing itemized PDF receipts, clinical prescription summaries, and attached `.ics` calendar appointment invitations directly to the patient's registered email address. |
+| 🎙️ **21** | **Server-Side Groq Whisper Audio Transcription** | High-performance server-side transcription endpoint (`POST /api/transcribe-audio`) powered by Groq's `whisper-large-v3-turbo` model. Transcribes raw WebM/WAV audio recordings from browser microphones with sub-second latency, bypassing flaky client-side speech synthesis limits. |
+| 📺 **22** | **Public Waiting Room TV & Queue Display** | Dedicated full-screen waiting hall board (`WaitingRoomTvDisplay`) designed for hospital lobby televisions and kiosk screens. Live-updates currently serving tokens, total waiting/arrived patients, and estimated queue turnaround times. |
+| 🚪 **23** | **1-Tap Hospital Gate Check-In & Self-Booking** | Public self-service booking portal (`AppointmentBookingModal`) and gate check-in system (`/api/appointments/{id}/checkin`). Arriving patients immediately flag their status as "Arrived in Waiting Area" on the attending doctor's queue. |
+| ⚡ **24** | **1-Click Clinical Scenarios & Demo Profile Autofill** | Pre-configured 1-click clinical scenario chips (Fever & Cough, Chest Discomfort, Abdominal Cramps, Routine Checkup) and instant demo patient profile autofill for rapid testing and evaluations. |
 
 > [!NOTE]
 > All AI outputs (voice clinical parsing, prescription suggestions, billing audit verdicts, patient handouts, revenue insights) are **assistive** — final clinical and financial decisions remain with the attending doctor and accountant respectively.
@@ -284,14 +288,17 @@ HospiSynAI/
 │   ├── schemas.py                  # Pydantic validation boundaries
 │   ├── auth.py                     # JWT, Bcrypt & RBAC logic
 │   ├── clinical_nlp.py             # Groq LLM & heuristic clinical voice engine
+│   ├── email_service.py            # Async SMTP notification & .ics generation
 │   ├── nha_cghs_rates.json         # NHA & CGHS government benchmark rates
 │   ├── pdf_generator.py            # ReportLab customizable layout PDF engine
-│   ├── test_main.py                # Automated Pytest suite for auth & billing
+│   ├── test_main.py                # Automated Pytest suite (37 tests)
+│   ├── test_pdf.py                 # Standalone PDF generation test
+│   ├── test_email.py               # Standalone SMTP email test
 │   └── main.py                     # FastAPI endpoints, exports, seeder & audits
 └── frontend/
     ├── Dockerfile                  # Vite React development build
     ├── package.json                # React modules (lucide, recharts)
-    ├── vite.config.js              # Port 3000 / 3001 mapping & PWA
+    ├── vite.config.js              # Port 3001 dev server & reverse proxy
     ├── tailwind.config.js          # Modern glassmorphism & typography styling
     ├── index.html                  # Custom fonts & PWA bootloader
     └── src/
@@ -304,6 +311,7 @@ HospiSynAI/
         │   └── clinicalNLPClient.js     # Instant zero-latency client NLP parser
         └── components/             # Modular feature tabs & desks
             ├── LandingPage.jsx             # Public-facing showcase & interactive simulator
+            ├── LoginPage.jsx               # Unified password & OTP verification desk
             ├── DashboardTab.jsx            # Admin KPI charts & revenue statistics
             ├── DoctorDashboardTab.jsx      # Doctor clinical queue & token counter
             ├── DoctorConsoleTab.jsx        # Doctor clinical desk & Rx generator
@@ -312,6 +320,10 @@ HospiSynAI/
             ├── ReceptionistDashboardTab.jsx# Receptionist quick desk & token allocator
             ├── AccountantDashboardTab.jsx  # Accountant collections & reconciliation desk
             ├── PatientSearchTab.jsx        # Patient lookup, visits, & AI summary
+            ├── PatientPortalTab.jsx        # Mobile-first self-service patient portal
+            ├── MedicineCalendarModal.jsx   # Timetable & Google/Apple calendar sync
+            ├── AppointmentBookingModal.jsx # Self-service appointment booking & gate check-in
+            ├── WaitingRoomTvDisplay.jsx    # Fullscreen queue display for hospital waiting halls
             ├── BillingTab.jsx              # Invoicing, collections, & refunds
             ├── CatalogTab.jsx              # Medical services & standard pricing
             ├── SettingsTab.jsx             # Branding & ReportLab printed PDF settings
@@ -337,21 +349,22 @@ docker-compose up --build
 
 Docker will automatically pull Postgres 15, compile the FastAPI image, pull React node modules, initialize tables, seed base data, and run the services:
 
-- **Frontend Application**: [http://localhost:3000](http://localhost:3000) (with volume-mounted hot-reloading enabled)
+- **Frontend Application**: [http://localhost:3001](http://localhost:3001) (with volume-mounted hot-reloading enabled)
 - **FastAPI Documentation (Swagger UI)**: [http://localhost:5000/docs](http://localhost:5000/docs)
 - **PostgreSQL Database**: Exposing port `5432`
 
 ### Local Dev (Without Docker)
 ```bash
-# Backend
+# 1. Start Backend (in project root)
 cd backend
 pip install -r requirements.txt
-uvicorn main:app --reload --port 5000
+python -m uvicorn main:app --reload --port 5000
 
-# Frontend (separate terminal)
+# 2. Start Frontend (in separate terminal)
 cd frontend
 npm install
 npm run dev
+# Frontend is served at http://localhost:3001
 ```
 
 ---
@@ -485,7 +498,7 @@ The `GROQ_MODEL` environment variable sets the primary model. The `clinical_nlp.
 Follow this standard workflow to verify system capabilities:
 
 ### Step 1: Front Desk (Receptionist)
-1. Log in to [http://localhost:3000](http://localhost:3000) using `receptionist` / `recep123`.
+1. Log in to [http://localhost:3001](http://localhost:3001) using `receptionist` / `recep123` (or use the one-click demo fallback).
 2. Navigate to **Patient Search & Desk**.
 3. Fill out the **New Registration** form to register a new patient profile. Check that a unique sequential Patient ID is generated (e.g. `PAT-20260626-00001`).
 4. Select the registered patient. Fill out the **Record Patient Visit** input to start a consultation (e.g., inputting "Fever and Dry Cough" as symptoms). Check that a Visit ID and **OPD Token Number** are generated.
@@ -551,7 +564,7 @@ Verify backend routing logic and clinical/GST billing rules using the automated 
    ```bash
    python -m pytest backend/test_main.py
    ```
-3. Check that all 21 unit tests pass, confirming correctness of password hashing, JWT token generation, RBAC security restrictions, duplicate test auditing, room rent & cosmetic surgery GST calculations, missing consultation fee alerts, pediatric dosage safety flags, and AI response schema structures.
+3. Check that all **37 unit tests pass**, confirming correctness of password hashing, JWT token generation, RBAC security restrictions, duplicate test auditing, room rent & cosmetic surgery GST calculations, missing consultation fee alerts, pediatric dosage safety flags, appointment self-booking, gate check-in, live queue tracker, and AI response schema structures.
 
 ---
 
@@ -572,7 +585,7 @@ For deployment and local setup, the project supports a `.env` configuration file
 | `JWT_ALGORITHM` | Algorithm used for JWT signatures | `HS256` |
 | `ACCESS_TOKEN_EXPIRE_MINUTES`| Expiration lifetime of access tokens | `480` |
 | `BACKEND_PORT` | Port mapped to FastAPI backend | `5000` |
-| `FRONTEND_PORT` | Port mapped to React frontend | `3000` |
+| `FRONTEND_PORT` | Port mapped to React frontend | `3001` |
 | `VITE_API_BASE_URL` | API Base URL used by the React client | `http://localhost:5000/api` |
 | `VITE_STATIC_BASE_URL` | Static download Base URL (for PDF receipts) | `http://localhost:5000` |
 | `GROQ_API_KEY` | API Key for Groq Cloud services (required for AI features) | *(None)* |
