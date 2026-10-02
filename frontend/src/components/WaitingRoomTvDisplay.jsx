@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Clock,
   Tv,
@@ -105,16 +105,37 @@ export default function WaitingRoomTvDisplay({
     return v.visit_date.startsWith(todayStr);
   });
 
-  // Smart fallback: If no visits registered today yet, display the latest active queue session
+  // Smart fallback: If no visits registered today yet, display ONLY visits from the LATEST OPD session date
   const isShowingLatestSession = todayVisits.length === 0 && visits.length > 0;
-  const displayVisits = todayVisits.length > 0 ? todayVisits : visits;
+  const displayVisits = useMemo(() => {
+    if (todayVisits.length > 0) return todayVisits;
+    if (!visits || visits.length === 0) return [];
+
+    // Find the newest session date in the database (e.g. 2026-09-30, not ancient records from months ago)
+    const sortedDates = [...visits]
+      .filter(v => v.visit_date)
+      .sort((a, b) => new Date(b.visit_date) - new Date(a.visit_date));
+
+    if (sortedDates.length === 0) return [];
+    const latestDate = sortedDates[0].visit_date.split('T')[0];
+    return visits.filter(v => v.visit_date && v.visit_date.startsWith(latestDate));
+  }, [todayVisits, visits]);
 
   // Helper to extract clean integer token number
   const getTokenNum = (v) => {
     if (typeof v.token_number === 'number' && !isNaN(v.token_number)) return v.token_number;
     const parsed = parseInt(v.token_number, 10);
     if (!isNaN(parsed)) return parsed;
-    return v.id || 999999;
+    return 999999;
+  };
+
+  // Helper: Is a visit clinically completed? (If doctor already entered diagnosis/medicines, consultation is DONE)
+  const isVisitCompleted = (v) => {
+    if (!v) return true;
+    const st = (v.status || '').toLowerCase();
+    if (st === 'completed' || st === 'cancelled') return true;
+    if (v.diagnosis || (v.medicines_list && v.medicines_list.trim() !== '')) return true;
+    return false;
   };
 
   // Triage priority: Emergency / Critical (1) > Urgent (2) > Normal (3)
@@ -140,20 +161,22 @@ export default function WaitingRoomTvDisplay({
   const activeInCabin = displayVisits
     .filter(v => {
       const st = (v.status || '').toLowerCase();
-      return st === 'in-consultation' || st === 'in cabin';
+      return (st === 'in-consultation' || st === 'in cabin') && !isVisitCompleted(v);
     })
     .sort((a, b) => getTokenNum(a) - getTokenNum(b));
 
   const currentlyServing = activeInCabin[0] || null;
 
   // Upcoming Waiting Queue (NEXT IN LINE):
-  // 1. Critical/Emergency jumps to front
-  // 2. Normal cases: LOWER token number comes FIRST (Ascending FIFO: Token 1 before Token 2)
+  // 1. Exclude completed / diagnosed visits
+  // 2. Critical/Emergency jumps to front
+  // 3. Normal cases: LOWER token number comes FIRST (Ascending FIFO: Token 1 before Token 2)
   const upcomingQueue = displayVisits
     .filter(v => {
       if (currentlyServing && v.id === currentlyServing.id) return false;
+      if (isVisitCompleted(v)) return false;
       const st = (v.status || '').toLowerCase();
-      return st !== 'completed' && st !== 'cancelled' && st !== 'in-consultation' && st !== 'in cabin';
+      return st !== 'in-consultation' && st !== 'in cabin';
     })
     .sort((a, b) => {
       const prioA = getTriagePrio(a);
