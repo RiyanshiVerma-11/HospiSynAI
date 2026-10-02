@@ -272,7 +272,10 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
       setOtpSentNotice(data.message || 'OTP sent to your registered email! Please check your inbox.');
       setPatientOtpStep('otp');
     } catch (err) {
-      setOtpError(err.message);
+      const msg = err?.message || String(err);
+      setOtpError(msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('network') 
+        ? 'Render services are waking up, please wait (takes ~1–2 minutes on free tier). Please retry in a few moments.' 
+        : msg);
     } finally {
       setOtpLoading(false);
     }
@@ -302,7 +305,10 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
         onPatientAuthSuccess(data);
       }
     } catch (err) {
-      setOtpError(err.message);
+      const msg = err?.message || String(err);
+      setOtpError(msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('network') 
+        ? 'Render services are waking up, please wait (takes ~1–2 minutes on free tier). Please retry in a few moments.' 
+        : msg);
     } finally {
       setOtpLoading(false);
     }
@@ -343,7 +349,10 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
         throw new Error('Demo patient account not initialized yet.');
       }
     } catch (err) {
-      setOtpError(err.message);
+      const msg = err?.message || String(err);
+      setOtpError(msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('network') 
+        ? 'Render services are waking up, please wait (takes ~1–2 minutes on free tier). Please retry in a few moments.' 
+        : msg);
     } finally {
       setOtpLoading(false);
     }
@@ -1809,7 +1818,11 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
             </div>
 
             {otpError && (
-              <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
+              <div className={`mb-4 p-3 rounded-xl border text-xs flex items-center gap-2 ${
+                otpError.toLowerCase().includes('fetch') || otpError.toLowerCase().includes('waking up')
+                  ? 'bg-amber-50 border-amber-300 text-amber-900 font-medium'
+                  : 'bg-rose-50 border-rose-200 text-rose-700'
+              }`}>
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 <span>{otpError}</span>
               </div>

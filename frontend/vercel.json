@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://hospisynai.onrender.com/api/$1"
+    },
+    {
+      "source": "/receipts/(.*)",
+      "destination": "https://hospisynai.onrender.com/receipts/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

@@ -127,7 +127,9 @@ export default function LoginPage({
   onBackToLanding,
   onOpenBookingModal,
   initialRole = 'admin',
-  API_BASE = 'http://127.0.0.1:5000/api'
+  API_BASE = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+    ? '/api'
+    : 'https://hospisynai.onrender.com/api'
 }) {
   // Navigation role state (defaults to Admin on top)
   const [selectedRoleKey, setSelectedRoleKey] = useState('admin');
@@ -138,6 +140,21 @@ export default function LoginPage({
   const [password, setPassword] = useState('admin123');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittingSeconds, setSubmittingSeconds] = useState(0);
+
+  // Track submission duration to detect slow cold-start spin ups
+  useEffect(() => {
+    let timer;
+    if (isSubmitting) {
+      setSubmittingSeconds(0);
+      timer = setInterval(() => {
+        setSubmittingSeconds(s => s + 1);
+      }, 1000);
+    } else {
+      setSubmittingSeconds(0);
+    }
+    return () => clearInterval(timer);
+  }, [isSubmitting]);
 
   // OTP Login Mode state ('credentials' | 'otp')
   const [loginMode, setLoginMode] = useState('credentials');
@@ -623,11 +640,41 @@ export default function LoginPage({
                 </div>
               )}
 
-              {/* Error Alert */}
+              {/* Error Alert with special friendly handling for Render cold starts / Failed to fetch */}
               {authError && (
-                <div className="mb-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs px-3 py-2 rounded-xl flex items-center gap-2">
-                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
-                  <span>{authError}</span>
+                <div className={`mb-3 p-3 rounded-xl border text-xs flex items-start gap-2.5 ${
+                  authError.toLowerCase().includes('fetch') || authError.toLowerCase().includes('waking up') || authError.toLowerCase().includes('network')
+                    ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-sm'
+                    : 'bg-rose-50 border-rose-200 text-rose-700'
+                }`}>
+                  <AlertTriangle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
+                    authError.toLowerCase().includes('fetch') || authError.toLowerCase().includes('waking up') || authError.toLowerCase().includes('network')
+                      ? 'text-amber-600'
+                      : 'text-rose-600'
+                  }`} />
+                  <div className="flex-1">
+                    {authError.toLowerCase().includes('fetch') || authError.toLowerCase().includes('waking up') || authError.toLowerCase().includes('network') ? (
+                      <div>
+                        <div className="font-extrabold text-amber-950 text-xs flex items-center gap-1.5">
+                          <RefreshCw className="w-3 h-3 text-amber-600 animate-spin" />
+                          <span>Render services are waking up, please wait...</span>
+                        </div>
+                        <p className="text-[11px] text-amber-800 mt-1 leading-normal">
+                          Free cloud instances spin down after inactivity and take about 1–2 minutes to spin up. Please wait 10–15 seconds and click retry below.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => handleInstantDemoLogin()}
+                          className="mt-2 px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-[11px] inline-flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-95 transition-all"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          <span>Retry Login Now</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <span>{authError}</span>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -665,7 +712,11 @@ export default function LoginPage({
                       {isSubmitting ? (
                         <>
                           <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          <span>Authenticating Workspace...</span>
+                          <span>
+                            {submittingSeconds >= 2
+                              ? `Render services are waking up (${submittingSeconds}s)...`
+                              : 'Authenticating Workspace...'}
+                          </span>
                         </>
                       ) : (
                         <>
@@ -680,6 +731,22 @@ export default function LoginPage({
                         </>
                       )}
                     </button>
+
+                    {/* Prominent Wake-Up notice when cold boot takes more than 2 seconds */}
+                    {isSubmitting && submittingSeconds >= 2 && (
+                      <div className="mt-2.5 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-900 text-[11px] flex items-start gap-2 animate-pulse">
+                        <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin flex-shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-extrabold text-amber-950 flex items-center gap-1">
+                            <span>render services are waking up please wait ..</span>
+                            <span className="font-mono text-[10px] px-1 bg-amber-200 rounded font-bold">({submittingSeconds}s)</span>
+                          </div>
+                          <p className="text-amber-800 mt-0.5 text-[10.5px]">
+                            Free cloud hosting sleeps after inactivity. It takes around 1 to 2 minutes to spin up. Do not close this page; workspace will open automatically once active.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Visual Divider */}
@@ -799,10 +866,23 @@ export default function LoginPage({
                       disabled={isSubmitting}
                       className="w-full py-2.5 rounded-lg font-bold text-white text-xs bg-slate-900 hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 shadow-md active:scale-[0.99] cursor-pointer disabled:opacity-50"
                     >
-                      <Lock className="w-3.5 h-3.5 text-teal-400" />
-                      <span>
-                        Sign In as {selectedRoleKey === 'doctor' ? currentDoctor.name.split(' ')[1] || 'Doctor' : currentRoleItem.label}
-                      </span>
+                      {isSubmitting ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-teal-400" />
+                          <span>
+                            {submittingSeconds >= 2
+                              ? `Render services are waking up (${submittingSeconds}s)...`
+                              : 'Signing in...'}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-3.5 h-3.5 text-teal-400" />
+                          <span>
+                            Sign In as {selectedRoleKey === 'doctor' ? currentDoctor.name.split(' ')[1] || 'Doctor' : currentRoleItem.label}
+                          </span>
+                        </>
+                      )}
                     </button>
 
                     {/* Quick Select Chips for the 5 Real Patients */}

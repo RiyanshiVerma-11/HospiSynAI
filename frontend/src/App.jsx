@@ -65,12 +65,12 @@ import WaitingRoomTvDisplay from './components/WaitingRoomTvDisplay';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
     ? "/api" 
-    : "https://hospisyn-backend.onrender.com/api");
+    : "https://hospisynai.onrender.com/api");
 
 const STATIC_BASE = import.meta.env.VITE_STATIC_BASE_URL || 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
     ? "" 
-    : "https://hospisyn-backend.onrender.com");
+    : "https://hospisynai.onrender.com");
 
 function App() {
   // Auth state
@@ -93,6 +93,55 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [deskVoiceIntakeRequested, setDeskVoiceIntakeRequested] = useState(false);
   const [isTourOpen, setIsTourOpen] = useState(false);
+
+  // Background Server Warm-up Status for Render cold starts
+  const [serverWarmupStatus, setServerWarmupStatus] = useState('checking'); // 'checking' | 'waking' | 'online'
+  const [serverWakeElapsed, setServerWakeElapsed] = useState(0);
+
+  useEffect(() => {
+    let wakeElapsedInterval;
+    let isMounted = true;
+
+    // Switch to waking after 2s if not already online
+    const timer = setTimeout(() => {
+      if (isMounted) {
+        setServerWarmupStatus(prev => prev === 'checking' ? 'waking' : prev);
+      }
+    }, 2000);
+
+    wakeElapsedInterval = setInterval(() => {
+      setServerWakeElapsed(s => s + 1);
+    }, 1000);
+
+    const checkServer = () => {
+      const warmUrl = API_BASE.replace(/\/api\/?$/, '');
+      fetch(`${warmUrl}/`)
+        .then(res => {
+          if (res.ok && isMounted) {
+            setServerWarmupStatus('online');
+            clearTimeout(timer);
+            clearInterval(wakeElapsedInterval);
+          }
+        })
+        .catch(() => {
+          if (isMounted) setServerWarmupStatus('waking');
+        });
+    };
+
+    checkServer();
+    const pingInterval = setInterval(() => {
+      if (serverWarmupStatus !== 'online') {
+        checkServer();
+      }
+    }, 12000);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+      clearInterval(wakeElapsedInterval);
+      clearInterval(pingInterval);
+    };
+  }, []);
 
   // Keep activeTab synced to sessionStorage so refresh never loses position
   useEffect(() => {
@@ -308,14 +357,25 @@ function App() {
       formData.append('username', u);
       formData.append('password', p);
 
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData
-      });
+      let res;
+      try {
+        res = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formData
+        });
+      } catch (networkErr) {
+        // Cold start auto-retry: wait 2.5s and retry once
+        await new Promise(r => setTimeout(r, 2500));
+        res = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formData
+        });
+      }
 
       if (!res.ok) {
-        const errorData = await res.json();
+        const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.detail || 'Login failed. Check chamber credentials.');
       }
 
@@ -342,7 +402,12 @@ function App() {
       }
       showToast(`Welcome back, ${data.name}!`, 'success');
     } catch (err) {
-      setAuthError(err.message);
+      const msg = err?.message || String(err);
+      if (msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('network')) {
+        setAuthError('render services are waking up please wait .. (free Render instance takes ~1–2 minutes). Click Retry Login.');
+      } else {
+        setAuthError(msg);
+      }
       throw err;
     }
   };
@@ -1097,41 +1162,55 @@ function App() {
   if (!token) {
     if (viewMode === 'landing') {
       return (
-        <LandingPage
-          onEnterWorkspace={(preferredRole) => {
-            setViewMode('login');
-            if (preferredRole === 'Doctor OPD') {
-              setLoginInitialRole('doctor');
-            } else if (preferredRole === 'Receptionist') {
-              setLoginInitialRole('receptionist');
-            } else if (preferredRole === 'Accountant') {
-              setLoginInitialRole('accountant');
-            } else if (preferredRole === 'Administrator') {
-              setLoginInitialRole('admin');
-            } else {
-              setLoginInitialRole('admin');
-            }
-          }}
-          API_BASE={API_BASE}
-          showToast={showToast}
-          onPatientAuthSuccess={(authData) => {
-            sessionStorage.setItem('token', authData.access_token);
-            sessionStorage.setItem('role', authData.role);
-            sessionStorage.setItem('username', authData.username);
-            sessionStorage.setItem('name', authData.name);
-            setToken(authData.access_token);
-            setUserRole(authData.role);
-            setUsername(authData.username);
-            setName(authData.name);
-            setActiveTab('patient_portal');
-            showToast(`Welcome to your Health Portal, ${authData.name}!`);
-          }}
-        />
+        <>
+          {serverWarmupStatus === 'waking' && (
+            <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white px-3 py-1.5 text-xs font-semibold flex items-center justify-center gap-2 shadow-sm text-center sticky top-0 z-[100] animate-pulse">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
+              <span>render services are waking up please wait .. (~1–2 minutes on free cloud tier • {serverWakeElapsed}s elapsed)</span>
+            </div>
+          )}
+          <LandingPage
+            onEnterWorkspace={(preferredRole) => {
+              setViewMode('login');
+              if (preferredRole === 'Doctor OPD') {
+                setLoginInitialRole('doctor');
+              } else if (preferredRole === 'Receptionist') {
+                setLoginInitialRole('receptionist');
+              } else if (preferredRole === 'Accountant') {
+                setLoginInitialRole('accountant');
+              } else if (preferredRole === 'Administrator') {
+                setLoginInitialRole('admin');
+              } else {
+                setLoginInitialRole('admin');
+              }
+            }}
+            API_BASE={API_BASE}
+            showToast={showToast}
+            onPatientAuthSuccess={(authData) => {
+              sessionStorage.setItem('token', authData.access_token);
+              sessionStorage.setItem('role', authData.role);
+              sessionStorage.setItem('username', authData.username);
+              sessionStorage.setItem('name', authData.name);
+              setToken(authData.access_token);
+              setUserRole(authData.role);
+              setUsername(authData.username);
+              setName(authData.name);
+              setActiveTab('patient_portal');
+              showToast(`Welcome to your Health Portal, ${authData.name}!`);
+            }}
+          />
+        </>
       );
     }
 
     return (
       <>
+        {serverWarmupStatus === 'waking' && (
+          <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white px-3 py-1.5 text-xs font-semibold flex items-center justify-center gap-2 shadow-sm text-center sticky top-0 z-[100] animate-pulse">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
+            <span>render services are waking up please wait .. (~1–2 minutes on free cloud tier • {serverWakeElapsed}s elapsed)</span>
+          </div>
+        )}
         <LoginPage
           initialRole={loginInitialRole}
           onLogin={handleLoginDirect}
