@@ -127,8 +127,9 @@ def on_startup():
             safe_add_column("visits", "follow_up_date", "VARCHAR")
             safe_add_column("visits", "patient_summary", "TEXT")
             safe_add_column("visits", "status", "VARCHAR DEFAULT 'Waiting'")
+            dt_type = "TIMESTAMP" if getattr(engine.dialect, "name", "") == "postgresql" else "DATETIME"
             safe_add_column("visits", "token_number", "INTEGER")
-            safe_add_column("visits", "checkin_time", "DATETIME")
+            safe_add_column("visits", "checkin_time", dt_type)
             safe_add_column("visits", "triage_severity", "VARCHAR DEFAULT 'Normal'")
             # Vitals columns
             safe_add_column("visits", "blood_pressure", "VARCHAR")
@@ -138,7 +139,7 @@ def on_startup():
             safe_add_column("visits", "weight", "VARCHAR")
             safe_add_column("visits", "blood_sugar", "VARCHAR")
             safe_add_column("visits", "vitals_recorded_by", "VARCHAR")
-            safe_add_column("visits", "vitals_recorded_at", "DATETIME")
+            safe_add_column("visits", "vitals_recorded_at", dt_type)
             safe_add_column("patients", "abha_id", "VARCHAR")
             safe_add_column("patients", "email", "VARCHAR")
         except Exception as e:
