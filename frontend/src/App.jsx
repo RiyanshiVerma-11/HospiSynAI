@@ -150,6 +150,16 @@ function App() {
     }
   }, [activeTab]);
 
+  // Enforce strict Role-Based Access Control (RBAC):
+  // Receptionists, Accountants, and Patients cannot access Doctor Scribe or OPD Console
+  useEffect(() => {
+    if (!userRole) return;
+    const doctorOnlyTabs = ['doctor_console', 'doctor_dashboard'];
+    if (doctorOnlyTabs.includes(activeTab) && !['Admin', 'Doctor'].includes(userRole)) {
+      setActiveTab(userRole === 'Patient' ? 'patient_portal' : 'dashboard');
+    }
+  }, [userRole, activeTab]);
+
   // Patient Portal Sub-Navigation State (Prescriptions, Bills, Smart Health Pass, Profile)
   const [patientSubTab, setPatientSubTab] = useState(() => {
     const saved = sessionStorage.getItem('patientSubTab');
@@ -1701,7 +1711,7 @@ function App() {
                     </button>
                   )}
 
-                  {['Admin', 'Receptionist', 'Doctor'].includes(userRole) && (
+                  {['Admin', 'Doctor'].includes(userRole) && (
                     <button
                       onClick={() => { setActiveTab('doctor_console'); setMobileMenuOpen(false); }}
                       title="Doctor's Desk & Voice Scribe"
@@ -2205,15 +2215,33 @@ function App() {
             TAB 1C: DOCTOR CLINICAL WORKSPACE CONSOLE
             ---------------------------------------------------- */}
         {activeTab === 'doctor_console' && (
-          <DoctorConsoleTab
-            API_BASE={API_BASE}
-            getHeaders={getHeaders}
-            showToast={showToast}
-            userRole={userRole}
-            currentUser={{ username, name, role: userRole }}
-            sidebarCollapsed={sidebarCollapsed}
-            setSidebarCollapsed={setSidebarCollapsed}
-          />
+          ['Admin', 'Doctor'].includes(userRole) ? (
+            <DoctorConsoleTab
+              API_BASE={API_BASE}
+              getHeaders={getHeaders}
+              showToast={showToast}
+              userRole={userRole}
+              currentUser={{ username, name, role: userRole }}
+              sidebarCollapsed={sidebarCollapsed}
+              setSidebarCollapsed={setSidebarCollapsed}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border border-slate-200 text-center my-6 max-w-lg mx-auto shadow-sm">
+              <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mb-3">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-bold text-slate-800">Restricted Clinical Area</h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-xs">
+                Doctor Scribe, clinical notes, and prescription dictation are strictly confidential and restricted to On-Duty Doctors & Hospital Admins.
+              </p>
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="mt-4 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+              >
+                Go to Front-Desk Overview
+              </button>
+            </div>
+          )
         )}
 
         {/* ----------------------------------------------------
@@ -2664,7 +2692,7 @@ function App() {
                   {[
                     { id: 'dashboard', label: 'Executive Dashboard Overview', icon: Grid, category: 'Analytics', roles: ['Admin', 'Accountant', 'Receptionist', 'Doctor'] },
                     { id: 'doctor_dashboard', label: 'Doctor OPD Command Center & Live Queue', icon: Stethoscope, category: 'Clinical', roles: ['Admin', 'Doctor'] },
-                    { id: 'doctor_console', label: 'Doctor Clinical Workspace & AI Assistant', icon: Brain, category: 'Clinical', roles: ['Admin', 'Doctor', 'Receptionist'] },
+                    { id: 'doctor_console', label: 'Doctor Clinical Workspace & AI Assistant', icon: Brain, category: 'Clinical', roles: ['Admin', 'Doctor'] },
                     { id: 'tv_display', label: 'Waiting Room TV Token Display (Lobby Screen)', icon: Tv, category: 'Clinical', roles: ['Admin', 'Receptionist', 'Doctor'] },
                     { id: 'search_register', label: 'Patient Desk & Registration', icon: Search, category: 'Clinical', roles: ['Admin', 'Receptionist', 'Accountant', 'Doctor'] },
                     { id: 'billing_history', label: 'Billing Operations & Settlement Queue', icon: CreditCard, category: 'Financial', roles: ['Admin', 'Accountant'] },
@@ -2708,7 +2736,7 @@ function App() {
               <div>
                 <p className="px-3 pb-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Quick Shortcuts</p>
                 <div className="space-y-1">
-                  {['Admin', 'Receptionist', 'Doctor'].includes(userRole) && (
+                  {['Admin', 'Doctor'].includes(userRole) && (
                     <button
                       onClick={() => {
                         setActiveTab('doctor_console');
@@ -2748,23 +2776,6 @@ function App() {
                       </div>
                     </div>
                     <span className="kbd-badge">Shift + P</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setActiveTab('doctor_console');
-                      setCmdPaletteOpen(false);
-                      setCmdSearch('');
-                    }}
-                    className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl hover:bg-emerald-50 text-slate-700 hover:text-emerald-900 transition-all text-left group"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
-                      <Brain className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-sm font-bold block">Launch AI Consultation Assistant</span>
-                      <span className="text-[10px] text-slate-400 font-medium">Prescription builder with multi-lingual voice summary</span>
-                    </div>
                   </button>
                 </div>
               </div>

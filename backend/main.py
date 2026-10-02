@@ -2105,7 +2105,7 @@ def get_visit_prescription_pdf(
 async def ai_suggest_treatment(
     req: schemas.AISuggestRequest,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Receptionist", "Accountant", "Doctor"]))
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Doctor"]))
 ):
     api_key = os.getenv("GROQ_API_KEY")
     model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
@@ -2452,7 +2452,7 @@ Return ONLY a valid JSON object matching:
 @app.post("/api/visits/ai-parse-consultation", response_model=schemas.VoiceConsultationParseResponse)
 async def parse_consultation_dictation(
     req: schemas.VoiceConsultationParseRequest,
-    current_user: models.User = Depends(auth.get_current_user)
+    current_user: models.User = Depends(auth.RoleChecker(["Admin", "Doctor"]))
 ):
     """Parses natural patient complaints (Hindi/Hinglish/English) or doctor dictation into structured clinical OPD fields."""
     transcript = req.transcript.strip()
