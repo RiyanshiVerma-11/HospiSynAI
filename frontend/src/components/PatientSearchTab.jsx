@@ -299,6 +299,7 @@ export default function PatientSearchTab({
     return DEFAULT_FALLBACK_DOCTORS;
   }, [doctors]);
 
+  const [isRegistering, setIsRegistering] = React.useState(false);
   const [showSummaryModal, setShowSummaryModal] = React.useState(false);
   const [selectedVisit, setSelectedVisit] = React.useState(null);
   const [summaryForm, setSummaryForm] = React.useState({
@@ -2947,7 +2948,19 @@ export default function PatientSearchTab({
             )}
 
             {/* SPACIOUS 2-COLUMN FORM (Fills the entire screen width, no awkward blank space, no nested card scroll) */}
-            <form onSubmit={handleRegisterPatient} className="space-y-4 pt-1">
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (isRegistering) return;
+                setIsRegistering(true);
+                try {
+                  await handleRegisterPatient(e);
+                } finally {
+                  setIsRegistering(false);
+                }
+              }}
+              className="space-y-4 pt-1"
+            >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Left Form Column: Personal & Contact */}
                 <div className="space-y-3">
@@ -3394,10 +3407,20 @@ export default function PatientSearchTab({
                 <button
                   ref={registerBtnRef}
                   type="submit"
-                  className="w-full bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-400/40 text-white font-bold py-3 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 text-sm active:scale-[0.99] cursor-pointer"
+                  disabled={isRegistering}
+                  className="w-full bg-teal-600 hover:bg-teal-700 focus:ring-4 focus:ring-teal-400/40 text-white font-bold py-3 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 text-sm active:scale-[0.99] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <PlusCircle className="w-4 h-4" />
-                  Register Patient Profile
+                  {isRegistering ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Registering Patient...</span>
+                    </>
+                  ) : (
+                    <>
+                      <PlusCircle className="w-4 h-4" />
+                      <span>Register Patient Profile</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

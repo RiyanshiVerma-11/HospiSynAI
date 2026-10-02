@@ -804,7 +804,7 @@ export default function LoginPage({
                         )}
                       </div>
                       <div className="relative">
-                        <User className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+                        <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <input
                           type="text"
                           value={username}
@@ -812,7 +812,7 @@ export default function LoginPage({
                           placeholder={selectedRoleKey === 'patient' 
                             ? 'e.g. PAT-20260926-00001 or mailtopalak0002@gmail.com' 
                             : 'e.g. dr.rajesh, receptionist, admin'}
-                          className="w-full rounded-lg pl-8.5 pr-3 py-1.5 bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 text-xs font-medium transition-all"
+                          className="w-full rounded-lg pl-10 pr-3 py-2 bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 text-xs font-medium transition-all shadow-xs"
                           required
                         />
                       </div>
@@ -842,21 +842,21 @@ export default function LoginPage({
                         </button>
                       </div>
                       <div className="relative">
-                        <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <input
                           type={showPassword ? 'text' : 'password'}
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="Enter password"
-                          className="w-full rounded-lg pl-8.5 pr-9 py-1.5 bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 text-xs font-medium transition-all"
+                          className="w-full rounded-lg pl-10 pr-10 py-2 bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 text-xs font-medium transition-all shadow-xs"
                           required
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-2 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer p-0.5"
                         >
-                          {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
                     </div>
@@ -979,13 +979,13 @@ export default function LoginPage({
                     </label>
                     <div className="flex gap-1.5">
                       <div className="relative flex-1">
-                        <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+                        <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <input
                           type="text"
                           value={otpIdentifier}
                           onChange={(e) => setOtpIdentifier(e.target.value)}
                           placeholder="e.g. dr.rajesh, patient@example.com"
-                          className="w-full rounded-lg pl-8.5 pr-2.5 py-1.5 bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 text-xs font-medium transition-all"
+                          className="w-full rounded-lg pl-10 pr-2.5 py-2 bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 text-xs font-medium transition-all shadow-xs"
                         />
                       </div>
                       <button
@@ -1018,14 +1018,14 @@ export default function LoginPage({
                       <span className="text-[9.5px] text-teal-700 font-mono font-semibold">Demo Fallback: 123456</span>
                     </div>
                     <div className="relative">
-                      <KeyRound className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+                      <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
                         type="text"
                         maxLength={6}
                         value={otpCode}
                         onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
                         placeholder="Enter 6-digit OTP (or 123456)"
-                        className="w-full rounded-lg pl-8.5 pr-3 py-1.5 bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 text-xs font-mono tracking-widest transition-all"
+                        className="w-full rounded-lg pl-10 pr-3 py-2 bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 text-xs font-mono tracking-widest transition-all shadow-xs"
                       />
                     </div>
                   </div>
