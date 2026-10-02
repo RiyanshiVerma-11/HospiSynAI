@@ -88,8 +88,10 @@ def on_startup():
     except Exception as startup_db_err:
         print(f"[HospiSyn Startup DB Error] {startup_db_err}. Switching engine to local SQLite fallback.")
         import database
+        from sqlalchemy import create_engine
         sqlite_file = os.path.join(database.backend_dir, "hospisyn.db")
         database.engine = create_engine(f"sqlite:///{sqlite_file}", connect_args={"check_same_thread": False})
+        engine = database.engine
         database.SessionLocal.configure(bind=database.engine)
         Base.metadata.create_all(bind=database.engine)
         db = next(database.get_db())
