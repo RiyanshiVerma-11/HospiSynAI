@@ -98,20 +98,24 @@ export default function WaitingRoomTvDisplay({
     return () => clearInterval(pollInterval);
   }, []);
 
-  // Filter today's visits
+  // Filter today's visits (Primary)
   const todayStr = new Date().toISOString().split('T')[0];
   const todayVisits = visits.filter(v => {
     if (!v.visit_date) return false;
     return v.visit_date.startsWith(todayStr);
   });
 
+  // Smart fallback: If no visits registered today yet, display the latest active queue session
+  const isShowingLatestSession = todayVisits.length === 0 && visits.length > 0;
+  const displayVisits = todayVisits.length > 0 ? todayVisits : visits;
+
   // Identify currently serving visit(s)
-  const currentlyServing = todayVisits.find(
+  const currentlyServing = displayVisits.find(
     v => v.status === 'In-Consultation' || v.status === 'In Cabin' || v.status === 'Critical'
-  ) || todayVisits.find(v => v.status === 'Arrived');
+  ) || displayVisits.find(v => v.status === 'Arrived');
 
   // Identify upcoming waiting visits
-  const upcomingQueue = todayVisits.filter(
+  const upcomingQueue = displayVisits.filter(
     v => v.id !== currentlyServing?.id && v.status !== 'Completed'
   ).slice(0, 8);
 
@@ -143,7 +147,7 @@ export default function WaitingRoomTvDisplay({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950 text-white flex flex-col overflow-hidden font-sans select-none">
+    <div className="fixed inset-0 z-50 bg-slate-950 text-white flex flex-col overflow-hidden font-sans">
       {/* Top TV Broadcast Header */}
       <header className="bg-slate-900/90 border-b border-slate-800 px-6 py-4 flex items-center justify-between shrink-0 shadow-lg">
         <div className="flex items-center gap-3">
@@ -290,7 +294,7 @@ export default function WaitingRoomTvDisplay({
               <span>Real-time OPD Token Queue • Verified System</span>
             </span>
             <span className="font-mono text-teal-400 font-bold">
-              Total Today: {todayVisits.length} Visits
+              {todayVisits.length > 0 ? `Total Today: ${todayVisits.length} Visits` : `Active Queue: ${displayVisits.length} Visits`}
             </span>
           </div>
         </section>
