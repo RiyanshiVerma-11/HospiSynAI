@@ -81,8 +81,18 @@ app.mount("/receipts", StaticFiles(directory=RECEIPTS_DIR), name="receipts")
 # ----------------------------------------------------
 @app.on_event("startup")
 def on_startup():
-    Base.metadata.create_all(bind=engine)
-    db = next(get_db())
+    global engine
+    try:
+        Base.metadata.create_all(bind=engine)
+        db = next(get_db())
+    except Exception as startup_db_err:
+        print(f"[HospiSyn Startup DB Error] {startup_db_err}. Switching engine to local SQLite fallback.")
+        import database
+        sqlite_file = os.path.join(database.backend_dir, "hospisyn.db")
+        database.engine = create_engine(f"sqlite:///{sqlite_file}", connect_args={"check_same_thread": False})
+        database.SessionLocal.configure(bind=database.engine)
+        Base.metadata.create_all(bind=database.engine)
+        db = next(database.get_db())
     try:
         # Run universal migration check to ensure columns exist on existing databases (PostgreSQL & SQLite)
         try:
