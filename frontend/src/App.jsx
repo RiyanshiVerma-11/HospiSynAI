@@ -196,7 +196,9 @@ function App() {
     gender: '',
     mobile_number: '',
     email: '',
-    address: ''
+    address: '',
+    chief_complaints: '',
+    doctor_id: ''
   });
   const [newVisit, setNewVisit] = useState({ reason: '' });
   const [newVisitDoctorId, setNewVisitDoctorId] = useState('');
@@ -592,12 +594,43 @@ function App() {
       const res = await fetch(`${API_BASE}/patients`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify(newPatient)
+        body: JSON.stringify({
+          name: newPatient.name,
+          age: newPatient.age,
+          gender: newPatient.gender,
+          mobile_number: newPatient.mobile_number,
+          email: newPatient.email,
+          address: newPatient.address,
+          abha_id: newPatient.abha_id
+        })
       });
       if (!res.ok) throw new Error("Failed to register patient");
       const registered = await res.json();
       showToast(`Patient registered successfully: ${registered.name} (${registered.patient_id})`);
-      setNewPatient({ name: '', age: '', gender: '', mobile_number: '', email: '', address: '' });
+
+      // If doctor is selected or chief complaints provided, generate OPD visit & Token immediately
+      if (newPatient.doctor_id || newPatient.chief_complaints) {
+        try {
+          const visRes = await fetch(`${API_BASE}/visits`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({
+              patient_id: registered.id,
+              doctor_id: newPatient.doctor_id ? parseInt(newPatient.doctor_id) : null,
+              reason: newPatient.chief_complaints || 'OPD Consultation',
+              status: 'Waiting'
+            })
+          });
+          if (visRes.ok) {
+            const visData = await visRes.json();
+            showToast(`OPD Token #${visData.token_number} generated for ${registered.name}! Added to queue.`, 'success');
+          }
+        } catch (visErr) {
+          console.warn("Auto-visit registration notice:", visErr);
+        }
+      }
+
+      setNewPatient({ name: '', age: '', gender: '', mobile_number: '', email: '', address: '', chief_complaints: '', doctor_id: '' });
       fetchPatients();
     } catch (err) {
       showToast(err.message, 'error');
@@ -2256,6 +2289,7 @@ function App() {
             removeBillItem={removeBillItem}
             handleRegisterPatient={handleRegisterPatient}
             handleCreateBill={handleCreateBill}
+            doctors={doctors}
           />
 
         )}

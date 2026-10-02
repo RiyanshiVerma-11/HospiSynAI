@@ -222,6 +222,12 @@ const analyzeChiefComplaint = (complaintText) => {
   };
 };
 
+const DEFAULT_FALLBACK_DOCTORS = [
+  { id: 1, name: 'Dr. Shweta Grover', degree: 'MBBS, MD (Pathology), PhD', consultation_fee: 500 },
+  { id: 2, name: 'Dr. Rajesh Verma', degree: 'MBBS, MD (Senior Physician)', consultation_fee: 400 },
+  { id: 3, name: 'Dr. Priya Nair', degree: 'MBBS, MS (ENT Specialist)', consultation_fee: 450 }
+];
+
 const STATIC_BASE = import.meta.env.VITE_STATIC_BASE_URL || 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
     ? "http://localhost:5000" 
@@ -238,6 +244,7 @@ export default function PatientSearchTab({
   searchQuery,
   setSearchQuery,
   patients = [],
+  doctors = [],
   unpaidBills = [],
   selectedPatient,
   patientHistory,
@@ -287,6 +294,11 @@ export default function PatientSearchTab({
   handleCreateBill
 }) {
   // Clinical Notes & Patient AI Summary State
+  const availableDoctors = React.useMemo(() => {
+    if (Array.isArray(doctors) && doctors.length > 0) return doctors;
+    return DEFAULT_FALLBACK_DOCTORS;
+  }, [doctors]);
+
   const [showSummaryModal, setShowSummaryModal] = React.useState(false);
   const [selectedVisit, setSelectedVisit] = React.useState(null);
   const [summaryForm, setSummaryForm] = React.useState({
@@ -3297,6 +3309,82 @@ export default function PatientSearchTab({
                         </div>
                       );
                     })()}
+
+                    {/* Manual Doctor Selection Dropdown (Offline-Safe with AI Recommendation) */}
+                    <div className="mt-3.5 pt-3 border-t border-slate-200/80">
+                      <label htmlFor="reg_doctor_id" className="block text-slate-700 text-xs font-bold uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <Stethoscope className="w-3.5 h-3.5 text-teal-600" />
+                          <span>Allot Consulting Doctor / Cabin (Manual Dropdown)</span>
+                        </span>
+                        {newPatient.doctor_id ? (
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            ✓ Doctor Selected
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            Select manually or choose AI suggestion
+                          </span>
+                        )}
+                      </label>
+
+                      <div className="relative">
+                        <select
+                          id="reg_doctor_id"
+                          name="doctor_id"
+                          value={newPatient.doctor_id || ''}
+                          onChange={(e) => setNewPatient({ ...newPatient, doctor_id: e.target.value })}
+                          className="w-full rounded-xl px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-200 focus:outline-none transition-all font-semibold text-slate-800 cursor-pointer shadow-xs"
+                        >
+                          <option value="">-- Choose Doctor from Dropdown (Manual) --</option>
+                          {availableDoctors.map(doc => (
+                            <option key={doc.id} value={doc.id}>
+                              {doc.name} — {doc.degree || 'Consultant'} {doc.consultation_fee ? `(Fee: ₹${doc.consultation_fee})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Quick 1-Click AI Recommendation Matcher */}
+                      {(() => {
+                        const triage = analyzeChiefComplaint(newPatient.chief_complaints);
+                        if (!triage) return null;
+
+                        let suggestedDoc = null;
+                        if (triage.specialty.includes('Internal Medicine') || triage.specialty.includes('Gastroenterology') || triage.specialty.includes('Cardiology') || triage.specialty.includes('Pulmonology')) {
+                          suggestedDoc = availableDoctors.find(d => d.name.toLowerCase().includes('rajesh')) || availableDoctors[1] || availableDoctors[0];
+                        } else if (triage.specialty.includes('ENT') || triage.specialty.includes('Surgery')) {
+                          suggestedDoc = availableDoctors.find(d => d.name.toLowerCase().includes('priya')) || availableDoctors[2] || availableDoctors[0];
+                        } else {
+                          suggestedDoc = availableDoctors.find(d => d.name.toLowerCase().includes('shweta')) || availableDoctors[0];
+                        }
+
+                        if (!suggestedDoc) return null;
+                        const isMatch = String(newPatient.doctor_id) === String(suggestedDoc.id);
+
+                        return (
+                          <div className="mt-2 flex items-center justify-between gap-2 p-2 rounded-xl bg-teal-50/80 border border-teal-200 text-teal-900 text-xs shadow-xs animate-in fade-in duration-150">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <Sparkles className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                              <span className="truncate text-[11px]">
+                                AI Recommendation: <strong>{suggestedDoc.name}</strong> ({triage.specialty.split('/')[0].trim()})
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setNewPatient({ ...newPatient, doctor_id: String(suggestedDoc.id) })}
+                              className={`shrink-0 px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition-all cursor-pointer ${
+                                isMatch
+                                  ? 'bg-teal-600 text-white shadow-xs'
+                                  : 'bg-white hover:bg-teal-600 hover:text-white text-teal-700 border border-teal-300'
+                              }`}
+                            >
+                              {isMatch ? '✓ Allotted' : 'Allot AI Doctor'}
+                            </button>
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </div>
                 </div>
               </div>
