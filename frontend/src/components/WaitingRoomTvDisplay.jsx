@@ -109,15 +109,67 @@ export default function WaitingRoomTvDisplay({
   const isShowingLatestSession = todayVisits.length === 0 && visits.length > 0;
   const displayVisits = todayVisits.length > 0 ? todayVisits : visits;
 
-  // Identify currently serving visit(s)
-  const currentlyServing = displayVisits.find(
-    v => v.status === 'In-Consultation' || v.status === 'In Cabin' || v.status === 'Critical'
-  ) || displayVisits.find(v => v.status === 'Arrived');
+  // Helper to extract clean integer token number
+  const getTokenNum = (v) => {
+    if (typeof v.token_number === 'number' && !isNaN(v.token_number)) return v.token_number;
+    const parsed = parseInt(v.token_number, 10);
+    if (!isNaN(parsed)) return parsed;
+    return v.id || 999999;
+  };
 
-  // Identify upcoming waiting visits
-  const upcomingQueue = displayVisits.filter(
-    v => v.id !== currentlyServing?.id && v.status !== 'Completed'
-  ).slice(0, 8);
+  // Triage priority: Emergency / Critical (1) > Urgent (2) > Normal (3)
+  const getTriagePrio = (v) => {
+    const sev = (v.triage_severity || '').toLowerCase();
+    const st = (v.status || '').toLowerCase();
+    if (sev === 'critical' || sev === 'emergency' || st === 'critical') return 1;
+    if (sev === 'urgent' || st === 'urgent') return 2;
+    return 3;
+  };
+
+  // Status priority: Arrived in waiting area (1) > Waiting (2) > Scheduled (3)
+  const getQueueStatusPrio = (v) => {
+    const st = (v.status || '').toLowerCase();
+    if (st === 'arrived') return 1;
+    if (st === 'waiting') return 2;
+    if (st === 'scheduled') return 3;
+    return 4;
+  };
+
+  // Identify currently serving visit (Doctor is consulting this patient in the cabin)
+  // If multiple, lowest token number takes cabin spotlight
+  const activeInCabin = displayVisits
+    .filter(v => {
+      const st = (v.status || '').toLowerCase();
+      return st === 'in-consultation' || st === 'in cabin';
+    })
+    .sort((a, b) => getTokenNum(a) - getTokenNum(b));
+
+  const currentlyServing = activeInCabin[0] || null;
+
+  // Upcoming Waiting Queue (NEXT IN LINE):
+  // 1. Critical/Emergency jumps to front
+  // 2. Normal cases: LOWER token number comes FIRST (Ascending FIFO: Token 1 before Token 2)
+  const upcomingQueue = displayVisits
+    .filter(v => {
+      if (currentlyServing && v.id === currentlyServing.id) return false;
+      const st = (v.status || '').toLowerCase();
+      return st !== 'completed' && st !== 'cancelled' && st !== 'in-consultation' && st !== 'in cabin';
+    })
+    .sort((a, b) => {
+      const prioA = getTriagePrio(a);
+      const prioB = getTriagePrio(b);
+      // Emergency / Critical jumps ahead
+      if (prioA !== prioB) return prioA - prioB;
+
+      // Physically arrived in lobby vs yet to arrive
+      const statA = getQueueStatusPrio(a);
+      const statB = getQueueStatusPrio(b);
+      if (statA !== statB) return statA - statB;
+
+      // Normal order: Lower token number FIRST (Token 1 before Token 2)
+      return getTokenNum(a) - getTokenNum(b);
+    })
+    .slice(0, 8);
 
   // Detect token change and trigger chime
   useEffect(() => {

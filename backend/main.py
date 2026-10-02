@@ -320,6 +320,31 @@ def generate_unique_id(db: Session, prefix: str, table_model, id_column) -> str:
         
     return f"{id_prefix}{new_counter:05d}"
 
+def generate_daily_token_number(db: Session, target_date: Optional[datetime.date] = None) -> int:
+    """
+    Generates a daily sequential token number that strictly starts from 1 each day.
+    Uses clinic operational day (IST / UTC+5:30) so tokens reset at 00:00 every night.
+    Date-based daily OPD token sequence: Token 1, 2, 3... per calendar day.
+    """
+    ist_now = datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
+    clinic_today = target_date or ist_now.date()
+    date_str = clinic_today.strftime("%Y%m%d")
+    
+    ist_start = datetime.datetime.combine(clinic_today, datetime.time.min)
+    ist_end = datetime.datetime.combine(clinic_today, datetime.time.max)
+    utc_start = ist_start - datetime.timedelta(hours=5, minutes=30)
+    utc_end = ist_end - datetime.timedelta(hours=5, minutes=30)
+    
+    max_token = db.query(func.max(models.Visit.token_number)).filter(
+        models.Visit.is_active == True,
+        or_(
+            and_(models.Visit.visit_date >= utc_start, models.Visit.visit_date <= utc_end),
+            models.Visit.visit_id.like(f"VIS-{date_str}-%")
+        )
+    ).scalar() or 0
+    
+    return int(max_token) + 1
+
 def log_action(db: Session, user_id: Optional[int], action: str, target_table: str, target_id: str, details: str):
     try:
         log = models.AuditLog(
@@ -817,13 +842,8 @@ def create_visit(
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
-    # Generate persistent sequential OPD token across all active visits for today
-    start_of_today = datetime.datetime.combine(datetime.date.today(), datetime.time.min)
-    max_token = db.query(func.max(models.Visit.token_number)).filter(
-        models.Visit.is_active == True,
-        models.Visit.visit_date >= start_of_today
-    ).scalar() or 0
-    token_number = max_token + 1
+    # Generate daily sequential OPD token starting from 1 each day
+    token_number = generate_daily_token_number(db)
 
     visit_id = generate_unique_id(db, "VIS", models.Visit, models.Visit.visit_id)
     db_visit = models.Visit(
@@ -1062,13 +1082,8 @@ def book_appointment(
     if not doctor:
         doctor = db.query(models.Doctor).filter(models.Doctor.is_active == True).first()
 
-    # 4. Generate persistent sequential OPD token across all active visits for today
-    start_of_today = datetime.datetime.combine(datetime.date.today(), datetime.time.min)
-    max_token = db.query(func.max(models.Visit.token_number)).filter(
-        models.Visit.is_active == True,
-        models.Visit.visit_date >= start_of_today
-    ).scalar() or 0
-    next_token = max_token + 1
+    # 4. Generate daily sequential OPD token starting from 1 each day
+    next_token = generate_daily_token_number(db)
 
     # 5. Create Visit
     vis_id = generate_unique_id(db, "VIS", models.Visit, models.Visit.visit_id)
