@@ -167,16 +167,38 @@ def on_startup():
                 existing_doc.registration_number = d_reg
         db.commit()
 
-        # 1. Seed Users
+        # 1. Seed Staff Users & 5 Real Demo Patient Accounts
         users_to_seed = [
             ("admin", "admin123", "Admin", "System Administrator"),
             ("receptionist", "recep123", "Receptionist", "Front Desk Receptionist"),
+            ("receptionist", "reception123", "Receptionist", "Front Desk Receptionist"),
             ("accountant", "acct123", "Accountant", "Chief Accountant"),
+            ("accountant", "account123", "Accountant", "Chief Accountant"),
             ("doctor", "doc123", "Doctor", "Dr. Shweta Grover"),
             ("dr.shweta", "doc123", "Doctor", "Dr. Shweta Grover"),
             ("dr.rajesh", "doc123", "Doctor", "Dr. Rajesh Verma"),
             ("dr.priya", "doc123", "Doctor", "Dr. Priya Nair"),
-            ("patient", "pat123", "Patient", "Nisha Patel")
+            ("patient", "pat123", "Patient", "Nisha Patel"),
+            # Real 5 Patient Accounts (Support Email, Username, and UHID aliases)
+            ("mailtopalak0002@gmail.com", "palak@123", "Patient", "Palak"),
+            ("palak", "palak@123", "Patient", "Palak"),
+            ("PAT-20260926-00001", "palak@123", "Patient", "Palak"),
+
+            ("maimahesh1192@gmail.com", "mahesh@123", "Patient", "Mahesh Sharma"),
+            ("mahesh", "mahesh@123", "Patient", "Mahesh Sharma"),
+            ("PAT-20260926-00002", "mahesh@123", "Patient", "Mahesh Sharma"),
+
+            ("yashviii1289@gmail.com", "yashvi@123", "Patient", "Yashvi"),
+            ("yashvi", "yashvi@123", "Patient", "Yashvi"),
+            ("PAT-20260926-00003", "yashvi@123", "Patient", "Yashvi"),
+
+            ("pari43093@gmail.com", "pari@123", "Patient", "Pari"),
+            ("pari", "pari@123", "Patient", "Pari"),
+            ("PAT-20260926-00004", "pari@123", "Patient", "Pari"),
+
+            ("mailrohitkumar002@gmail.com", "rohit@123", "Patient", "Rohit"),
+            ("rohit", "rohit@123", "Patient", "Rohit"),
+            ("PAT-20260926-00005", "rohit@123", "Patient", "Rohit"),
         ]
         for username, password, role, name in users_to_seed:
             existing_user = db.query(models.User).filter(models.User.username == username).first()
@@ -189,6 +211,30 @@ def on_startup():
                 )
                 db.add(db_user)
         db.commit()
+
+        # Seed matching 5 Patient records if missing
+        real_patients_data = [
+            ("PAT-20260926-00001", "Palak", "mailtopalak0002@gmail.com", "9876543201", 24, "Female"),
+            ("PAT-20260926-00002", "Mahesh Sharma", "maimahesh1192@gmail.com", "9876543202", 52, "Male"),
+            ("PAT-20260926-00003", "Yashvi", "yashviii1289@gmail.com", "9876543203", 29, "Female"),
+            ("PAT-20260926-00004", "Pari", "pari43093@gmail.com", "9876543204", 7, "Female"),
+            ("PAT-20260926-00005", "Rohit", "mailrohitkumar002@gmail.com", "9876543205", 34, "Male"),
+        ]
+        for p_id, p_name, p_email, p_mob, p_age, p_gen in real_patients_data:
+            existing_p = db.query(models.Patient).filter(models.Patient.patient_id == p_id).first()
+            if not existing_p:
+                db_p = models.Patient(
+                    patient_id=p_id,
+                    name=p_name,
+                    email=p_email,
+                    mobile_number=p_mob,
+                    age=p_age,
+                    gender=p_gen,
+                    is_active=True
+                )
+                db.add(db_p)
+        db.commit()
+
 
         # 2. Seed Settings
         default_settings = {
