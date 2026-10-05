@@ -2067,17 +2067,18 @@ export default function PatientSearchTab({
             </div>
 
             {/* Selected Patient Workspace */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-4 md:h-full md:overflow-hidden flex flex-col min-h-[400px] lg:min-h-0 animate-in fade-in duration-150">
+            {/* Selected Patient Workspace */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm space-y-5 md:h-full md:overflow-hidden flex flex-col min-h-[650px] lg:min-h-[750px] animate-in fade-in duration-150">
               {/* Patient Quick Header Details */}
-              <div className="flex justify-between items-start pb-3 border-b border-slate-100 flex-shrink-0 flex-wrap gap-2">
+              <div className="flex justify-between items-start pb-3.5 border-b border-slate-100 flex-shrink-0 flex-wrap gap-2">
                 <div>
-                  <span className="text-teal-600 font-bold text-[10px] uppercase tracking-wider font-sans">Patient Workspace</span>
-                  <h2 className="text-base font-bold text-slate-900 mt-0.5">{selectedPatient.name}</h2>
-                  <p className="text-slate-400 text-xs mt-0.5">
-                    Age: <b>{selectedPatient.age}</b> | Gender: <b>{selectedPatient.gender}</b> | Mobile: <b>{selectedPatient.mobile_number}</b> | ID: <b>{selectedPatient.patient_id}</b>
+                  <span className="text-teal-600 font-bold text-xs uppercase tracking-wider font-sans">Patient Workspace</span>
+                  <h2 className="text-lg font-extrabold text-slate-900 mt-0.5">{selectedPatient.name}</h2>
+                  <p className="text-slate-500 text-xs mt-1">
+                    Age: <b className="text-slate-800">{selectedPatient.age}</b> | Gender: <b className="text-slate-800">{selectedPatient.gender}</b> | Mobile: <b className="text-slate-800">{selectedPatient.mobile_number}</b> | ID: <b className="text-slate-800">{selectedPatient.patient_id}</b>
                   </p>
                   {selectedPatient.address && (
-                    <p className="text-slate-500 text-[11px] mt-0.5">Address: {selectedPatient.address}</p>
+                    <p className="text-slate-600 text-xs mt-0.5">Address: {selectedPatient.address}</p>
                   )}
                 </div>
                 <div className="flex items-center flex-wrap gap-2">
@@ -2088,19 +2089,19 @@ export default function PatientSearchTab({
                         handleSelectPatient(null);
                         setShowVoiceIntake(false);
                       }}
-                      className="bg-teal-50 text-teal-800 hover:bg-teal-100 border border-teal-200 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                      className="bg-teal-50 text-teal-800 hover:bg-teal-100 border border-teal-200 text-xs font-bold px-3 py-1.5 rounded-xl transition-all flex items-center gap-1 cursor-pointer"
                       title="Open Registration Form"
                     >
-                      <PlusCircle className="w-3 h-3 text-teal-600" />
+                      <PlusCircle className="w-3.5 h-3.5 text-teal-600" />
                       + New Patient
                     </button>
                   )}
                   {userRole === 'Admin' && (
                     <button
                       onClick={() => handleSoftDeletePatient(selectedPatient.id)}
-                      className="text-rose-600 hover:text-rose-800 text-[10px] font-bold bg-rose-50 hover:bg-rose-100 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"
+                      className="text-rose-600 hover:text-rose-800 text-xs font-bold bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-xl flex items-center gap-1 transition-colors"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5" />
                       Delete
                     </button>
                   )}
@@ -2109,10 +2110,10 @@ export default function PatientSearchTab({
 
             {/* Create Visit Panel */}
             {['Admin', 'Receptionist', 'Doctor'].includes(userRole) && (
-              <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 flex-shrink-0">
+              <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 flex-shrink-0">
                 <div>
-                  <h4 className="font-bold text-slate-800 text-xs">Consultation Entry</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Record a new visit or pathology reference under an active doctor.</p>
+                  <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wide">Consultation Entry</h4>
+                  <p className="text-xs text-slate-500 mt-0.5">Record a new visit or pathology reference under an active doctor.</p>
                 </div>
                 <button
                   onClick={() => {
@@ -2120,9 +2121,9 @@ export default function PatientSearchTab({
                     setNewVisitDoctorId('');
                     setShowVisitModal(true);
                   }}
-                  className="bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 justify-center whitespace-nowrap active:scale-[0.98]"
+                  className="bg-teal-500 hover:bg-teal-600 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center gap-2 justify-center whitespace-nowrap active:scale-[0.98]"
                 >
-                  <PlusCircle className="w-3.5 h-3.5" />
+                  <PlusCircle className="w-4 h-4" />
                   Log Visit / Consult
                 </button>
               </div>
@@ -2130,23 +2131,23 @@ export default function PatientSearchTab({
 
             {/* Patient Visit Log List - local scroll */}
             <div className="flex-1 flex flex-col min-h-0">
-              <h3 className="font-bold text-slate-500 text-[10px] mb-2 uppercase tracking-wider flex items-center gap-1.5 flex-shrink-0">
-                <Calendar className="w-3.5 h-3.5 text-teal-600" />
+              <h3 className="font-extrabold text-slate-600 text-xs mb-3 uppercase tracking-wider flex items-center gap-2 flex-shrink-0">
+                <Calendar className="w-4 h-4 text-teal-600" />
                 Visits & Invoices Grid
               </h3>
-              <div className="md:flex-1 md:overflow-y-auto space-y-3 pr-1 min-h-0 compact-scroll">
+              <div className="md:flex-1 md:overflow-y-auto space-y-4 pr-2 min-h-[450px] compact-scroll">
                 {selectedPatient.visits?.map((vis) => {
                   const visitBills = patientHistory.filter(b => b.visit_id === vis.id);
                   return (
-                    <div key={vis.id} className="border border-slate-200 rounded-xl p-3 space-y-3 hover:border-teal-200 bg-white transition-all shadow-sm">
-                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                    <div key={vis.id} className="border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4 hover:border-teal-300 bg-white transition-all shadow-md min-h-[280px]">
+                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-100 pb-3">
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-slate-400 text-[11px] font-semibold">Visit ID: <b className="text-slate-800">{vis.visit_id}</b></span>
+                            <span className="text-slate-500 text-xs font-bold">Visit ID: <b className="text-slate-900 font-mono">{vis.visit_id}</b></span>
                             <button
                               type="button"
                               onClick={() => handleOpenSummary(vis)}
-                              className="bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 font-bold text-[10px] px-2 py-1 rounded transition-all flex items-center gap-1 active:scale-95 shadow-sm"
+                              className="bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 font-bold text-xs px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 active:scale-95 shadow-xs"
                             >
                               <FileText className="w-3 h-3" />
                               <span>Clinical Notes & AI Summary</span>
@@ -2441,11 +2442,11 @@ export default function PatientSearchTab({
                               )}
 
                               {/* Service item selector */}
-                              <div className="flex gap-2 flex-wrap items-end flex-shrink-0">
-                                <div className="flex-1 min-w-[150px]">
-                                  <label className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Select Service</label>
+                              <div className="flex gap-3 flex-wrap items-end flex-shrink-0 pt-1">
+                                <div className="flex-1 min-w-[200px]">
+                                  <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1">Select Service</label>
                                   <select
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-semibold text-slate-700 focus:outline-none focus:border-teal-500 cursor-pointer"
+                                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-teal-500 cursor-pointer shadow-xs"
                                     value={selectedServiceId}
                                     onChange={(e) => setSelectedServiceId(e.target.value)}
                                   >
@@ -2456,11 +2457,11 @@ export default function PatientSearchTab({
                                   </select>
                                 </div>
 
-                                <div className="w-20 flex-shrink-0">
-                                  <label className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Price (₹)</label>
+                                <div className="w-28 flex-shrink-0">
+                                  <label className="block text-xs text-slate-500 font-extrabold uppercase tracking-wider mb-1">Price (₹)</label>
                                   <input
                                     type="number"
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-700 focus:outline-none focus:border-teal-500"
+                                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-extrabold text-slate-900 focus:outline-none focus:border-teal-500 shadow-xs"
                                     placeholder="Price"
                                     value={customItemPrice}
                                     onChange={(e) => setCustomItemPrice(e.target.value)}
@@ -2470,9 +2471,9 @@ export default function PatientSearchTab({
                                 <button
                                   type="button"
                                   onClick={addBillItem}
-                                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] px-3 py-1 rounded-lg transition-all flex items-center gap-0.5 shadow-sm h-[26px] self-end"
+                                  className="bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs px-5 rounded-xl transition-all flex items-center justify-center gap-1 shadow-md h-[38px] self-end cursor-pointer active:scale-95"
                                 >
-                                  <Plus className="w-3 h-3" />
+                                  <Plus className="w-4 h-4" />
                                   Add
                                 </button>
                               </div>
