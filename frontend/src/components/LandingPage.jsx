@@ -682,7 +682,7 @@ export default function LandingPage({ onEnterWorkspace, onPatientAuthSuccess, AP
         ========================================================================= */}
         <section ref={heroRef} className="max-w-7xl mx-auto px-6 pt-6 lg:pt-10 pb-14 flex flex-col lg:flex-row items-center gap-10 lg:gap-10">
 
-          {/* Hero Left: Pitch */}
+          {/* Hero Left: Value Proposition */}
           <div className="flex-1 text-center lg:text-left">
 
             {/* Showstopping Headline */}

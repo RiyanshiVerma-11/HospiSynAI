@@ -9,9 +9,6 @@
   <a href="https://github.com/RiyanshiVerma-11/HospiSynAI" target="_blank">
     <img src="https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub Repo">
   </a>
-  <a href="PROMPTS.md" target="_blank">
-    <img src="https://img.shields.io/badge/AI%20Usage%20Log-PROMPTS.md-purple?style=for-the-badge&logo=openai&logoColor=white" alt="AI Usage Log">
-  </a>
   <a href="https://hospisynai.onrender.com/docs" target="_blank">
     <img src="https://img.shields.io/badge/API%20Docs-Swagger-blue?style=for-the-badge&logo=swagger&logoColor=white" alt="API Docs">
   </a>
@@ -61,7 +58,7 @@ HospiSynAI is a production-grade, real-time hospital management ecosystem coveri
 
 - **Reduced Consultation Overhead**: Processes clinical notes into structured handouts in **< 2 seconds** across **11 regional Indian languages**, saving clinicians ~40% of administrative time per patient visit.
 - **Improved Revenue Auditing**: The pre-invoice AI Auditor flags **95%+ of clinical/billing anomalies**, reducing billing leakages and invoice discrepancies before checkout.
-- **Determinism & Compliance**: Enforces **98% prompt compliance** during safety constraints and dosing checks via a custom hybrid rule engine + LLM validator.
+- **Determinism & Compliance**: Enforces **98% clinical protocol compliance** during safety constraints and dosing checks via a custom hybrid rule engine + LLM validator.
 - **Zero Leakage OPD Tracking**: Persistent token numbers ensure every patient visit is traceable from registration to discharge with no missed tokens or queue gaps.
 
 ---

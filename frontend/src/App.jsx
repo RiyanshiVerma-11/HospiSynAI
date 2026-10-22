@@ -1901,19 +1901,19 @@ function App() {
           </nav>
         </div>
 
-        {/* SIPS Guided Evaluation Tour Sidebar Trigger */}
+        {/* Guided Feature Tour Sidebar Trigger */}
         <div className={`py-1.5 ${sidebarCollapsed ? 'px-2' : 'px-3 pb-2 pt-1'}`} style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
           <button
             type="button"
             onClick={() => setIsTourOpen(true)}
-            title="SIPS Pitch Tour (5 Steps)"
+            title="System Feature Tour (5 Steps)"
             className={`w-full flex items-center rounded-xl bg-gradient-to-r from-teal-500/15 via-cyan-500/10 to-transparent hover:from-teal-500/25 hover:to-cyan-500/20 border border-teal-500/30 text-teal-300 hover:text-white transition-all group shadow-sm cursor-pointer ${
               sidebarCollapsed ? 'justify-center p-2.5' : 'justify-between px-2.5 py-2 text-xs font-extrabold'
             }`}
           >
             <span className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-teal-400 group-hover:rotate-12 group-hover:scale-110 transition-all" />
-              {!sidebarCollapsed && <span>SIPS Pitch Tour</span>}
+              {!sidebarCollapsed && <span>Feature Tour</span>}
             </span>
             {!sidebarCollapsed && (
               <span className="text-[9px] bg-teal-500/20 text-teal-300 border border-teal-500/30 px-1.5 py-0.5 rounded font-mono font-bold">5 Steps</span>
@@ -2054,15 +2054,15 @@ function App() {
         </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
-            {/* SIPS Evaluation Walkthrough Header Trigger */}
+            {/* Guided System Tour Header Trigger */}
             <button
               type="button"
               onClick={() => setIsTourOpen(true)}
               className="flex items-center gap-1.5 bg-gradient-to-r from-teal-700 via-cyan-700 to-teal-800 hover:from-teal-600 hover:to-cyan-600 text-white border border-teal-400/40 text-[11px] font-black px-3 py-1.5 rounded-lg shadow-sm hover:shadow-teal-500/20 transition-all cursor-pointer group"
             >
               <Sparkles className="w-3.5 h-3.5 text-cyan-200 group-hover:rotate-12 transition-transform" />
-              <span className="hidden sm:inline">Guided Evaluation Walkthrough</span>
-              <span className="sm:hidden">SIPS Tour</span>
+              <span className="hidden sm:inline">Guided System Tour</span>
+              <span className="sm:hidden">Tour</span>
             </button>
 
             {/* Quick Command Palette trigger button */}
@@ -2793,7 +2793,7 @@ function App() {
           </div>
         </div>
       )}
-      {/* SIPS DEMO & EVALUATION TOUR CONTROL */}
+      {/* SYSTEM FEATURE TOUR CONTROL */}
       {token && (
         <DemoTour
           API_BASE={API_BASE}

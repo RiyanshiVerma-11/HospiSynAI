@@ -42,7 +42,7 @@ export default function DemoTour({
 
   const steps = [
     {
-      title: "Step 1: Auto-Seed SIPS Sandbox",
+      title: "Step 1: Seed Sandbox Demo Data",
       desc: "Instantly seed 4 test patients with clinical histories (pediatric, duplicate audits, AC Room GST) and 5 past ledger items to populate dashboard charts.",
       actionLabel: "⚡ Seed Sandbox Data",
       action: async () => {
@@ -87,7 +87,7 @@ export default function DemoTour({
     },
     {
       title: "Step 5: Business ROI & GST",
-      desc: "Open the 'ROI & Business Model' tab in the sidebar. Play with patient volume sliders to calculate clinic savings, inspect GST brackets, and pitch SIPS business plans.",
+      desc: "Open the 'ROI & Business Model' tab in the sidebar. Play with patient volume sliders to calculate clinic savings, inspect GST brackets, and project hospital revenue expansion.",
       actionLabel: "Go to ROI Desk",
       action: () => {
         setActiveTab('roi_calculator');
@@ -127,7 +127,7 @@ export default function DemoTour({
           <div className="p-4 bg-slate-950 flex items-center justify-between border-b border-slate-900">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-teal-400" />
-              <span className="text-xs font-bold uppercase tracking-widest text-slate-200">SIPS Pitch Companion</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-slate-200">System Feature Tour</span>
             </div>
             <button 
               onClick={() => setIsOpen(false)}

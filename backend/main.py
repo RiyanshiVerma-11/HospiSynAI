@@ -4345,7 +4345,7 @@ def export_excel(
 
 
 # ----------------------------------------------------
-# SIPS DEMO QUICK-SEER
+# SANDBOX DEMO QUICK-SEEDER
 # ----------------------------------------------------
 @app.post("/api/demo/seed")
 def seed_demo_data(
@@ -4637,7 +4637,7 @@ def seed_demo_data(
     db.commit()
 
     return {
-        "message": "SIPS Evaluation Demo Data Seeded Successfully",
+        "message": "Demonstration Sandbox Data Seeded Successfully",
         "demo_patients": ["Nisha Patel", "Vikram Singh", "Sanjay Gupta", "Dr. Priya Rao", "Amit Verma", "Aarav Sharma", "Sunita Verma", "Rajesh Malhotra", "Karan Johar"],
         "instructions": "Completed patients (Tokens 1-5) seeded from morning OPD session; Waiting patients (Tokens 6-9) seeded for active consultation & billing audits."
     }
